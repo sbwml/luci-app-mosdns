@@ -19,7 +19,7 @@ fi
 if L_exist pw; then
 	if [ "$1" = "unset" ]; then
 		uci set passwall.@global[0].dns_mode='pdnsd'
-		uci set passwall.@global[0].dns_forward='8.8.8.8'
+		uci set passwall.@global[0].dns_forward='8.8.4.4'
 		uci set passwall.@global[0].dns_cache='1'
 		uci set passwall.@global[0].chinadns_ng='1'
 	elif [ "$1" = "" ]; then
