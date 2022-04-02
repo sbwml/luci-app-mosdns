@@ -52,16 +52,14 @@ reload_service() {
 }
 
 setcron() {
-	touch $CRON_FILE
-	sed -i '/mosupdater.sh/d' $CRON_FILE 2>/dev/null && {
-		[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /etc/mosdns/mosupdater.sh" >>$CRON_FILE
-	}
+	sed -i '/mosupdater.sh/d' $CRON_FILE 2>/dev/null
+	[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /etc/mosdns/mosupdater.sh" >>$CRON_FILE
 	crontab $CRON_FILE
 }
 
 delcron() {
 	sed -i '/mosupdater.sh/d' $CRON_FILE 2>/dev/null
-	/etc/init.d/cron restart
+	crontab $CRON_FILE
 }
 
 adblock() {
