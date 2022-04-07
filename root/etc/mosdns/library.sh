@@ -19,19 +19,11 @@ getdat() {
   fi
 }
 
-get_ADlist() {
+get_adlist() {
   if exist curl; then
     curl -fSLo "$TMPDIR/$1" "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1"
   else
     wget "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1" -nv -O "$TMPDIR/$1"
-  fi
-}
-
-get_config() {
-  if exist curl; then
-    curl -fSLo "$TMPDIR/$1" "https://raw.cooluc.com/sbwml/luci-app-mosdns/master/root/etc/mosdns/$1"
-  else
-    wget "https://raw.cooluc.com/sbwml/luci-app-mosdns/master/root/etc/mosdns/$1" -nv -O "$TMPDIR/$1"
   fi
 }
 

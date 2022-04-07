@@ -73,8 +73,8 @@ msgstr "检查并更新"
 msgid "Enable Auto Database Update"
 msgstr "启用数据库自动更新"
 
-msgid "Enable Config Update"
-msgstr "启用配置文件同步"
+msgid "Enable ADList Update"
+msgstr "更新广告过滤列表"
 
 msgid "Enable AutoConfiguration"
 msgstr "启用自动化配置"

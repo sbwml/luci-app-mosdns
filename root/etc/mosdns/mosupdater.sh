@@ -16,17 +16,12 @@ fi
 cp -rf "$TMPDIR"/* /usr/share/v2ray
 rm -rf "$TMPDIR"
 
-syncconfig=$(uci -q get mosdns.mosdns.syncconfig)
-if [ "$syncconfig" -eq 1 ]; then
+update_adlist=$(uci -q get mosdns.mosdns.update_adlist)
+if [ "$update_adlist" -eq 1 ]; then
   TMPDIR=$(mktemp -d) || exit 2
-  get_config def_config.yaml
-  get_ADlist serverlist.txt
-
+  get_adlist serverlist.txt
   if [ "$(grep -o .com "$TMPDIR"/serverlist.txt | wc -l)" -lt "1000" ]; then
     rm -rf "$TMPDIR"/serverlist.txt
-  fi
-  if [ "$(grep -o plugin "$TMPDIR"/def_config.yaml | wc -l)" -eq "0" ]; then
-    rm -rf "$TMPDIR"/def_config.yaml
   fi
   cp -rf "$TMPDIR"/* /etc/mosdns
   rm -rf /etc/mosdns/serverlist.bak
