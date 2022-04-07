@@ -105,3 +105,6 @@ msgstr "自定义配置"
 
 msgid "MosDNS Log File"
 msgstr "MosDNS 日志文件"
+
+msgid "Remote DNS"
+msgstr "远程 DNS"

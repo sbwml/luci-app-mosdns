@@ -29,6 +29,15 @@ logfile.placeholder = "/dev/null"
 logfile.default = "/dev/null"
 logfile:depends( "configfile", "./def_config.yaml")
 
+dnsforward = s:option(Value, "dns_forward", translate("Remote DNS"))
+dnsforward.default = "tls://8.8.4.4"
+dnsforward:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
+dnsforward:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
+dnsforward:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
+dnsforward:value("208.67.222.222", "208.67.222.222 (Open DNS)")
+dnsforward:value("208.67.220.220", "208.67.220.220 (Open DNS)")
+dnsforward:depends( "configfile", "./def_config.yaml")
+
 redirect = s:option(Flag, "redirect", translate("Enable DNS Redirect"))
 redirect:depends( "configfile", "./def_config.yaml")
 redirect.default = true
