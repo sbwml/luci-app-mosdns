@@ -20,7 +20,7 @@ syncconfig=$(uci -q get mosdns.mosdns.syncconfig)
 if [ "$syncconfig" -eq 1 ]; then
   TMPDIR=$(mktemp -d) || exit 2
   get_config def_config.yaml
-  getdat serverlist.txt
+  get_ADlist serverlist.txt
 
   if [ "$(grep -o .com "$TMPDIR"/serverlist.txt | wc -l)" -lt "1000" ]; then
     rm -rf "$TMPDIR"/serverlist.txt

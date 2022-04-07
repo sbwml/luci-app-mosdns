@@ -13,6 +13,14 @@ exist() {
 
 getdat() {
   if exist curl; then
+    curl -fSLo "$TMPDIR/$1" "https://ghproxy.com/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1"
+  else
+    wget "https://ghproxy.com/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1" -nv -O "$TMPDIR/$1"
+  fi
+}
+
+get_ADlist() {
+  if exist curl; then
     curl -fSLo "$TMPDIR/$1" "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1"
   else
     wget "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1" -nv -O "$TMPDIR/$1"
