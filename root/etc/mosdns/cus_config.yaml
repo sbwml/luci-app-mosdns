@@ -93,4 +93,4 @@ plugin:
     type: query_matcher
     args:
       domain:
-        - "ext:./serverlist.txt"
+        - "ext:/usr/share/v2ray/geosite.dat:category-ads-all"

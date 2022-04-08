@@ -23,17 +23,16 @@ plugin:
     args:
       exec:
         - if:
-            - query_is_ad_domain
-            - qtype65
-          exec:
-            - _block_with_nxdomain
-            - _return
-        - if:
             - query_is_whitelist_domain
             - query_is_local_domain
             - "!_query_is_common"
           exec:
             - forward_local
+            - _return
+        - if:
+            - query_is_ad_domain
+          exec:
+            - _block_with_nxdomain
             - _return
         - if:
             - query_is_non_local_domain
@@ -100,8 +99,3 @@ plugin:
     args:
       domain:
         - ${{ ./ad_domain.sh }}
-
-  - tag: qtype65
-    type: query_matcher
-    args:
-      qtype: [65]
