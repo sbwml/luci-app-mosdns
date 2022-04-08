@@ -8,7 +8,6 @@ plugin:
     args:
       entry:
         - _no_ecs
-        - lazy_cache
         - _prefer_ipv4
         - _single_flight
         - main_sequence
@@ -55,13 +54,13 @@ plugin:
 
         - modify_ttl
 
-  - tag: 'mem_cache'
-    type: 'cache'
+  - tag: mem_cache
+    type: cache
     args:
       size: ${{ uci -q get mosdns.mosdns.cache_size }}
 
-  - tag: 'modify_ttl'
-    type: 'ttl'
+  - tag: modify_ttl
+    type: ttl
     args:
       minimal_ttl: ${{ uci -q get mosdns.mosdns.minimal_ttl }}
       maximum_ttl: ${{ uci -q get mosdns.mosdns.maximum_ttl }}
@@ -84,12 +83,6 @@ plugin:
     args:
       upstream:
         - addr: ${{ uci -q get mosdns.mosdns.dns_forward }}
-
-  - tag: lazy_cache
-    type: cache
-    args:
-      size: 512000
-      lazy_cache_ttl: 259200
 
   - tag: query_is_local_domain
     type: query_matcher
