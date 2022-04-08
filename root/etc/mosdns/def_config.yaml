@@ -99,7 +99,7 @@ plugin:
     type: query_matcher
     args:
       domain:
-        - "ext:./serverlist.txt"
+        - ${{ ./ad_domain.sh }}
 
   - tag: qtype65
     type: query_matcher

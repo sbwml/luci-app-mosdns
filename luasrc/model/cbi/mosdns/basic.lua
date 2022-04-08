@@ -78,19 +78,4 @@ function config.write(self, section, value)
   nixio.fs.writefile("/etc/mosdns/cus_config.yaml", value)
 end
 
-config = s:option(TextValue, "whitelist")
-config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist.")
-config.template = "cbi/tvalue"
-config.rows = 25
-config:depends( "configfile", "./def_config.yaml")
-
-function config.cfgvalue(self, section)
-  return nixio.fs.readfile("/etc/mosdns/whitelist.txt")
-end
-
-function config.write(self, section, value)
-  value = value:gsub("\r\n?", "\n")
-  nixio.fs.writefile("/etc/mosdns/whitelist.txt", value)
-end
-
 return m

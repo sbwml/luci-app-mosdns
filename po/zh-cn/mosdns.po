@@ -31,6 +31,9 @@ msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当 'MosDNS �
 msgid "<font color=\"ff0000\"><strong>ADblock whitelist."
 msgstr "<font color=\"ff0000\"><strong>广告过滤白名单"
 
+msgid "ADblock whitelist"
+msgstr "白名单"
+
 msgid "Geodata Update"
 msgstr "数据库更新"
 
@@ -72,9 +75,6 @@ msgstr "检查并更新"
 
 msgid "Enable Auto Database Update"
 msgstr "启用数据库自动更新"
-
-msgid "Enable ADList Update"
-msgstr "更新广告过滤列表"
 
 msgid "Enable AutoConfiguration"
 msgstr "启用自动化配置"

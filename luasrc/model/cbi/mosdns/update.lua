@@ -2,16 +2,11 @@ m = Map("mosdns")
 m.title = translate("MosDNS")
 m.description = translate("MosDNS is a 'programmable' DNS forwarder.")
 
-m:section(SimpleSection).template = "mosdns/mosdns_status"
-
 s = m:section(TypedSection, "mosdns")
 s.addremove = false
 s.anonymous = true
 
 enable = s:option(Flag, "geo_auto_update", translate("Enable Auto Database Update"))
-enable.rmempty = false
-
-enable = s:option(Flag, "update_adlist", translate("Enable ADList Update"))
 enable.rmempty = false
 
 o = s:option(ListValue, "geo_update_week_time", translate("Update Cycle"))

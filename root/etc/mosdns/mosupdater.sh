@@ -16,14 +16,4 @@ fi
 cp -rf "$TMPDIR"/* /usr/share/v2ray
 rm -rf "$TMPDIR"
 
-update_adlist=$(uci -q get mosdns.mosdns.update_adlist)
-if [ "$update_adlist" -eq 1 ]; then
-  TMPDIR=$(mktemp -d) || exit 2
-  get_adlist serverlist.txt
-  if [ "$(grep -o .com "$TMPDIR"/serverlist.txt | wc -l)" -lt "1000" ]; then
-    rm -rf "$TMPDIR"/serverlist.txt
-  fi
-  cp -rf "$TMPDIR"/* /etc/mosdns
-  rm -rf /etc/mosdns/serverlist.bak
-fi
 exit 0

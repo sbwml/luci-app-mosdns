@@ -19,14 +19,6 @@ getdat() {
   fi
 }
 
-get_adlist() {
-  if exist curl; then
-    curl -fSLo "$TMPDIR/$1" "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1"
-  else
-    wget "https://raw.cooluc.com/QiuSimons/openwrt-mos/master/dat/$1" -nv -O "$TMPDIR/$1"
-  fi
-}
-
 getdns() {
   if [ "$2" == "inactive" ]; then
     ubus call network.interface.wan status | jsonfilter -e "@['inactive']['dns-server'][$1]"
