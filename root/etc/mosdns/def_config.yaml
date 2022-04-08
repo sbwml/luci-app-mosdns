@@ -23,8 +23,6 @@ plugin:
       exec:
         - if:
             - query_is_whitelist_domain
-            - query_is_local_domain
-            - "!_query_is_common"
           exec:
             - forward_local
             - _return
@@ -36,6 +34,12 @@ plugin:
 
         - mem_cache
 
+        - if:
+            - query_is_local_domain
+            - "!_query_is_common"
+          exec:
+            - forward_local
+            - _return
         - if:
             - query_is_non_local_domain
           exec:
