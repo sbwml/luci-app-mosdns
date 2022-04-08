@@ -34,6 +34,9 @@ plugin:
           exec:
             - _block_with_nxdomain
             - _return
+
+        - mem_cache
+
         - if:
             - query_is_non_local_domain
           exec:
@@ -49,6 +52,19 @@ plugin:
             - forward_remote
           fast_fallback: 150
           always_standby: true
+
+        - modify_ttl
+
+  - tag: 'mem_cache'
+    type: 'cache'
+    args:
+      size: ${{ uci -q get mosdns.mosdns.cache_size }}
+
+  - tag: 'modify_ttl'
+    type: 'ttl'
+    args:
+      minimal_ttl: ${{ uci -q get mosdns.mosdns.minimal_ttl }}
+      maximum_ttl: ${{ uci -q get mosdns.mosdns.maximum_ttl }}
 
   - tag: forward_local
     type: fast_forward

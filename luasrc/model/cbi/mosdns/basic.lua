@@ -38,6 +38,19 @@ dnsforward:value("208.67.222.222", "208.67.222.222 (Open DNS)")
 dnsforward:value("208.67.220.220", "208.67.220.220 (Open DNS)")
 dnsforward:depends( "configfile", "./def_config.yaml")
 
+cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
+cache_size.datatype = "and(uinteger,min(0))"
+cache_size.rmempty = false
+
+minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
+minimal_ttl.datatype = "and(uinteger,min(1))"
+minimal_ttl.datatype = "and(uinteger,max(3600))"
+minimal_ttl.rmempty = false
+
+maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
+maximum_ttl.datatype = "and(uinteger,min(1))"
+maximum_ttl.rmempty = false
+
 redirect = s:option(Flag, "redirect", translate("Enable DNS Redirect"))
 redirect:depends( "configfile", "./def_config.yaml")
 redirect.default = true

@@ -108,3 +108,12 @@ msgstr "MosDNS 日志文件"
 
 msgid "Remote DNS"
 msgstr "远程 DNS"
+
+msgid "DNS Cache Size"
+msgstr "DNS 缓存大小"
+
+msgid "Minimum TTL"
+msgstr "覆盖最小 TTL 值"
+
+msgid "Maximum TTL"
+msgstr "覆盖最大 TTL 值"
