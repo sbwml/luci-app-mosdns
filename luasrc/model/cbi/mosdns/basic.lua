@@ -31,11 +31,13 @@ loglevel.default = "error"
 loglevel:depends( "configfile", "/etc/mosdns/config.yaml")
 
 logfile = s:option(Value, "logfile", translate("Log File"))
+logfile.rmempty = false
 logfile.placeholder = "/tmp/mosdns.log"
 logfile.default = "/tmp/mosdns.log"
 logfile:depends( "configfile", "/etc/mosdns/config.yaml")
 
 dnsforward = s:option(Value, "dns_forward", translate("Remote DNS"))
+dnsforward.rmempty = false
 dnsforward.default = "tls://8.8.4.4"
 dnsforward:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 dnsforward:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
