@@ -2,7 +2,7 @@
 # shellcheck source=/etc/mosdns/library.sh
 
 set -o pipefail
-source /etc/mosdns/library.sh
+source /usr/share/mosdns/library.sh
 
 TMPDIR=$(mktemp -d) || exit 1
 getdat geoip.dat

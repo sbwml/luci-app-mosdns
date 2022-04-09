@@ -9,7 +9,7 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+mosdns +jsonfilter +bash +v2ray-geoip +v2ray-geosite
 
 define Package/$(PKG_NAME)/conffiles
-/etc/mosdns/cus_config.yaml
+/etc/mosdns/config_custom.yaml
 /etc/config/mosdns
 endef
 

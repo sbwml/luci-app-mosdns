@@ -1,6 +1,6 @@
 #!/bin/bash -e
 # shellcheck source=/etc/mosdns/library.sh
-source /etc/mosdns/library.sh
+source /usr/share/mosdns/library.sh
 
 if [ "$(ifconfig | grep -c wan)" = 0 ]; then
 	bakdns "$1"

@@ -53,13 +53,13 @@ reload_service() {
 }
 
 setcron() {
-	sed -i '/mosupdater.sh/d' $CRON_FILE 2>/dev/null
-	[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /etc/mosdns/mosupdater.sh" >>$CRON_FILE
+	sed -i '/update_geodat.sh/d' $CRON_FILE 2>/dev/null
+	[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /usr/share/mosdns/update_geodat.sh" >>$CRON_FILE
 	crontab $CRON_FILE
 }
 
 delcron() {
-	sed -i '/mosupdater.sh/d' $CRON_FILE 2>/dev/null
+	sed -i '/update_geodat.sh/d' $CRON_FILE 2>/dev/null
 	crontab $CRON_FILE
 }
 
@@ -67,15 +67,7 @@ start_service() {
 
 	# Reading config
 	inital_conf
-	if [ "$enabled" -eq 0 ]; then
-		firstblood=$(uci -q get mosdns.mosdns.not_first_start)
-		[ "${firstblood}" = "0" ] && restore_setting
-		[ "${firstblood}" = "0" ] && reload_others
-		uci set mosdns.mosdns.not_first_start='1'
-		uci commit mosdns
-		echo "MosDNS has turned off"
-		return 1
-	fi
+	[ $enabled != 1 ] && return 1
 	delcron
 	setcron
 	procd_open_instance mosdns
@@ -87,25 +79,21 @@ start_service() {
 	procd_close_instance mosdns
 
 	configfile=$(uci -q get mosdns.mosdns.configfile)
-	if [ "${configfile}" = "./def_config.yaml" ]; then
+	if [ "${configfile}" = "/etc/mosdns/config.yaml" ]; then
 		restore_setting
 		redirect_setting
 		reload_others
 	fi
-
 	echo "MosDNS turn on"
-	echo "enabled=$enabled"
-
 }
 
 stop_service() {
 
 	pgrep -f /usr/bin/mosdns | xargs kill -9
 	echo "MosDNS turn off"
-	echo "enabled=$enabled"
 
 	configfile=$(uci -q get mosdns.mosdns.configfile)
-	if [ "${configfile}" = "./def_config.yaml" ]; then
+	if [ "${configfile}" = "/etc/mosdns/config.yaml" ]; then
 		config_load "mosdns"
 		enabled=$(uci -q get mosdns.mosdns.enabled)
 		[ "${enabled}" = "0" ] && restore_setting
