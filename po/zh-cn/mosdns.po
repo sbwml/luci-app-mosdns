@@ -38,10 +38,7 @@ msgid "<font color=\"ff0000\"><strong>ADblock whitelist only apply to 'Def Confi
 msgstr "<font color=\"ff0000\"><strong>注意！广告过滤白名单仅当 'MosDNS 配置文件选择' 为 '内置预设' 时才会生效</strong></font>"
 
 msgid "ADblock whitelist"
-msgstr "白名单"
-
-msgid "ADblock Whitelist"
-msgstr "广告过滤白名单"
+msgstr "广告白名单"
 
 msgid "Reload Service"
 msgstr "重载 MosDNS"

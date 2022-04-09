@@ -1,8 +1,6 @@
 m = Map("mosdns")
-m.title = translate("MosDNS")
-m.description = translate("MosDNS is a 'programmable' DNS forwarder.")
 
-s = m:section(TypedSection, "mosdns", translate("ADblock Whitelist"))
+s = m:section(TypedSection, "mosdns", translate("ADblock whitelist"))
 s.addremove = false
 s.anonymous = true
 

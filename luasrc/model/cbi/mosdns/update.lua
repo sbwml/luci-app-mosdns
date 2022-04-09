@@ -1,8 +1,6 @@
 m = Map("mosdns")
-m.title = translate("MosDNS")
-m.description = translate("MosDNS is a 'programmable' DNS forwarder.")
 
-s = m:section(TypedSection, "mosdns")
+s = m:section(TypedSection, "mosdns", translate("Geodata Update"))
 s.addremove = false
 s.anonymous = true
 
