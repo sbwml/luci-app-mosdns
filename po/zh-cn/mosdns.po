@@ -34,6 +34,9 @@ msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当配置文�
 msgid "Geodata Update"
 msgstr "更新数据库"
 
+msgid "Update GeoIP & GeoSite dat"
+msgstr "更新 GeoIP & GeoSite 数据库"
+
 msgid "Update Time"
 msgstr "更新时间"
 
