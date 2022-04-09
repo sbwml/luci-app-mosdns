@@ -70,6 +70,7 @@ start_service() {
 	[ $enabled != 1 ] && return 1
 	delcron
 	setcron
+	echo '' > $(uci -q get mosdns.mosdns.logfile)
 	procd_open_instance mosdns
 	procd_set_param command $PROG -dir $RES_DIR -c "$CONF"
 	procd_set_param user root

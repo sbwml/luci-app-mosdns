@@ -34,7 +34,7 @@ msgstr "启用 DNS 广告过滤"
 msgid "<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>"
 msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当 'MosDNS 配置文件选择' 为 '自定义配置' 时才会生效</strong></font>"
 
-msgid "<font color=\"ff0000\"><strong>ADblock whitelist only apply to 'Def Config' profiles</strong></font>"
+msgid "<font color=\"ff0000\"><strong>ADblock whitelist only apply to 'Def Config' profiles.</strong></font>"
 msgstr "<font color=\"ff0000\"><strong>注意！广告过滤白名单仅当 'MosDNS 配置文件选择' 为 '内置预设' 时才会生效</strong></font>"
 
 msgid "ADblock whitelist"
@@ -114,3 +114,9 @@ msgstr "覆盖最小 TTL 值"
 
 msgid "Maximum TTL"
 msgstr "覆盖最大 TTL 值"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Clear logs"
+msgstr "清空日志"
