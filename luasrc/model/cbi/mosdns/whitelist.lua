@@ -4,11 +4,6 @@ s = m:section(TypedSection, "mosdns", translate("ADblock whitelist"))
 s.addremove = false
 s.anonymous = true
 
-reload_service = s:option( Button, "_reload", translate("Reload Service"), translate("Reload service to apply ADblock whitelist"))
-reload_service.write = function()
-  luci.sys.exec("/etc/init.d/mosdns reload")
-end
-
 config = s:option(TextValue, "whitelist")
 config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist only apply to 'Def Config' profiles.</strong></font>")
 config.template = "cbi/tvalue"
@@ -21,6 +16,11 @@ end
 function config.write(self, section, value)
   value = value:gsub("\r\n?", "\n")
   nixio.fs.writefile("/etc/mosdns/whitelist.txt", value)
+end
+
+local apply = luci.http.formvalue("cbi.apply")
+if apply then
+  luci.sys.exec("/etc/init.d/mosdns reload")
 end
 
 return m

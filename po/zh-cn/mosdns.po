@@ -40,12 +40,6 @@ msgstr "<font color=\"ff0000\"><strong>注意！广告过滤白名单仅当 'Mos
 msgid "ADblock whitelist"
 msgstr "广告白名单"
 
-msgid "Reload Service"
-msgstr "重载 MosDNS"
-
-msgid "Reload service to apply ADblock whitelist"
-msgstr "重载 MosDNS 服务生效白名单"
-
 msgid "Geodata Update"
 msgstr "数据库更新"
 
