@@ -47,7 +47,7 @@ reload_others() {
 
 reload_service() {
 	stop
-	sleep 2s
+	sleep 1
 	echo "MosDNS is restarted!"
 	start
 }

@@ -2,12 +2,17 @@ m = Map("mosdns")
 m.title = translate("MosDNS")
 m.description = translate("MosDNS is a 'programmable' DNS forwarder.")
 
-s = m:section(TypedSection, "mosdns")
+s = m:section(TypedSection, "mosdns", translate("ADblock Whitelist"))
 s.addremove = false
 s.anonymous = true
 
+reload_service = s:option( Button, "_reload", translate("Reload Service"), translate("Reload service to apply ADblock whitelist"))
+reload_service.write = function()
+  luci.sys.exec("/etc/init.d/mosdns reload")
+end
+
 config = s:option(TextValue, "whitelist")
-config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist.</strong></font>")
+config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist only apply to 'Def Config' profiles.</strong></font>")
 config.template = "cbi/tvalue"
 config.rows = 25
 
