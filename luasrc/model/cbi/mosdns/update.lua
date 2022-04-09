@@ -1,6 +1,6 @@
 m = Map("mosdns")
 
-s = m:section(TypedSection, "mosdns", translate("Geodata Update"))
+s = m:section(TypedSection, "mosdns", translate("Update GeoIP & GeoSite dat"))
 s.addremove = false
 s.anonymous = true
 
@@ -18,7 +18,7 @@ o:value("6", translate("Every Saturday"))
 o:value("7", translate("Every Sunday"))
 o.default = "*"
 
-update_time = s:option(ListValue, "geo_update_day_time", translate("Update Time (Every Day)"))
+update_time = s:option(ListValue, "geo_update_day_time", translate("Update Time"))
 for t = 0, 23 do
   update_time:value(t, t..":00")
 end

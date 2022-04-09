@@ -27,6 +27,7 @@ plugin:
             - forward_local
             - _return
         - if:
+            - query_is_blocklist_domain
             - query_is_ad_domain
           exec:
             - _block_with_nxdomain
@@ -80,7 +81,13 @@ plugin:
     type: query_matcher
     args:
       domain:
-        - "ext:./whitelist.txt"
+        - "ext:/etc/mosdns/rule/whitelist.txt"
+
+  - tag: query_is_blocklist_domain
+    type: query_matcher
+    args:
+      domain:
+        - "ext:/etc/mosdns/rule/blocklist.txt"
 
   - tag: forward_remote
     type: fast_forward

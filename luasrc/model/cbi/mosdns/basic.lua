@@ -11,9 +11,9 @@ s.anonymous = true
 enable = s:option(Flag, "enabled", translate("Enable"))
 enable.rmempty = false
 
-configfile = s:option(ListValue, "configfile", translate("MosDNS Config File"))
-configfile:value("/etc/mosdns/config.yaml", translate("Def Config"))
-configfile:value("/etc/mosdns/config_custom.yaml", translate("Cus Config"))
+configfile = s:option(ListValue, "configfile", translate("Config File"))
+configfile:value("/etc/mosdns/config.yaml", translate("Default Config"))
+configfile:value("/etc/mosdns/config_custom.yaml", translate("Custom Config"))
 configfile.default = "/etc/mosdns/config.yaml"
 
 listenport = s:option(Value, "listen_port", translate("Listen port"))
@@ -30,9 +30,9 @@ loglevel:value("error", translate("Error"))
 loglevel.default = "error"
 loglevel:depends( "configfile", "/etc/mosdns/config.yaml")
 
-logfile = s:option(Value, "logfile", translate("MosDNS Log File"))
-logfile.placeholder = "/dev/null"
-logfile.default = "/dev/null"
+logfile = s:option(Value, "logfile", translate("Log File"))
+logfile.placeholder = "/tmp/mosdns.log"
+logfile.default = "/tmp/mosdns.log"
 logfile:depends( "configfile", "/etc/mosdns/config.yaml")
 
 dnsforward = s:option(Value, "dns_forward", translate("Remote DNS"))

@@ -5,12 +5,9 @@
 START=91
 USE_PROCD=1
 
-#####  ONLY CHANGE THIS BLOCK  ######
-PROG=/usr/bin/mosdns                        # where is mosdns
-RES_DIR=/etc/mosdns/                        # resource dir / working dir / the dir where you store ip/domain lists
-CONF=$(uci -q get mosdns.mosdns.configfile) # where is the config file, it can be a relative path to $RES_DIR
+PROG=/usr/bin/mosdns
+CONF=$(uci -q get mosdns.mosdns.configfile)
 CRON_FILE=/etc/crontabs/root
-#####  ONLY CHANGE THIS BLOCK  ######
 
 inital_conf() {
 	config_load "mosdns"
@@ -48,7 +45,6 @@ reload_others() {
 reload_service() {
 	stop
 	sleep 1
-	echo "MosDNS is restarted!"
 	start
 }
 
@@ -64,15 +60,13 @@ delcron() {
 }
 
 start_service() {
-
-	# Reading config
 	inital_conf
 	[ $enabled != 1 ] && return 1
 	delcron
 	setcron
 	echo '' > $(uci -q get mosdns.mosdns.logfile)
 	procd_open_instance mosdns
-	procd_set_param command $PROG -dir $RES_DIR -c "$CONF"
+	procd_set_param command $PROG -c "$CONF"
 	procd_set_param user root
 	procd_set_param stdout 1
 	procd_set_param stderr 1
@@ -85,14 +79,10 @@ start_service() {
 		redirect_setting
 		reload_others
 	fi
-	echo "MosDNS turn on"
 }
 
 stop_service() {
-
 	pgrep -f /usr/bin/mosdns | xargs kill -9
-	echo "MosDNS turn off"
-
 	configfile=$(uci -q get mosdns.mosdns.configfile)
 	if [ "${configfile}" = "/etc/mosdns/config.yaml" ]; then
 		config_load "mosdns"
@@ -101,5 +91,4 @@ stop_service() {
 		reload_others
 	fi
 	delcron
-
 }
