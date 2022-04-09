@@ -25,11 +25,11 @@ msgstr "启用 DNS 重定向"
 msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
 
-msgid "<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need."
-msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当 'MosDNS 配置文件选择' 为 '自定义配置' 时才会生效"
+msgid "<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>"
+msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当 'MosDNS 配置文件选择' 为 '自定义配置' 时才会生效</strong></font>"
 
-msgid "<font color=\"ff0000\"><strong>ADblock whitelist."
-msgstr "<font color=\"ff0000\"><strong>广告过滤白名单"
+msgid "<font color=\"ff0000\"><strong>ADblock whitelist.</strong></font>"
+msgstr "<font color=\"ff0000\"><strong>广告过滤白名单</strong></font>"
 
 msgid "ADblock whitelist"
 msgstr "白名单"
@@ -75,24 +75,6 @@ msgstr "检查并更新"
 
 msgid "Enable Auto Database Update"
 msgstr "启用数据库自动更新"
-
-msgid "Enable AutoConfiguration"
-msgstr "启用自动化配置"
-
-msgid "This will make the necessary adjustments to other plug-in settings."
-msgstr "对其他插件的设置进行必要的设置，目前仅支持 SSRP VSSR PASSWALL。"
-
-msgid "This will revert the adjustments."
-msgstr "还原设置助手对其他插件进行的配置设定。"
-
-msgid "DNS Helper"
-msgstr "DNS 设置助手"
-
-msgid "Revert Settings"
-msgstr "DNS 设置还原"
-
-msgid "Apply"
-msgstr "应用"
 
 msgid "MosDNS Config File"
 msgstr "MosDNS 配置文件选择"

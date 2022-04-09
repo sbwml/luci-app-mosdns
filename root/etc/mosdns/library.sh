@@ -1,4 +1,5 @@
 #!/bin/bash -e
+
 bakdns() {
 	if [ "$1" == "0" ]; then
 		echo "119.29.29.29"
@@ -29,15 +30,4 @@ getdns() {
 
 pid() {
 	pgrep -f "$1"
-}
-
-
-L_exist() {
-	if [ "$1" == "ssrp" ]; then
-		uci get shadowsocksr.@global[0].global_server &>/dev/null
-	elif [ "$1" == "pw" ]; then
-		uci get passwall.@global[0].enabled &>/dev/null
-	elif [ "$1" == "vssr" ]; then
-		uci get vssr.@global[0].global_server &>/dev/null
-	fi
 }

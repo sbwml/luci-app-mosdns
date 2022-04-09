@@ -7,7 +7,7 @@ s.addremove = false
 s.anonymous = true
 
 config = s:option(TextValue, "whitelist")
-config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist.")
+config.description = translate("<font color=\"ff0000\"><strong>ADblock whitelist.</strong></font>")
 config.template = "cbi/tvalue"
 config.rows = 25
 
