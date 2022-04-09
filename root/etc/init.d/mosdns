@@ -32,7 +32,7 @@ redirect_setting() {
 	redirect=$(uci -q get mosdns.mosdns.redirect)
 	if [ "$redirect" -eq 1 ]; then
 		sed -i "/list server/d" /etc/config/dhcp
-		uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(uci -q get mosdns.mosdns.listen_port)"
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
