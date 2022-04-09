@@ -23,10 +23,10 @@ listenport.rmempty = false
 listenport:depends( "configfile", "/etc/mosdns/config.yaml")
 
 loglevel = s:option(ListValue, "log_level", translate("Log Level"))
-loglevel:value("debug")
-loglevel:value("info")
-loglevel:value("warn")
-loglevel:value("error")
+loglevel:value("debug", translate("Debug"))
+loglevel:value("info", translate("Info"))
+loglevel:value("warn", translate("Warning"))
+loglevel:value("error", translate("Error"))
 loglevel.default = "error"
 loglevel:depends( "configfile", "/etc/mosdns/config.yaml")
 
