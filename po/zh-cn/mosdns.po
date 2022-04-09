@@ -22,8 +22,11 @@ msgstr "启用"
 msgid "Listen port"
 msgstr "监听端口"
 
-msgid "Enable DNS Redirect"
-msgstr "启用 DNS 重定向"
+msgid "Enable DNS Forward"
+msgstr "启用 DNS 转发"
+
+msgid "Forward Dnsmasq Domain Name resolution requests to MosDNS"
+msgstr "将 Dnsmasq 域名解析请求转发到 MosDNS 服务器"
 
 msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
