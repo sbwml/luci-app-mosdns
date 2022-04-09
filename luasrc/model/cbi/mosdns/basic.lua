@@ -16,6 +16,12 @@ configfile:value("/etc/mosdns/config.yaml", translate("Def Config"))
 configfile:value("/etc/mosdns/config_custom.yaml", translate("Cus Config"))
 configfile.default = "/etc/mosdns/config.yaml"
 
+listenport = s:option(Value, "listen_port", translate("Listen port"))
+listenport.datatype = "and(port,min(1))"
+listenport.default = 5335
+listenport.rmempty = false
+listenport:depends( "configfile", "/etc/mosdns/config.yaml")
+
 loglevel = s:option(ListValue, "log_level", translate("Log Level"))
 loglevel:value("debug")
 loglevel:value("info")
@@ -41,15 +47,18 @@ dnsforward:depends( "configfile", "/etc/mosdns/config.yaml")
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"
 cache_size.rmempty = false
+cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
 minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
 minimal_ttl.datatype = "and(uinteger,min(1))"
 minimal_ttl.datatype = "and(uinteger,max(3600))"
 minimal_ttl.rmempty = false
+minimal_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
 maximum_ttl.datatype = "and(uinteger,min(1))"
 maximum_ttl.rmempty = false
+maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 redirect = s:option(Flag, "redirect", translate("Enable DNS Redirect"))
 redirect:depends( "configfile", "/etc/mosdns/config.yaml")

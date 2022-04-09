@@ -19,6 +19,9 @@ msgstr "获取数据中..."
 msgid "Enable"
 msgstr "启用"
 
+msgid "Listen port"
+msgstr "监听端口"
+
 msgid "Enable DNS Redirect"
 msgstr "启用 DNS 重定向"
 

@@ -13,9 +13,9 @@ plugin:
         - main_sequence
       server:
         - protocol: udp
-          addr: ":5335"
+          addr: ":${{ uci -q get mosdns.mosdns.listen_port }}"
         - protocol: tcp
-          addr: ":5335"
+          addr: ":${{ uci -q get mosdns.mosdns.listen_port }}"
 
   - tag: main_sequence
     type: sequence
