@@ -109,8 +109,8 @@ msgstr "清空日志"
 msgid "Rule List"
 msgstr "规则列表"
 
-msgid "Black and White List Settings"
-msgstr "自定义黑白名单"
+msgid "Rule Settings"
+msgstr "自定义规则列表"
 
 msgid "<br>The list of rules only apply to 'Default Config' profiles."
 msgstr "<br>规则列表仅适用于 “内置预设” 配置文件"
@@ -119,13 +119,22 @@ msgid "White Lists"
 msgstr "白名单"
 
 msgid "These domain names allow DNS resolution with the highest priority. Please input the domain names of websites, every line can input only one website domain. For example: hm.baidu.com."
-msgstr "加入的域名始终允许 DNS 解析，且优先级最高（每行只能输入一个域名）"
+msgstr "加入的域名始终允许 DNS 解析，且优先级最高（每个域名一行）"
 
 msgid "Block Lists"
 msgstr "黑名单"
 
 msgid "These domains are blocked from DNS resolution. Please input the domain names of websites, every line can input only one website domain. For example: baidu.com."
-msgstr "加入的域名将屏蔽 DNS 解析（每行只能输入一个域名）"
+msgstr "加入的域名将屏蔽 DNS 解析（每个域名一行）"
 
 msgid "Not valid domain name, Please Re-enter."
 msgstr "不是有效域名，请重新输入"
+
+msgid "Hosts For example: baidu.com 10.0.0.1"
+msgstr "自定义 Hosts 重写，如：baidu.com 10.0.0.1（每个规则一行）"
+
+msgid "Redirect"
+msgstr "重定向"
+
+msgid "The domain name to redirect the request to. Requests domain A, but returns records for domain B. example: a.com b.com"
+msgstr "重定向请求的域名。请求域名 A，但返回域名 B 的记录，如：baidu.com qq.com（每个规则一行）"

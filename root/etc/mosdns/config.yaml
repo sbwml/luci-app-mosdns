@@ -7,6 +7,8 @@ plugin:
     type: server
     args:
       entry:
+        - query_is_hosts_domain
+        - query_is_redirect_domain
         - _no_ecs
         - _prefer_ipv4
         - _single_flight
@@ -88,6 +90,18 @@ plugin:
     args:
       domain:
         - "ext:/etc/mosdns/rule/blocklist.txt"
+
+  - tag: query_is_hosts_domain
+    type: hosts
+    args:
+      hosts:
+        - "ext:/etc/mosdns/rule/hosts.txt"
+
+  - tag: query_is_redirect_domain
+    type: redirect
+    args:
+      rule:
+        - "ext:/etc/mosdns/rule/redirect.txt"
 
   - tag: forward_remote
     type: fast_forward
