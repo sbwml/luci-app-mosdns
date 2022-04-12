@@ -14,9 +14,9 @@ exist() {
 
 getdat() {
   if exist curl; then
-    curl -fSLo "$TMPDIR/$1" "https://github.sbwml.repl.co/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1"
+    curl -fSLo "$TMPDIR/$1" "https://github.cooluc.com/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1"
   else
-    wget "https://github.sbwml.repl.co/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1" -nv -O "$TMPDIR/$1"
+    wget "https://github.cooluc.com/https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1" -nv -O "$TMPDIR/$1"
   fi
 }
 
