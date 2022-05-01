@@ -30,5 +30,5 @@ function get_log()
 end
 
 function clear_log()
-	luci.sys.call("echo '' > $(uci -q get mosdns.mosdns.logfile)")
+	luci.sys.call("cat /dev/null > $(uci -q get mosdns.mosdns.logfile)")
 end
