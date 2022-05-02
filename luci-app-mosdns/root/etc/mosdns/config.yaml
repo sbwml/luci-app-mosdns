@@ -7,8 +7,6 @@ plugin:
     type: server
     args:
       entry:
-        - query_is_hosts_domain
-        - query_is_redirect_domain
         - _no_ecs
         - _prefer_ipv4
         - _single_flight
@@ -23,6 +21,8 @@ plugin:
     type: sequence
     args:
       exec:
+        - query_is_hosts_domain
+        - query_is_redirect_domain
         - if:
             - query_is_whitelist_domain
           exec:
