@@ -36,15 +36,28 @@ logfile.placeholder = "/tmp/mosdns.log"
 logfile.default = "/tmp/mosdns.log"
 logfile:depends( "configfile", "/etc/mosdns/config.yaml")
 
-dnsforward = s:option(Value, "dns_forward", translate("Remote DNS"))
-dnsforward.rmempty = false
-dnsforward.default = "tls://8.8.4.4"
-dnsforward:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
-dnsforward:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
-dnsforward:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
-dnsforward:value("208.67.222.222", "208.67.222.222 (Open DNS)")
-dnsforward:value("208.67.220.220", "208.67.220.220 (Open DNS)")
-dnsforward:depends( "configfile", "/etc/mosdns/config.yaml")
+remote_dns = s:option(Value, "remote_dns1", translate("Remote DNS"))
+remote_dns.rmempty = false
+remote_dns.default = "tls://8.8.8.8"
+remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
+remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
+remote_dns:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
+remote_dns:value("tls://185.222.222.222", "185.222.222.222 (DNS.SB)")
+remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
+remote_dns:value("208.67.222.222", "208.67.222.222 (Open DNS)")
+remote_dns:value("208.67.220.220", "208.67.220.220 (Open DNS)")
+remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
+remote_dns = s:option(Value, "remote_dns2", " ")
+remote_dns.rmempty = false
+remote_dns.default = "tls://1.1.1.1"
+remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
+remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
+remote_dns:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
+remote_dns:value("tls://185.222.222.222", "185.222.222.222 (DNS.SB)")
+remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
+remote_dns:value("208.67.222.222", "208.67.222.222 (Open DNS)")
+remote_dns:value("208.67.220.220", "208.67.220.220 (Open DNS)")
+remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"

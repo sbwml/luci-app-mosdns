@@ -79,6 +79,13 @@ plugin:
         - addr: ${{ /usr/share/mosdns/dns.sh 0 }}
         - addr: ${{ /usr/share/mosdns/dns.sh 1 }}
 
+  - tag: forward_remote
+    type: fast_forward
+    args:
+      upstream:
+        - addr: ${{ uci -q get mosdns.mosdns.remote_dns1 }}
+        - addr: ${{ uci -q get mosdns.mosdns.remote_dns2 }}
+
   - tag: query_is_whitelist_domain
     type: query_matcher
     args:
@@ -102,12 +109,6 @@ plugin:
     args:
       rule:
         - "ext:/etc/mosdns/rule/redirect.txt"
-
-  - tag: forward_remote
-    type: fast_forward
-    args:
-      upstream:
-        - addr: ${{ uci -q get mosdns.mosdns.dns_forward }}
 
   - tag: query_is_local_domain
     type: query_matcher
