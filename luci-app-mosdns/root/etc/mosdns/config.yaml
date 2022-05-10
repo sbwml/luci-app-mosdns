@@ -7,8 +7,6 @@ plugin:
     type: server
     args:
       entry:
-        - _no_ecs
-        - _prefer_ipv4
         - _single_flight
         - main_sequence
       server:
@@ -46,6 +44,7 @@ plugin:
         - if:
             - query_is_non_local_domain
           exec:
+            - _prefer_ipv4
             - forward_remote
             - _return
         - primary:
@@ -55,8 +54,9 @@ plugin:
               exec:
                 - _drop_response
           secondary:
+            - _prefer_ipv4
             - forward_remote
-          fast_fallback: 150
+          fast_fallback: 200
           always_standby: true
 
         - modify_ttl
