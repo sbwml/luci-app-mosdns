@@ -19,7 +19,6 @@ configfile.default = "/etc/mosdns/config.yaml"
 listenport = s:option(Value, "listen_port", translate("Listen port"))
 listenport.datatype = "and(port,min(1))"
 listenport.default = 5335
-listenport.rmempty = false
 listenport:depends( "configfile", "/etc/mosdns/config.yaml")
 
 loglevel = s:option(ListValue, "log_level", translate("Log Level"))
@@ -31,13 +30,11 @@ loglevel.default = "error"
 loglevel:depends( "configfile", "/etc/mosdns/config.yaml")
 
 logfile = s:option(Value, "logfile", translate("Log File"))
-logfile.rmempty = false
 logfile.placeholder = "/tmp/mosdns.log"
 logfile.default = "/tmp/mosdns.log"
 logfile:depends( "configfile", "/etc/mosdns/config.yaml")
 
 remote_dns = s:option(Value, "remote_dns1", translate("Remote DNS"))
-remote_dns.rmempty = false
 remote_dns.default = "tls://8.8.8.8"
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
@@ -48,7 +45,6 @@ remote_dns:value("208.67.222.222", "208.67.222.222 (Open DNS)")
 remote_dns:value("208.67.220.220", "208.67.220.220 (Open DNS)")
 remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 remote_dns = s:option(Value, "remote_dns2", " ")
-remote_dns.rmempty = false
 remote_dns.default = "tls://1.1.1.1"
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
@@ -61,18 +57,15 @@ remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"
-cache_size.rmempty = false
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
 minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
 minimal_ttl.datatype = "and(uinteger,min(1))"
 minimal_ttl.datatype = "and(uinteger,max(3600))"
-minimal_ttl.rmempty = false
 minimal_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
 maximum_ttl.datatype = "and(uinteger,min(1))"
-maximum_ttl.rmempty = false
 maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 redirect = s:option(Flag, "redirect", translate("Enable DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
