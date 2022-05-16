@@ -26,7 +26,7 @@ loglevel:value("debug", translate("Debug"))
 loglevel:value("info", translate("Info"))
 loglevel:value("warn", translate("Warning"))
 loglevel:value("error", translate("Error"))
-loglevel.default = "error"
+loglevel.default = "info"
 loglevel:depends( "configfile", "/etc/mosdns/config.yaml")
 
 logfile = s:option(Value, "logfile", translate("Log File"))
@@ -57,15 +57,18 @@ remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"
+cache_size.default = "200000"
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
 minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
 minimal_ttl.datatype = "and(uinteger,min(1))"
 minimal_ttl.datatype = "and(uinteger,max(3600))"
+minimal_ttl.default = "300"
 minimal_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
 maximum_ttl.datatype = "and(uinteger,min(1))"
+maximum_ttl.default = "3600"
 maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 redirect = s:option(Flag, "redirect", translate("Enable DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
