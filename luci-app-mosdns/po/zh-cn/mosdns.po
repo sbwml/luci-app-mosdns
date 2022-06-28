@@ -92,13 +92,16 @@ msgid "Remote DNS"
 msgstr "远程 DNS"
 
 msgid "DNS Cache Size"
-msgstr "DNS 缓存大小"
+msgstr "DNS 缓存大小（条）"
+
+msgid "Cache Survival Time"
+msgstr "缓存生存时间（秒）"
 
 msgid "Minimum TTL"
-msgstr "覆盖最小 TTL 值"
+msgstr "覆盖最小 TTL 值（禁用：0）"
 
 msgid "Maximum TTL"
-msgstr "覆盖最大 TTL 值"
+msgstr "覆盖最大 TTL 值（禁用：0）"
 
 msgid "Logs"
 msgstr "日志"

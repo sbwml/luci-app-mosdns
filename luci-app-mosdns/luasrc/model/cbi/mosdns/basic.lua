@@ -60,15 +60,20 @@ cache_size.datatype = "and(uinteger,min(0))"
 cache_size.default = "200000"
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
+cache_size = s:option(Value, "cache_survival_time", translate("Cache Survival Time"))
+cache_size.datatype = "and(uinteger,min(0))"
+cache_size.default = "259200"
+cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
+
 minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
-minimal_ttl.datatype = "and(uinteger,min(1))"
+minimal_ttl.datatype = "and(uinteger,min(0))"
 minimal_ttl.datatype = "and(uinteger,max(3600))"
-minimal_ttl.default = "300"
+minimal_ttl.default = "0"
 minimal_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
-maximum_ttl.datatype = "and(uinteger,min(1))"
-maximum_ttl.default = "3600"
+maximum_ttl.datatype = "and(uinteger,min(0))"
+maximum_ttl.default = "0"
 maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 redirect = s:option(Flag, "redirect", translate("Enable DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
@@ -77,7 +82,7 @@ redirect.default = true
 
 adblock = s:option(Flag, "adblock", translate("Enable DNS ADblock"))
 adblock:depends( "configfile", "/etc/mosdns/config.yaml")
-adblock.default = true
+adblock.default = false
 
 config = s:option(TextValue, "manual-config")
 config.description = translate("<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>")

@@ -1,6 +1,6 @@
 log:
-  level: info
-  file: "/tmp/mosdns.log"
+  level: log_level
+  file: "log_file"
 
 include: []
 
@@ -33,28 +33,28 @@ plugins:
   - tag: lazy_cache
     type: cache
     args:
-      size: 200000
-      lazy_cache_ttl: 259200
+      size: cache_size
+      lazy_cache_ttl: cache_survival_time
 
   - tag: modify_ttl
     type: ttl
     args:
-      minimal_ttl: 0
-      maximum_ttl: 0
+      minimal_ttl: minimal_ttl_custom
+      maximum_ttl: maximum_ttl_custom
 
   - tag: "forward_local"
     type: fast_forward
     args:
       upstream:
-        - addr: 119.29.29.29
-        - addr: 114.114.114.114
+        - addr: local_dns1
+        - addr: local_dns2
 
   - tag: "forward_remote"
     type: fast_forward
     args:
       upstream:
-        - addr: tls://8.8.8.8
-        - addr: tls://1.1.1.1
+        - addr: remote_dns1
+        - addr: remote_dns2
 
   - tag: query_is_whitelist_domain
     type: query_matcher
@@ -102,7 +102,7 @@ plugins:
     type: query_matcher
     args:
       domain:
-        - "provider:geosite:category-ads-all"
+        - "adblock"
 
   - tag: "main_sequence"
     type: "sequence"
@@ -151,6 +151,6 @@ servers:
   - exec: main_sequence
     listeners:
       - protocol: udp
-        addr: ":5335"
+        addr: ":listen_port"
       - protocol: tcp
-        addr: ":5335"
+        addr: ":listen_port"
