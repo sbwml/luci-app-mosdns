@@ -29,6 +29,10 @@ data_providers:
     file: "/etc/mosdns/rule/redirect.txt"
     auto_reload: true
 
+  - tag: local_ptr
+    file: "/etc/mosdns/rule/local_ptr.txt"
+    auto_reload: true
+
 plugins:
   - tag: lazy_cache
     type: cache
@@ -104,6 +108,13 @@ plugins:
       domain:
         - "adblock"
 
+  - tag: match_local_ptr
+    type: query_matcher
+    args:
+      qtype: [12]
+      domain:
+        - "provider:local_ptr"
+
   - tag: "main_sequence"
     type: "sequence"
     args:
@@ -117,7 +128,7 @@ plugins:
             - modify_ttl
             - _return
 
-        - if: "query_is_blocklist_domain || query_is_ad_domain"
+        - if: "query_is_blocklist_domain || query_is_ad_domain || match_local_ptr"
           exec:
             - _new_nxdomain_response
             - _return

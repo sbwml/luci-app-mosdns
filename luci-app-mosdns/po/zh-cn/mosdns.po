@@ -98,10 +98,10 @@ msgid "Cache Survival Time"
 msgstr "缓存生存时间（秒）"
 
 msgid "Minimum TTL"
-msgstr "覆盖最小 TTL 值（禁用：0）"
+msgstr "覆盖最小 TTL 值（默认 0）"
 
 msgid "Maximum TTL"
-msgstr "覆盖最大 TTL 值（禁用：0）"
+msgstr "覆盖最大 TTL 值（默认 0）"
 
 msgid "Logs"
 msgstr "日志"
@@ -138,3 +138,9 @@ msgstr "重定向"
 
 msgid "The domain name to redirect the request to. Requests domain A, but returns records for domain B. example: a.com b.com"
 msgstr "重定向请求的域名。请求域名 A，但返回域名 B 的记录，如：baidu.com qq.com（每个规则一行）"
+
+msgid "Block PTR"
+msgstr "PTR 黑名单"
+
+msgid "These domains are blocked from PTR requests"
+msgstr "加入的域名将阻止 PTR 请求（每个域名一行，支持域名匹配规则）"
