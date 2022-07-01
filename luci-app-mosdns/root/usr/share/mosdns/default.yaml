@@ -30,7 +30,7 @@ data_providers:
     auto_reload: true
 
   - tag: local_ptr
-    file: "/etc/mosdns/rule/local_ptr.txt"
+    file: "/etc/mosdns/rule/local-ptr.txt"
     auto_reload: true
 
 plugins:
