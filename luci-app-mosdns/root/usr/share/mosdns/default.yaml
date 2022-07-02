@@ -87,7 +87,6 @@ plugins:
   - tag: query_is_local_domain
     type: query_matcher
     args:
-      qtype: [12]
       domain:
         - "provider:geosite:cn"
 
