@@ -42,10 +42,16 @@ restore_setting() {
 }
 
 redirect_setting() {
-	redirect=$(uci -q get mosdns.mosdns.redirect)
-	if [ "$redirect" -eq 1 ]; then
+	if [ "${CONF}" = "/etc/mosdns/config.yaml" ]; then
 		sed -i "/list server/d" /etc/config/dhcp
 		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(uci -q get mosdns.mosdns.listen_port)"
+		uci set dhcp.@dnsmasq[0].rebind_protection='0'
+		uci set dhcp.@dnsmasq[0].noresolv="1"
+		uci set dhcp.@dnsmasq[0].cachesize='0'
+		uci commit dhcp
+	else
+		sed -i "/list server/d" /etc/config/dhcp
+		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(cat /etc/mosdns/config_custom.yaml | grep -A 4 listeners | grep addr | head -n1 | sed 's/[^0-9]//g')"
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
@@ -90,22 +96,15 @@ start_service() {
 	procd_set_param respawn "${respawn_threshold:-3600}" "${respawn_timeout:-5}" "${respawn_retry:-5}"
 	procd_close_instance mosdns
 
-	configfile=$(uci -q get mosdns.mosdns.configfile)
-	if [ "${configfile}" = "/etc/mosdns/config.yaml" ]; then
-		restore_setting
-		redirect_setting
-		reload_others
-	fi
+	restore_setting
+	[ "$(uci -q get mosdns.mosdns.redirect)" -eq 1 ] && redirect_setting
+	reload_others
 }
 
 stop_service() {
-	pgrep -f /usr/bin/mosdns | xargs kill -9
-	configfile=$(uci -q get mosdns.mosdns.configfile)
-	if [ "${configfile}" = "/etc/mosdns/config.yaml" ]; then
-		config_load "mosdns"
-		enabled=$(uci -q get mosdns.mosdns.enabled)
-		[ "${enabled}" = "0" ] && restore_setting
-		reload_others
-	fi
+	pgrep -f /usr/bin/mosdns | xargs kill -9 >/dev/null 2>&1
+	config_load "mosdns"
+	[ "$(uci -q get mosdns.mosdns.enabled)" = "0" ] && restore_setting
+	reload_others
 	delcron
 }

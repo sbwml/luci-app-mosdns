@@ -77,7 +77,6 @@ maximum_ttl.default = "0"
 maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
 
 redirect = s:option(Flag, "redirect", translate("Enable DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
-redirect:depends( "configfile", "/etc/mosdns/config.yaml")
 redirect.default = true
 
 adblock = s:option(Flag, "adblock", translate("Enable DNS ADblock"))
