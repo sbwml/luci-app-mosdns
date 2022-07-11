@@ -117,6 +117,11 @@ plugins:
       domain:
         - "provider:local_ptr"
 
+  - tag: match_qtype65
+    type: query_matcher
+    args:
+      qtype: [65]
+
   - tag: "main_sequence"
     type: "sequence"
     args:
@@ -130,7 +135,7 @@ plugins:
             - modify_ttl
             - _return
 
-        - if: "query_is_blocklist_domain || query_is_ad_domain || match_local_ptr"
+        - if: "query_is_blocklist_domain || query_is_ad_domain || match_local_ptr || match_qtype65"
           exec:
             - _new_nxdomain_response
             - _return
