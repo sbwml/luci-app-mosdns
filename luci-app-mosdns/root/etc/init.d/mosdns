@@ -51,7 +51,7 @@ redirect_setting() {
 		uci commit dhcp
 	else
 		sed -i "/list server/d" /etc/config/dhcp
-		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(cat /etc/mosdns/config_custom.yaml | grep -A 4 listeners | grep addr | head -n1 | sed 's/[^0-9]//g')"
+		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(cat /etc/mosdns/config_custom.yaml | awk -F'[:" ]+' '/^\s+addr:/{for(i=1;i<=NF;i++){if($i~/^[0-9]+$/){print $i;exit}}}')"
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
