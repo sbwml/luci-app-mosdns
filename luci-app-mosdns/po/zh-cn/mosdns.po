@@ -134,13 +134,19 @@ msgid "White Lists"
 msgstr "白名单"
 
 msgid "These domain names allow DNS resolution with the highest priority. Please input the domain names of websites, every line can input only one website domain. For example: hm.baidu.com."
-msgstr "加入的域名始终允许 DNS 解析，且优先级最高（每个域名一行，支持域名匹配规则）"
+msgstr "加入的域名始终允许使用 “本地 DNS” 进行解析，且优先级最高（每个域名一行，支持域名匹配规则）"
 
 msgid "Block Lists"
 msgstr "黑名单"
 
 msgid "These domains are blocked from DNS resolution. Please input the domain names of websites, every line can input only one website domain. For example: baidu.com."
 msgstr "加入的域名将屏蔽 DNS 解析（每个域名一行，支持域名匹配规则）"
+
+msgid "Grey Lists"
+msgstr "灰名单"
+
+msgid "These domains are always resolved using remote DNS. Please input the domain names of websites, every line can input only one website domain. For example: google.com."
+msgstr "加入的域名始终使用 “远程 DNS” 进行解析（每个域名一行，支持域名匹配规则）"
 
 msgid "Hosts For example: baidu.com 10.0.0.1"
 msgstr "自定义 Hosts 重写，如：baidu.com 10.0.0.1（每个规则一行）"

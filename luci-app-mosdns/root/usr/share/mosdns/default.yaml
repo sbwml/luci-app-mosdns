@@ -21,6 +21,10 @@ data_providers:
     file: "/etc/mosdns/rule/blocklist.txt"
     auto_reload: true
 
+  - tag: greylist
+    file: "/etc/mosdns/rule/greylist.txt"
+    auto_reload: true
+
   - tag: hosts
     file: "/etc/mosdns/rule/hosts.txt"
     auto_reload: true
@@ -73,6 +77,12 @@ plugins:
     args:
       domain:
         - "provider:blocklist"
+
+  - tag: query_is_greylist_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:greylist"
 
   - tag: query_is_hosts_domain
     type: hosts
@@ -143,6 +153,12 @@ plugins:
             - _return
 
         - lazy_cache
+
+        - if: query_is_greylist_domain
+          exec:
+            - forward_remote
+            - modify_ttl
+            - _return
 
         - if: query_is_local_domain
           exec:
