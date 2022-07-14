@@ -28,6 +28,12 @@ msgstr "将 Dnsmasq 域名解析请求转发到 MosDNS 服务器"
 msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
 
+msgid "Reload Service"
+msgstr "重载服务"
+
+msgid "Reload service to take effect of new configuration"
+msgstr "重载 MosDNS 服务生效配置文件"
+
 msgid "<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>"
 msgstr "<font color=\"ff0000\"><strong>注意！此页的更改仅当配置文件为 “自定义” 时才会生效</strong></font>"
 

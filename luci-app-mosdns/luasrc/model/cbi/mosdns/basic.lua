@@ -88,6 +88,12 @@ adblock = s:option(Flag, "adblock", translate("Enable DNS ADblock"))
 adblock:depends( "configfile", "/etc/mosdns/config.yaml")
 adblock.default = false
 
+reload_service = s:option( Button, "_reload", translate("Reload Service"), translate("Reload service to take effect of new configuration"))
+reload_service.write = function()
+  luci.sys.exec("/etc/init.d/mosdns reload")
+end
+reload_service:depends( "configfile", "/etc/mosdns/config_custom.yaml")
+
 config = s:option(TextValue, "manual-config")
 config.description = translate("<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>")
 config.template = "cbi/tvalue"
