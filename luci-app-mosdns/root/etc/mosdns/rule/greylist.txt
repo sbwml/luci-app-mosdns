@@ -1,3 +1,0 @@
-domain:github.com
-regexp:.+\.google\.com$
-regexp:.+\.youtube\.com$
