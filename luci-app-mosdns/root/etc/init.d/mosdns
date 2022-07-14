@@ -1,8 +1,24 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2020 IrineSistiana
-# shellcheck disable=SC2034
+#
+# Copyright (C) 2020-2022, IrineSistiana
+#
+# This file is part of mosdns.
+#
+# mosdns is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# mosdns is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
 
-START=91
+START=99
 USE_PROCD=1
 
 PROG=/usr/bin/mosdns
@@ -27,7 +43,18 @@ init_yaml() {
 	remote_dns1=$(uci -q get mosdns.mosdns.remote_dns1)
 	remote_dns2=$(uci -q get mosdns.mosdns.remote_dns2)
 	adblock=$(/usr/share/mosdns/ad_domain.sh)
-	sed "s,log_level,$log_level,g;s,log_file,$log_file,g;s,listen_port,$listen_port,g;s,cache_size,$cache_size,g;s,cache_survival_time,$cache_survival_time,g;s,minimal_ttl_custom,$minimal_ttl_custom,g;s,maximum_ttl_custom,$maximum_ttl_custom,g;s,local_dns1,$local_dns1,g;s,local_dns2,$local_dns2,g;s,remote_dns1,$remote_dns1,g;s,remote_dns2,$remote_dns2,g;s,adblock,$adblock,g" /usr/share/mosdns/default.yaml > /etc/mosdns/config.yaml
+	enable_pipeline=$(uci -q get mosdns.mosdns.enable_pipeline)
+	[ $enable_pipeline = 0 ] && enable_pipeline=false
+	[ $enable_pipeline = 1 ] && enable_pipeline=true
+	sed "s,log_level,$log_level,g;s,log_file,$log_file,g; \
+	s,listen_port,$listen_port,g;s,cache_size,$cache_size,g; \
+	s,cache_survival_time,$cache_survival_time,g; \
+	s,minimal_ttl_custom,$minimal_ttl_custom,g; \
+	s,maximum_ttl_custom,$maximum_ttl_custom,g; \
+	s,local_dns1,$local_dns1,g;s,local_dns2,$local_dns2,g; \
+	s,remote_dns1,$remote_dns1,g;s,remote_dns2,$remote_dns2,g; \
+	s,adblock,$adblock,g;s,remote_dns_pipeline,$enable_pipeline,g" \
+	/usr/share/mosdns/default.yaml > $(uci -q get mosdns.mosdns.configfile)
 }
 
 service_triggers() {
@@ -86,7 +113,7 @@ start_service() {
 	[ $enabled != 1 ] && return 1
 	delcron
 	setcron
-	init_yaml
+	[ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
 	cat /dev/null > $(/usr/share/mosdns/log_path.sh)
 	procd_open_instance mosdns
 	procd_set_param command $PROG start -c "$CONF"

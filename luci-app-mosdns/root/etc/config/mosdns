@@ -16,4 +16,5 @@ config mosdns 'mosdns'
 	option cache_survival_time '259200'
 	option minimal_ttl '0'
 	option maximum_ttl '0'
+	option enable_pipeline '0'
 

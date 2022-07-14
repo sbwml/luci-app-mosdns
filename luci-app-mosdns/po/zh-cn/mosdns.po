@@ -91,6 +91,12 @@ msgstr "日志文件"
 msgid "Remote DNS"
 msgstr "远程 DNS"
 
+msgid "Remote DNS Connection Multiplexing"
+msgstr "远程 DNS 连接复用"
+
+msgid "Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"
+msgstr "启用 TCP/DoT RFC 7766 新型 Query Pipelining 连接复用模式"
+
 msgid "DNS Cache Size"
 msgstr "DNS 缓存大小（条）"
 

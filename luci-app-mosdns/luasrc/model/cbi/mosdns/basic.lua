@@ -39,21 +39,26 @@ remote_dns.default = "tls://8.8.8.8"
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
 remote_dns:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
-remote_dns:value("tls://185.222.222.222", "185.222.222.222 (DNS.SB)")
+remote_dns:value("tls://9.9.9.9", "9.9.9.9 (Quad9 DNS)")
 remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
-remote_dns:value("208.67.222.222", "208.67.222.222 (Open DNS)")
-remote_dns:value("208.67.220.220", "208.67.220.220 (Open DNS)")
+remote_dns:value("tls://208.67.222.222", "208.67.222.222 (Open DNS)")
+remote_dns:value("tls://208.67.220.220", "208.67.220.220 (Open DNS)")
 remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 remote_dns = s:option(Value, "remote_dns2", " ")
 remote_dns.default = "tls://1.1.1.1"
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
 remote_dns:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
-remote_dns:value("tls://185.222.222.222", "185.222.222.222 (DNS.SB)")
+remote_dns:value("tls://9.9.9.9", "9.9.9.9 (Quad9 DNS)")
 remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
-remote_dns:value("208.67.222.222", "208.67.222.222 (Open DNS)")
-remote_dns:value("208.67.220.220", "208.67.220.220 (Open DNS)")
+remote_dns:value("tls://208.67.222.222", "208.67.222.222 (Open DNS)")
+remote_dns:value("tls://208.67.220.220", "208.67.220.220 (Open DNS)")
 remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
+
+remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("Remote DNS Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
+remote_dns_pipeline.rmempty = false
+remote_dns_pipeline.default = false
+remote_dns_pipeline:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"
