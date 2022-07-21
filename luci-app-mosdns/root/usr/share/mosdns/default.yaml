@@ -78,11 +78,11 @@ plugins:
       domain:
         - "provider:blocklist"
 
-  - tag: query_is_greylist_domain
+  - tag: query_is_blacklist_domain
     type: query_matcher
     args:
       domain:
-        - "provider:greylist"
+        - "provider:blacklist"
 
   - tag: query_is_hosts_domain
     type: hosts
@@ -152,7 +152,7 @@ plugins:
 
         - lazy_cache
 
-        - if: query_is_greylist_domain
+        - if: query_is_blacklist_domain
           exec:
             - forward_remote
             - modify_ttl
