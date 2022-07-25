@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh
 
 configfile=$(uci -q get mosdns.mosdns.configfile)
 if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then

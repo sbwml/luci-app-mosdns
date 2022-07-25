@@ -1,5 +1,5 @@
-#!/bin/bash -e
-# shellcheck source=/etc/mosdns/library.sh
+#!/bin/sh
+
 source /usr/share/mosdns/library.sh
 
 if [ "$(ifconfig | grep -c wan)" = 0 ]; then

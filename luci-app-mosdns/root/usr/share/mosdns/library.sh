@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh
 
 bakdns() {
 	if [ "$1" == "0" ]; then

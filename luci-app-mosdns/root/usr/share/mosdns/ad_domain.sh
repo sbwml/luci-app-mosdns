@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh
 
 adblock=$(uci -q get mosdns.mosdns.adblock)
 if [ "$adblock" -eq 1 ];then

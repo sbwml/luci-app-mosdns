@@ -1,5 +1,4 @@
-#!/bin/bash -e
-# shellcheck source=/etc/mosdns/library.sh
+#!/bin/sh
 
 set -o pipefail
 source /usr/share/mosdns/library.sh
