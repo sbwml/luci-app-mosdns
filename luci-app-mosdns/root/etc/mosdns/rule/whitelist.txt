@@ -20,3 +20,5 @@ keyword:windows
 keyword:xxpkg
 keyword:yximgs
 keyword:yxygslb
+aegis.qq.com
+otheve.beacon.qq.com
