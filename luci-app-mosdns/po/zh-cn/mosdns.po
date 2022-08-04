@@ -19,6 +19,9 @@ msgstr "启用"
 msgid "Listen port"
 msgstr "监听端口"
 
+msgid "Log Level"
+msgstr "日志等级"
+
 msgid "Enable DNS Forward"
 msgstr "启用 DNS 转发"
 
