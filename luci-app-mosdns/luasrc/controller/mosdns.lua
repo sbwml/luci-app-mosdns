@@ -26,9 +26,9 @@ function act_status()
 end
 
 function get_log()
-	luci.http.write(luci.sys.exec("cat $(/usr/share/mosdns/log_path.sh)"))
+	luci.http.write(luci.sys.exec("cat $(/usr/share/mosdns/mosdns.sh logfile)"))
 end
 
 function clear_log()
-	luci.sys.call("cat /dev/null > $(/usr/share/mosdns/log_path.sh)")
+	luci.sys.call("cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)")
 end

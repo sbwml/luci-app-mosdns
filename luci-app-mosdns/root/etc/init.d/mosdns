@@ -38,11 +38,11 @@ init_yaml() {
 	cache_survival_time=$(uci -q get mosdns.mosdns.cache_survival_time)
 	minimal_ttl_custom=$(uci -q get mosdns.mosdns.minimal_ttl)
 	maximum_ttl_custom=$(uci -q get mosdns.mosdns.maximum_ttl)
-	local_dns1=$(/usr/share/mosdns/dns.sh 0)
-	local_dns2=$(/usr/share/mosdns/dns.sh 1)
+	local_dns1=$(/usr/share/mosdns/mosdns.sh dns 0)
+	local_dns2=$(/usr/share/mosdns/mosdns.sh dns 1)
 	remote_dns1=$(uci -q get mosdns.mosdns.remote_dns1)
 	remote_dns2=$(uci -q get mosdns.mosdns.remote_dns2)
-	adblock=$(/usr/share/mosdns/ad_domain.sh)
+	adblock=$(/usr/share/mosdns/mosdns.sh ad)
 	enable_pipeline=$(uci -q get mosdns.mosdns.enable_pipeline)
 	[ $enable_pipeline = 0 ] && enable_pipeline=false
 	[ $enable_pipeline = 1 ] && enable_pipeline=true
@@ -98,13 +98,13 @@ reload_service() {
 }
 
 setcron() {
-	sed -i '/update_geodat.sh/d' $CRON_FILE 2>/dev/null
-	[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /usr/share/mosdns/update_geodat.sh" >>$CRON_FILE
+	sed -i '/mosdns.sh/d' $CRON_FILE 2>/dev/null
+	[ "$(uci -q get mosdns.mosdns.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.mosdns.geo_update_day_time) * * $(uci -q get mosdns.mosdns.geo_update_week_time) /usr/share/mosdns/mosdns.sh geodata" >>$CRON_FILE
 	crontab $CRON_FILE
 }
 
 delcron() {
-	sed -i '/update_geodat.sh/d' $CRON_FILE 2>/dev/null
+	sed -i '/mosdns.sh/d' $CRON_FILE 2>/dev/null
 	crontab $CRON_FILE
 }
 
@@ -114,7 +114,7 @@ start_service() {
 	delcron
 	setcron
 	[ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
-	cat /dev/null > $(/usr/share/mosdns/log_path.sh)
+	cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)
 	procd_open_instance mosdns
 	procd_set_param command $PROG start -c "$CONF"
 	procd_set_param user root
