@@ -12,7 +12,8 @@ logfile_path() (
 
 interface_dns() (
 	peerdns=$(uci -q get network.wan.peerdns)
-	if [ "$peerdns" -eq 0 ]; then
+	proto=$(uci -q get network.wan.proto)
+	if [ "$peerdns" -eq 0 ] || [ "$proto" = "static" ]; then
 		ubus call network.interface.wan status | jsonfilter -e "@['dns-server'][$1]"
 	else
 		ubus call network.interface.wan status | jsonfilter -e "@['inactive']['dns-server'][$1]"
