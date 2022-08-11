@@ -13,12 +13,14 @@ logfile_path() (
 interface_dns() (
 	peerdns=$(uci -q get network.wan.peerdns)
 	proto=$(uci -q get network.wan.proto)
-	if [ "$peerdns" -eq 0 ] || [ "$proto" = "static" ]; then
-		ubus call network.interface.wan status | jsonfilter -e "@['dns-server'][$1]"
+	if [ "$peerdns" = 0 ] || [ "$proto" = "static" ]; then
+		uci -q get network.wan.dns
 	else
-		ubus call network.interface.wan status | jsonfilter -e "@['inactive']['dns-server'][$1]"
+		interface_status=$(ubus call network.interface.wan status)
+		echo $interface_status | jsonfilter -e "@['dns-server'][0]"
+		echo $interface_status | jsonfilter -e "@['dns-server'][1]"
 	fi
-	[ $? -ne 0 ] && echo 119.29.29.29
+	[ $? -ne 0 ] && echo "119.29.29.29"
 )
 
 ad_block() (
@@ -50,8 +52,7 @@ geodat_update() (
 )
 
 if [ "$1" == "dns" ]; then
-	[ -z $2 ] && exit 0
-	interface_dns $2
+	interface_dns
 elif [ "$1" == "ad" ]; then
 	ad_block
 elif [ "$1" == "geodata" ]; then

@@ -54,8 +54,7 @@ plugins:
     type: fast_forward
     args:
       upstream:
-        - addr: local_dns1
-        - addr: local_dns2
+        - addr: local_dns
 
   - tag: "forward_remote"
     type: fast_forward
