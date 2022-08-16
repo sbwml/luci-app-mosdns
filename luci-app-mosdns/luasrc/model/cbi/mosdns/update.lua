@@ -24,7 +24,7 @@ for t = 0, 23 do
 end
 update_time.default = 0
 
-data_update = s:option(Button, "geo_update_database", translate("Check And Update"))
+data_update = s:option(Button, "geo_update_database", translate("Database Update"))
 data_update.rawhtml = true
 data_update.template = "mosdns/geo_update"
 
