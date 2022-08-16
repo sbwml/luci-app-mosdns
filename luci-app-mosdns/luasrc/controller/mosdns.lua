@@ -16,6 +16,7 @@ function index()
 	entry({"admin", "services", "mosdns", "status"}, call("act_status")).leaf = true
 	entry({"admin", "services", "mosdns", "get_log"}, call("get_log")).leaf = true
 	entry({"admin", "services", "mosdns", "clear_log"}, call("clear_log")).leaf = true
+	entry({"admin", "services", "mosdns", "geo_update"}, call("geo_update"))
 end
 
 function act_status()
@@ -31,4 +32,11 @@ end
 
 function clear_log()
 	luci.sys.call("cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)")
+end
+
+function geo_update()
+	local e = {}
+	e.updating = luci.sys.call("/usr/share/mosdns/mosdns.sh geodata") == 0
+	luci.http.prepare_content("application/json")
+	luci.http.write_json(e)
 end

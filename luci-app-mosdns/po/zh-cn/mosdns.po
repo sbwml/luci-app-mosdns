@@ -85,6 +85,15 @@ msgstr "检查并更新"
 msgid "Enable Auto Database Update"
 msgstr "启用自动更新"
 
+msgid "Updating..."
+msgstr "正在更新..."
+
+msgid "Update success"
+msgstr "更新成功"
+
+msgid "Update failed, Please check the network status"
+msgstr "更新失败，请检查网络状态"
+
 msgid "Config File"
 msgstr "配置文件"
 
