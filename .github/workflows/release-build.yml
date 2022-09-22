@@ -68,13 +68,6 @@ jobs:
         run: |
           cp bin/packages/${{ matrix.arch }}/packages_ci/*.ipk . || true
 
-      - name: Store packages
-        uses: actions/upload-artifact@v2
-        if: github.event_name != 'release'
-        with:
-          name: ${{ matrix.arch}}-${{ github.sha}}-packages
-          path: "*.ipk"
-
       - name: Upload packages
         uses: svenstaro/upload-release-action@v2
         if: github.event_name == 'release'
