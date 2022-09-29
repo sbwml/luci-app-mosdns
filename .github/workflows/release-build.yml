@@ -64,16 +64,12 @@ jobs:
           name: ${{ matrix.arch }}
           path: bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
 
-      - name: Move created packages to project dir
-        run: |
-          cp bin/packages/${{ matrix.arch }}/packages_ci/*.ipk . || true
-
       - name: Upload packages
         uses: svenstaro/upload-release-action@v2
         if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.workflow_token }}
-          file: "*.ipk"
+          file: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
