@@ -42,7 +42,7 @@ jobs:
           - x86_64
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@main
         with:
           fetch-depth: 0
 
@@ -59,13 +59,13 @@ jobs:
           NO_REFRESH_CHECK: true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.arch }}
           path: bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
 
       - name: Upload packages
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@master
         if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.workflow_token }}
