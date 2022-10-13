@@ -1,9 +1,9 @@
 #!/bin/sh
 
 logfile_path() (
-	configfile=$(uci -q get mosdns.mosdns.configfile)
+	configfile=$(uci -q get mosdns.config.configfile)
 	if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then
-		uci -q get mosdns.mosdns.logfile
+		uci -q get mosdns.config.logfile
 	else
 		[ ! -f /etc/mosdns/config_custom.yaml ] && exit 1
 		cat /etc/mosdns/config_custom.yaml | grep -A 4 log | grep file | awk -F ":" '{print $2}' | sed 's/\"//g;s/ //g'
@@ -24,9 +24,9 @@ interface_dns() (
 )
 
 ad_block() (
-	adblock=$(uci -q get mosdns.mosdns.adblock)
+	adblock=$(uci -q get mosdns.config.adblock)
 	if [ "$adblock" -eq 1 ]; then
-		ad_source=$(uci -q get mosdns.mosdns.ad_source)
+		ad_source=$(uci -q get mosdns.config.ad_source)
 		if [ "$ad_source" = "geosite.dat" ]; then
 			echo "provider:geosite:category-ads-all"
 		else
@@ -38,7 +38,7 @@ ad_block() (
 )
 
 adlist_update() (
-	ad_source=$(uci -q get mosdns.mosdns.ad_source)
+	ad_source=$(uci -q get mosdns.config.ad_source)
 	[ $ad_source = "geosite.dat" ] && exit 0
 	AD_TMPDIR=$(mktemp -d) || exit 1
 	curl --connect-timeout 60 -m 900 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$ad_source"
