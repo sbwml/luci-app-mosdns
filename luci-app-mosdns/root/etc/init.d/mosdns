@@ -118,6 +118,7 @@ start_service() {
 	setcron
 	[ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
 	cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)
+	[ ! "$(uci -q get mosdns.mosdns.ad_source)" = "geosite.dat" ] && cat /dev/null > /etc/mosdns/rule/adlist.txt
 	procd_open_instance mosdns
 	procd_set_param command $PROG start -c "$CONF"
 	procd_set_param user root
@@ -129,6 +130,8 @@ start_service() {
 	restore_setting
 	[ "$(uci -q get mosdns.mosdns.redirect)" -eq 1 ] && redirect_setting
 	reload_others
+
+	[ ! "$(uci -q get mosdns.mosdns.ad_source)" = "geosite.dat" ] && /usr/share/mosdns/mosdns.sh adlist_update &> /dev/null &
 }
 
 stop_service() {

@@ -26,9 +26,27 @@ interface_dns() (
 ad_block() (
 	adblock=$(uci -q get mosdns.mosdns.adblock)
 	if [ "$adblock" -eq 1 ]; then
-		echo "provider:geosite:category-ads-all"
+		ad_source=$(uci -q get mosdns.mosdns.ad_source)
+		if [ "$ad_source" = "geosite.dat" ]; then
+			echo "provider:geosite:category-ads-all"
+		else
+			echo "provider:adlist"
+		fi
 	else
 		echo "full:disable-category-ads-all.null"
+	fi
+)
+
+adlist_update() (
+	ad_source=$(uci -q get mosdns.mosdns.ad_source)
+	[ $ad_source = "geosite.dat" ] && exit 0
+	AD_TMPDIR=$(mktemp -d) || exit 1
+	curl --connect-timeout 60 -m 900 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$ad_source"
+	if [ $? -ne 0 ]; then
+		exit 1
+	else
+		\cp $AD_TMPDIR/adlist.txt /etc/mosdns/rule/adlist.txt
+		rm -rf $AD_TMPDIR
 	fi
 )
 
@@ -58,7 +76,9 @@ if [ "$1" == "dns" ]; then
 elif [ "$1" == "ad" ]; then
 	ad_block
 elif [ "$1" == "geodata" ]; then
-	geodat_update
+	geodat_update && adlist_update
 elif [ "$1" == "logfile" ]; then
 	logfile_path
+elif [ "$1" == "adlist_update" ]; then
+	adlist_update
 fi

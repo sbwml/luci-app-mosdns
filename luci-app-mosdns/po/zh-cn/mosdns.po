@@ -31,6 +31,9 @@ msgstr "将 Dnsmasq 域名解析请求转发到 MosDNS 服务器"
 msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
 
+msgid "ADblock Source"
+msgstr "广告过滤来源"
+
 msgid "Reload Service"
 msgstr "重载服务"
 

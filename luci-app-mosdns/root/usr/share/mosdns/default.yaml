@@ -37,6 +37,10 @@ data_providers:
     file: "/etc/mosdns/rule/local-ptr.txt"
     auto_reload: true
 
+  - tag: adlist
+    file: "/etc/mosdns/rule/adlist.txt"
+    auto_reload: true
+
 plugins:
   - tag: lazy_cache
     type: cache
