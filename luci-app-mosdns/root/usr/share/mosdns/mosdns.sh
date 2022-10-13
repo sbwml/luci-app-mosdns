@@ -41,8 +41,9 @@ adlist_update() (
 	ad_source=$(uci -q get mosdns.config.ad_source)
 	[ $ad_source = "geosite.dat" ] && exit 0
 	AD_TMPDIR=$(mktemp -d) || exit 1
-	curl --connect-timeout 60 -m 900 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$ad_source"
+	curl --connect-timeout 60 -m 90 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$ad_source"
 	if [ $? -ne 0 ]; then
+		rm -rf $AD_TMPDIR
 		exit 1
 	else
 		\cp $AD_TMPDIR/adlist.txt /etc/mosdns/rule/adlist.txt
