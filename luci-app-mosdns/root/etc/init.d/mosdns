@@ -27,7 +27,7 @@ CRON_FILE=/etc/crontabs/root
 
 inital_conf() {
 	config_load "mosdns"
-	config_get "enabled" "mosdns" "enabled" "0"
+	config_get "enabled" "config" "enabled" "0"
 }
 
 init_yaml() {
