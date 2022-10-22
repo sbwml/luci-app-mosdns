@@ -42,7 +42,7 @@ jobs:
           - x86_64
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -51,7 +51,7 @@ jobs:
           git clone https://github.com/sbwml/v2ray-geodata
 
       - name: Building packages
-        uses: openwrt/gh-action-sdk@v5
+        uses: openwrt/gh-action-sdk@master
         env:
           ARCH: ${{ matrix.arch }}-master
           FEEDNAME: packages_ci
@@ -65,11 +65,9 @@ jobs:
           path: bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
 
       - name: Upload packages
-        uses: svenstaro/upload-release-action@master
-        if: github.event_name == 'release'
+        uses: ncipollo/release-action@v1
         with:
-          repo_token: ${{ secrets.workflow_token }}
-          file: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
+          token: ${{ secrets.workflow_token }}
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"

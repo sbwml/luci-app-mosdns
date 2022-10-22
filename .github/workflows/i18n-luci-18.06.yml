@@ -16,7 +16,7 @@ jobs:
           - x86_64
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -25,7 +25,7 @@ jobs:
           git clone https://github.com/sbwml/v2ray-geodata
 
       - name: Building packages
-        uses: immortalwrt/gh-action-sdk@v4
+        uses: immortalwrt/gh-action-sdk@master
         env:
           ARCH: ${{ matrix.arch }}-openwrt-18.06-k5.4
           FEEDNAME: packages_ci
@@ -35,7 +35,7 @@ jobs:
       - name: Move created packages to project dir
         run: |
           cp bin/packages/${{ matrix.arch }}/packages_ci/*i18n*zh-cn*.ipk . || true
-          for i in `ls`; do mv -f $i `echo "openwrt-18.06_"$i`; done
+          for i in `ls *.ipk`; do mv -f $i `echo "openwrt-18.06_"$i`; done
 
       - name: Store packages
         uses: actions/upload-artifact@v3
@@ -45,11 +45,9 @@ jobs:
           path: "*.ipk"
 
       - name: Upload packages
-        uses: svenstaro/upload-release-action@master
-        if: github.event_name == 'release'
+        uses: ncipollo/release-action@v1
         with:
-          repo_token: ${{ secrets.workflow_token }}
-          file: "*.ipk"
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
+          token: ${{ secrets.workflow_token }}
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: "*.ipk"
