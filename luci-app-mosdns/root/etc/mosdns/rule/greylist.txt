@@ -1,1 +1,3 @@
-fonts.gstatic.com
+domain:gstatic.com
+domain:kernel.org
+keyword:github
