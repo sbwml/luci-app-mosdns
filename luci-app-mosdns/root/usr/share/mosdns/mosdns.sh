@@ -41,6 +41,7 @@ adlist_update() (
 	ad_source=$(uci -q get mosdns.config.ad_source)
 	[ $ad_source = "geosite.dat" ] && exit 0
 	AD_TMPDIR=$(mktemp -d) || exit 1
+	echo -e "\e[1;32mDownloading "$ad_source\e[0m"
 	curl --connect-timeout 60 -m 90 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$ad_source"
 	if [ $? -ne 0 ]; then
 		rm -rf $AD_TMPDIR
@@ -62,10 +63,10 @@ geodat_update() (
 	geodat_download geoip.dat
 	geodat_download geosite.dat
 	if [ "$(grep -o CN "$TMPDIR"/geoip.dat | wc -l)" -eq "0" ]; then
-		rm -rf "$TMPDIR"/geoip.dat
+		rm -rf "$TMPDIR"
 		exit 1
 	elif [ "$(grep -o .com "$TMPDIR"/geosite.dat | wc -l)" -lt "1000" ]; then
-		rm -rf "$TMPDIR"/geosite.dat
+		rm -rf "$TMPDIR"
 		exit 1
 	fi
 	cp -f "$TMPDIR"/* /usr/share/v2ray
