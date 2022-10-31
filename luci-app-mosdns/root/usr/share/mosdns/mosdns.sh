@@ -39,7 +39,7 @@ ad_block() (
 
 adlist_update() (
 	ad_source=$(uci -q get mosdns.config.ad_source)
-	[ $ad_source = "geosite.dat" ] && exit 0
+	[ "$ad_source" = "geosite.dat" ] && exit 0
 	AD_TMPDIR=$(mktemp -d) || exit 1
 	if [[ $ad_source =~ "^https://raw.githubusercontent.com" ]]; then
 		google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
