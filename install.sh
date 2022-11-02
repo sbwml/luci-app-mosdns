@@ -4,8 +4,14 @@ GREEN_COLOR='\e[1;32m'
 RES='\e[0m'
 
 # OpenWrt Info
-version=$(cat /etc/os-release | grep VERSION_ID | awk -F "[\"\"]" '{print $2}' | awk -F. '{print $1}')
-platform=$(opkg print-architecture | awk 'END{print $2}')
+if [ -f /etc/openwrt_release ]; then
+	. /etc/openwrt_release
+	version=$(echo ${DISTRIB_RELEASE%%.*})
+	platform=$(echo $DISTRIB_ARCH)
+else
+	echo -e "${RED_COLOR}Unknown OpenWRT Version${RES}"
+	exit 1
+fi
 
 # TMP
 TMPDIR=$(mktemp -d) || exit 1
