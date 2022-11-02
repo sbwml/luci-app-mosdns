@@ -53,7 +53,7 @@ jobs:
       - name: Building packages
         uses: openwrt/gh-action-sdk@master
         env:
-          ARCH: ${{ matrix.arch }}-master
+          ARCH: ${{ matrix.arch }}-openwrt-21.02
           FEEDNAME: packages_ci
           PACKAGES: luci-app-mosdns mosdns
           NO_REFRESH_CHECK: true
