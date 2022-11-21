@@ -3,6 +3,8 @@ domain:live.com
 domain:msn.com
 domain:ntp.org
 domain:office.com
+domain:qlogo.cn
+domain:qq.com
 domain:redhat.com
 keyword:aaplimg
 keyword:aicdn
@@ -20,5 +22,3 @@ keyword:windows
 keyword:xxpkg
 keyword:yximgs
 keyword:yxygslb
-aegis.qq.com
-otheve.beacon.qq.com
