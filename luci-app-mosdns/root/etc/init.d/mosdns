@@ -144,7 +144,7 @@ start_service() {
 stop_service() {
 	pgrep -f /usr/bin/mosdns | xargs kill -9 >/dev/null 2>&1
 	config_load "mosdns"
-	config_foreach get_config "config"
+	config_foreach get_config "mosdns"
 	[ "$enabled" = "0" ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
 	reload_others
 	delcron
