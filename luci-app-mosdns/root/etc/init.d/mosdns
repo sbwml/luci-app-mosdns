@@ -25,27 +25,30 @@ PROG=/usr/bin/mosdns
 CONF=$(uci -q get mosdns.config.configfile)
 CRON_FILE=/etc/crontabs/root
 
-inital_conf() {
-	config_load "mosdns"
-	config_get "enabled" "config" "enabled" "0"
+get_config() {
+	config_get enabled $1 enabled 0
+	config_get ad_source $1 ad_source ""
+	config_get cache_size $1 cache_size 200000
+	config_get cache_survival_time $1 cache_survival_time 259200
+	config_get enable_pipeline $1 enable_pipeline 0
+	config_get geo_auto_update $1 geo_auto_update 0
+	config_get geo_update_day_time $1 geo_update_day_time 2
+	config_get geo_update_week_time $1 geo_update_week_time "*"
+	config_get listen_port $1 listen_port 5335
+	config_get log_file $1 logfile "/tmp/mosdns.log"
+	config_get log_level $1 log_level "info"
+	config_get maximum_ttl_custom $1 maximum_ttl 0
+	config_get minimal_ttl_custom $1 minimal_ttl 0
+	config_get redirect $1 redirect 0
+	config_get remote_dns1 $1 remote_dns1 "tls://8.8.8.8"
+	config_get remote_dns2 $1 remote_dns2 "tls://1.1.1.1"
 }
 
 init_yaml() {
 	tmpdir=$(mktemp -d) || exit 1
-	log_level=$(uci -q get mosdns.config.log_level)
-	log_file=$(uci -q get mosdns.config.logfile)
-	listen_port=$(uci -q get mosdns.config.listen_port)
-	cache_size=$(uci -q get mosdns.config.cache_size)
-	cache_survival_time=$(uci -q get mosdns.config.cache_survival_time)
-	minimal_ttl_custom=$(uci -q get mosdns.config.minimal_ttl)
-	maximum_ttl_custom=$(uci -q get mosdns.config.maximum_ttl)
-	local_dns=$(/usr/share/mosdns/mosdns.sh dns | xargs -n1 echo "        - addr:")
-	remote_dns1=$(uci -q get mosdns.config.remote_dns1)
-	remote_dns2=$(uci -q get mosdns.config.remote_dns2)
 	adblock=$(/usr/share/mosdns/mosdns.sh ad)
-	enable_pipeline=$(uci -q get mosdns.config.enable_pipeline)
-	[ $enable_pipeline = 0 ] && enable_pipeline=false
-	[ $enable_pipeline = 1 ] && enable_pipeline=true
+	local_dns=$(/usr/share/mosdns/mosdns.sh dns | xargs -n1 echo "        - addr:")
+	[ $enable_pipeline = 1 ] && enable_pipeline=true || enable_pipeline=false
 	sed "s,log_level,$log_level,g;s,log_file,$log_file,g; \
 	s,listen_port,$listen_port,g;s,cache_size,$cache_size,g; \
 	s,cache_survival_time,$cache_survival_time,g; \
@@ -53,10 +56,10 @@ init_yaml() {
 	s,maximum_ttl_custom,$maximum_ttl_custom,g; \
 	s,remote_dns1,$remote_dns1,g;s,remote_dns2,$remote_dns2,g; \
 	s,adblock,$adblock,g;s,remote_dns_pipeline,$enable_pipeline,g" \
-	/usr/share/mosdns/default.yaml > $(uci -q get mosdns.config.configfile)
+	/usr/share/mosdns/default.yaml > $CONF
 	echo "${local_dns}" > $tmpdir/local_dns.txt
 	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d}' \
-	$(uci -q get mosdns.config.configfile)
+	$CONF
 	rm -rf $tmpdir
 }
 
@@ -65,6 +68,7 @@ service_triggers() {
 }
 
 restore_setting() {
+	rm -f /etc/mosdns/redirect.lock
 	sed -i "/list server/d" /etc/config/dhcp
 	uci set dhcp.@dnsmasq[0].noresolv='0'
 	uci del dhcp.@dnsmasq[0].cachesize
@@ -74,7 +78,7 @@ restore_setting() {
 redirect_setting() {
 	if [ "${CONF}" = "/etc/mosdns/config.yaml" ]; then
 		sed -i "/list server/d" /etc/config/dhcp
-		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(uci -q get mosdns.config.listen_port)"
+		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$listen_port"
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
@@ -87,6 +91,7 @@ redirect_setting() {
 		uci set dhcp.@dnsmasq[0].cachesize='0'
 		uci commit dhcp
 	fi
+	touch /etc/mosdns/redirect.lock
 }
 
 reload_others() {
@@ -102,7 +107,7 @@ reload_service() {
 
 setcron() {
 	sed -i '/mosdns.sh/d' $CRON_FILE 2>/dev/null
-	[ "$(uci -q get mosdns.config.geo_auto_update)" -eq 1 ] && echo "0 $(uci -q get mosdns.config.geo_update_day_time) * * $(uci -q get mosdns.config.geo_update_week_time) /usr/share/mosdns/mosdns.sh geodata" >>$CRON_FILE
+	[ "$geo_auto_update" -eq 1 ] && echo "0 $geo_update_day_time * * $geo_update_week_time /usr/share/mosdns/mosdns.sh geodata" >>$CRON_FILE
 	crontab $CRON_FILE
 }
 
@@ -112,13 +117,14 @@ delcron() {
 }
 
 start_service() {
-	inital_conf
+	config_load "mosdns"
+	config_foreach get_config "mosdns"
 	[ $enabled != 1 ] && return 1
 	delcron
 	setcron
 	[ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
 	cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)
-	[ ! "$(uci -q get mosdns.config.ad_source)" = "geosite.dat" ] && cat /dev/null > /etc/mosdns/rule/adlist.txt
+	[ ! "$ad_source" = "geosite.dat" ] && cat /dev/null > /etc/mosdns/rule/adlist.txt
 	procd_open_instance mosdns
 	procd_set_param command $PROG start -c "$CONF"
 	procd_set_param user root
@@ -127,17 +133,19 @@ start_service() {
 	procd_set_param respawn "${respawn_threshold:-3600}" "${respawn_timeout:-5}" "${respawn_retry:-5}"
 	procd_close_instance mosdns
 
-	restore_setting
-	[ "$(uci -q get mosdns.config.redirect)" -eq 1 ] && redirect_setting
+	[ "$redirect" -ne 1 ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
+	[ "$redirect" -eq 1 ] && redirect_setting
+
 	reload_others
 
-	[ ! "$(uci -q get mosdns.config.ad_source)" = "geosite.dat" ] && /usr/share/mosdns/mosdns.sh adlist_update &> /dev/null &
+	[ ! "$ad_source" = "geosite.dat" ] && /usr/share/mosdns/mosdns.sh adlist_update &> /dev/null &
 }
 
 stop_service() {
 	pgrep -f /usr/bin/mosdns | xargs kill -9 >/dev/null 2>&1
 	config_load "mosdns"
-	[ "$(uci -q get mosdns.config.enabled)" = "0" ] && restore_setting
+	config_foreach get_config "config"
+	[ "$enabled" = "0" ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
 	reload_others
 	delcron
 }
