@@ -37,10 +37,7 @@ CHECK() (
 	echo -e "\r\n${GREEN_COLOR}Checking platform  ...${RES}\r\n"
 	prebuilt="aarch64_cortex-a53 aarch64_cortex-a72 aarch64_generic arm_arm1176jzf-s_vfp arm_arm926ej-s arm_cortex-a15_neon-vfpv4 arm_cortex-a5_vfpv4 arm_cortex-a7 arm_cortex-a7_neon-vfpv4 arm_cortex-a8_vfpv3 arm_cortex-a9 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_fa526 arm_mpcore arm_xscale i386_pentium-mmx i386_pentium4 mips64_octeonplus mips_24kc mips_4kec mips_mips32 mipsel_24kc mipsel_24kc_24kf mipsel_74kc mipsel_mips32 x86_64"
 	verif=$(expr match "$prebuilt" ".*\($platform\)")
-	if [ "$version" != 18 -a "$version" != 19 -a "$version" != 21 -a "$version" != 22 ]; then
-		echo -e "${RED_COLOR}Error! OpenWrt \"$(cat /etc/os-release | grep VERSION_ID | awk -F "[\"\"]" '{print $2}')\" version is not supported.${RES}"
-		exit 1;
-	elif [[ ! $verif ]]; then
+	if [[ ! $verif ]]; then
 		echo -e "${RED_COLOR}Error! The current \"$platform\" platform is not currently supported.${RES}"
 		exit 1;
 	else
@@ -61,11 +58,7 @@ DOWNLOAD() (
 	fi
 	mosdns=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep $platform.ipk | head -1 | awk '{print $2}' | sed 's/\"//g')
 	luci_app=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep luci-app-mosdns_ | head -1 | awk '{print $2}' | sed 's/\"//g')
-	if [ "$version" = 18 ]; then
-		luci_i18n=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep openwrt-18.06_luci-i18n-mosdns-zh-cn | head -1 | awk '{print $2}' | sed 's/\"//g')
-	else
-		luci_i18n=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep luci-i18n-mosdns-zh-cn | head -1 | awk '{print $2}' | sed 's/\"//g')
-	fi
+	luci_i18n=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep luci-i18n-mosdns-zh-cn | head -1 | awk '{print $2}' | sed 's/\"//g')
 	geoip=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep v2ray-geoip | head -1 | awk '{print $2}' | sed 's/\"//g')
 	geosite=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep v2ray-geosite | head -1 | awk '{print $2}' | sed 's/\"//g')
 
