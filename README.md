@@ -17,7 +17,7 @@
 
 --------------
 
-## How to install prebuilt packages (OpenWrt 18 & 19 & 21 & 22 & master)
+## How to install prebuilt packages
 
 - Login OpenWrt terminal (SSH)
 
