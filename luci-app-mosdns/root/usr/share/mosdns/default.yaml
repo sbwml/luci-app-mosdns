@@ -64,10 +64,7 @@ plugins:
     type: fast_forward
     args:
       upstream:
-        - addr: remote_dns1
-          enable_pipeline: remote_dns_pipeline
-        - addr: remote_dns2
-          enable_pipeline: remote_dns_pipeline
+        - addr: remote_dns
 
   - tag: query_is_whitelist_domain
     type: query_matcher

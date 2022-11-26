@@ -40,25 +40,25 @@ get_config() {
 	config_get maximum_ttl_custom $1 maximum_ttl 0
 	config_get minimal_ttl_custom $1 minimal_ttl 0
 	config_get redirect $1 redirect 0
-	config_get remote_dns1 $1 remote_dns1 "tls://8.8.8.8"
-	config_get remote_dns2 $1 remote_dns2 "tls://1.1.1.1"
+	config_get remote_dns $1 remote_dns "tls://8.8.8.8 tls://1.1.1.1"
 }
 
 init_yaml() {
 	tmpdir=$(mktemp -d) || exit 1
 	adblock=$(/usr/share/mosdns/mosdns.sh ad)
-	local_dns=$(/usr/share/mosdns/mosdns.sh dns | xargs -n1 echo "        - addr:")
 	[ $enable_pipeline = 1 ] && enable_pipeline=true || enable_pipeline=false
+	local_dns=$(/usr/share/mosdns/mosdns.sh dns | xargs -n1 echo "        - addr:")
+	remote_dns=$(echo $remote_dns | awk '{for(i=1;i<=NF;i++)printf "%s- addr: %s\n%s  enable_pipeline: '${enable_pipeline}'\n",s,$i,s}' s='        ')
 	sed "s,log_level,$log_level,g;s,log_file,$log_file,g; \
 	s,listen_port,$listen_port,g;s,cache_size,$cache_size,g; \
 	s,cache_survival_time,$cache_survival_time,g; \
 	s,minimal_ttl_custom,$minimal_ttl_custom,g; \
 	s,maximum_ttl_custom,$maximum_ttl_custom,g; \
-	s,remote_dns1,$remote_dns1,g;s,remote_dns2,$remote_dns2,g; \
 	s,adblock,$adblock,g;s,remote_dns_pipeline,$enable_pipeline,g" \
 	/usr/share/mosdns/default.yaml > $CONF
 	echo "${local_dns}" > $tmpdir/local_dns.txt
-	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d}' \
+	echo "${remote_dns}" > $tmpdir/remote_dns.txt
+	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d};/- addr: remote_dns/{r '$tmpdir/remote_dns.txt -e';d}' \
 	$CONF
 	rm -rf $tmpdir
 }
