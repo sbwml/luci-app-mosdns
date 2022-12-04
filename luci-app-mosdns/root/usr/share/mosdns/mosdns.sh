@@ -11,16 +11,20 @@ logfile_path() (
 )
 
 interface_dns() (
-	peerdns=$(uci -q get network.wan.peerdns)
-	proto=$(uci -q get network.wan.proto)
-	if [ "$peerdns" = 0 ] || [ "$proto" = "static" ]; then
-		uci -q get network.wan.dns
+	if [ "$(uci -q get mosdns.config.custom_local_dns)" -eq 1 ]; then
+		uci -q get mosdns.config.local_dns
 	else
-		interface_status=$(ubus call network.interface.wan status)
-		echo $interface_status | jsonfilter -e "@['dns-server'][0]"
-		echo $interface_status | jsonfilter -e "@['dns-server'][1]"
+		peerdns=$(uci -q get network.wan.peerdns)
+		proto=$(uci -q get network.wan.proto)
+		if [ "$peerdns" = 0 ] || [ "$proto" = "static" ]; then
+			uci -q get network.wan.dns
+		else
+			interface_status=$(ubus call network.interface.wan status)
+			echo $interface_status | jsonfilter -e "@['dns-server'][0]"
+			echo $interface_status | jsonfilter -e "@['dns-server'][1]"
+		fi
+		[ $? -ne 0 ] && echo "119.29.29.29"
 	fi
-	[ $? -ne 0 ] && echo "119.29.29.29"
 )
 
 ad_block() (

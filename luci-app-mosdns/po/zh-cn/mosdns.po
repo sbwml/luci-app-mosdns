@@ -22,8 +22,8 @@ msgstr "监听端口"
 msgid "Log Level"
 msgstr "日志等级"
 
-msgid "Enable DNS Forward"
-msgstr "启用 DNS 转发"
+msgid "DNS Forward"
+msgstr "DNS 转发"
 
 msgid "Forward Dnsmasq Domain Name resolution requests to MosDNS"
 msgstr "将 Dnsmasq 域名解析请求转发到 MosDNS 服务器"
@@ -108,6 +108,21 @@ msgstr "自定义"
 
 msgid "Log File"
 msgstr "日志文件"
+
+msgid "Local DNS"
+msgstr "本地 DNS"
+
+msgid "Follow WAN interface DNS if not enabled"
+msgstr "不启用则遵循 WAN 接口 DNS"
+
+msgid "Upstream DNS servers"
+msgstr "上游 DNS 服务器"
+
+msgid "Bootstrap DNS servers"
+msgstr "Bootstrap DNS 服务器"
+
+msgid "Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"
+msgstr "Bootstrap DNS 服务器用于解析所指定为上游的 DoH / DoT 解析器的 IP 地址"
 
 msgid "Remote DNS"
 msgstr "远程 DNS"

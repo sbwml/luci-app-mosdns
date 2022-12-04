@@ -55,10 +55,13 @@ plugins:
       maximum_ttl: maximum_ttl_custom
 
   - tag: "forward_local"
-    type: fast_forward
+    type: forward
     args:
       upstream:
         - addr: local_dns
+      bootstrap:
+        - "bootstrap_dns1"
+        - "bootstrap_dns2"
 
   - tag: "forward_remote"
     type: fast_forward

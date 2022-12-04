@@ -34,6 +34,44 @@ logfile.placeholder = "/tmp/mosdns.log"
 logfile.default = "/tmp/mosdns.log"
 logfile:depends( "configfile", "/etc/mosdns/config.yaml")
 
+redirect = s:option(Flag, "redirect", translate("DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
+redirect.default = true
+
+custom_local_dns = s:option(Flag, "custom_local_dns", translate("Local DNS"), translate("Follow WAN interface DNS if not enabled"))
+custom_local_dns:depends( "configfile", "/etc/mosdns/config.yaml")
+custom_local_dns.default = false
+
+custom_local_dns = s:option(DynamicList, "local_dns", translate("Upstream DNS servers"))
+custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+custom_local_dns:depends("custom_local_dns", "1")
+
+custom_local_dns = s:option(ListValue, "bootstrap_dns1", translate("Bootstrap DNS servers"))
+custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+custom_local_dns.default = "119.29.29.29"
+custom_local_dns:depends("custom_local_dns", "1")
+custom_local_dns = s:option(ListValue, "bootstrap_dns2", " ", translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
+custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+custom_local_dns.default = "223.5.5.5"
+custom_local_dns:depends("custom_local_dns", "1")
+
 remote_dns = s:option(DynamicList, "remote_dns", translate("Remote DNS"))
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://1.0.0.1", "1.0.0.1 (CloudFlare DNS)")
@@ -71,9 +109,6 @@ maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
 maximum_ttl.datatype = "and(uinteger,min(0))"
 maximum_ttl.default = "0"
 maximum_ttl:depends( "configfile", "/etc/mosdns/config.yaml")
-
-redirect = s:option(Flag, "redirect", translate("Enable DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
-redirect.default = true
 
 adblock = s:option(Flag, "adblock", translate("Enable DNS ADblock"))
 adblock:depends( "configfile", "/etc/mosdns/config.yaml")
