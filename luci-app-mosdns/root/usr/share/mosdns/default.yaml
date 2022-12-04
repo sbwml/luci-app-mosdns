@@ -60,8 +60,7 @@ plugins:
       upstream:
         - addr: local_dns
       bootstrap:
-        - "bootstrap_dns1"
-        - "bootstrap_dns2"
+        - "bootstrap_dns"
 
   - tag: "forward_remote"
     type: fast_forward

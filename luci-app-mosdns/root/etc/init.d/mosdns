@@ -42,8 +42,7 @@ get_config() {
 	config_get redirect $1 redirect 0
 	config_get remote_dns $1 remote_dns "tls://8.8.8.8 tls://1.1.1.1"
 	config_get custom_local_dns $1 custom_local_dns 0
-	config_get bootstrap_dns1 $1 bootstrap_dns1 "119.29.29.29"
-	config_get bootstrap_dns2 $1 bootstrap_dns2 "223.5.5.5"
+	config_get bootstrap_dns $1 bootstrap_dns "119.29.29.29"
 }
 
 init_yaml() {
@@ -60,7 +59,7 @@ init_yaml() {
 	s,adblock,$adblock,g;s,remote_dns_pipeline,$enable_pipeline,g" \
 	/usr/share/mosdns/default.yaml > $CONF
 	[ "$custom_local_dns" -eq 0 ] && sed -i "/bootstrap/d" $CONF || \
-	sed -i "s,bootstrap_dns1,$bootstrap_dns1,g;s,bootstrap_dns2,$bootstrap_dns2,g" $CONF
+	sed -i "s,bootstrap_dns,$bootstrap_dns,g" $CONF
 	echo "${local_dns}" > $tmpdir/local_dns.txt
 	echo "${remote_dns}" > $tmpdir/remote_dns.txt
 	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d};/- addr: remote_dns/{r '$tmpdir/remote_dns.txt -e';d}' \
