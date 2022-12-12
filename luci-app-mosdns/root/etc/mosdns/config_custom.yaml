@@ -84,7 +84,7 @@ plugins:
     type: query_matcher
     args:
       domain:
-        - "provider:geosite:cn,apple-cn,icloud,google-cn,tld-cn"
+        - "provider:geosite:cn"
 
   - tag: query_is_non_local_domain
     type: query_matcher
