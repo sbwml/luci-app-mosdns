@@ -56,6 +56,7 @@ adlist_update() (
 		exit 1
 	else
 		\cp "$AD_TMPDIR/adlist.txt" /etc/mosdns/rule/adlist.txt
+		echo "$ad_source" > /etc/mosdns/rule/.ad_source
 		rm -rf "$AD_TMPDIR"
 	fi
 )
