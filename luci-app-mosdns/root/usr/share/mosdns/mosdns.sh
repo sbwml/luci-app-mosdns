@@ -1,5 +1,7 @@
 #!/bin/sh
 
+script_action=${1}
+
 logfile_path() (
 	configfile=$(uci -q get mosdns.config.configfile)
 	if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then
@@ -78,14 +80,23 @@ geodat_update() (
 	rm -rf "$TMPDIR"
 )
 
-if [ "$1" == "dns" ]; then
-	interface_dns
-elif [ "$1" == "ad" ]; then
-	ad_block
-elif [ "$1" == "geodata" ]; then
-	geodat_update && adlist_update
-elif [ "$1" == "logfile" ]; then
-	logfile_path
-elif [ "$1" == "adlist_update" ]; then
-	adlist_update
-fi
+case $script_action in
+	"dns")
+		interface_dns
+	;;
+	"ad")
+		ad_block
+	;;
+	"geodata")
+		geodat_update && adlist_update
+	;;
+	"logfile")
+		logfile_path
+	;;
+	"adlist_update")
+		adlist_update
+	;;
+	*)
+		exit 0
+	;;
+esac
