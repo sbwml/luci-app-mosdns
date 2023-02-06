@@ -34,12 +34,12 @@ ad_block() (
 	if [ "$adblock" -eq 1 ]; then
 		ad_source=$(uci -q get mosdns.config.ad_source)
 		if [ "$ad_source" = "geosite.dat" ]; then
-			echo "provider:geosite:category-ads-all"
+			echo "/var/mosdns/geosite_category-ads-all.txt"
 		else
-			echo "provider:adlist"
+			echo "/etc/mosdns/rule/adlist.txt"
 		fi
 	else
-		echo "full:disable-category-ads-all.null"
+		touch /var/disable-ads.txt ; echo "/var/disable-ads.txt"
 	fi
 )
 

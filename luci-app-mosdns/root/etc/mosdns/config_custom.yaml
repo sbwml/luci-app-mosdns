@@ -2,161 +2,232 @@ log:
   level: info
   file: "/tmp/mosdns.log"
 
-include: []
-
-data_providers:
-  - tag: geoip
-    file: "/usr/share/v2ray/geoip.dat"
-    auto_reload: true
-
-  - tag: geosite
-    file: "/usr/share/v2ray/geosite.dat"
-    auto_reload: true
-
-  - tag: whitelist
-    file: "/etc/mosdns/rule/whitelist.txt"
-    auto_reload: true
-
-  - tag: blocklist
-    file: "/etc/mosdns/rule/blocklist.txt"
-    auto_reload: true
-
-  - tag: hosts
-    file: "/etc/mosdns/rule/hosts.txt"
-    auto_reload: true
-
-  - tag: redirect
-    file: "/etc/mosdns/rule/redirect.txt"
-    auto_reload: true
-
 plugins:
-  - tag: lazy_cache
+  # 国内域名
+  - tag: geosite_cn
+    type: domain_set
+    args:
+      files:
+        - "/var/mosdns/geosite_cn.txt"
+
+  # 国内ip
+  - tag: geoip_cn
+    type: ip_set
+    args:
+      files:
+        - "/var/mosdns/geoip_cn.txt"
+
+  # 国外域名
+  - tag: geosite_no_cn
+    type: domain_set
+    args:
+      files:
+        - "/var/mosdns/geosite_geolocation-!cn.txt"
+
+  # 白名单 加入的域名始终允许使用 “本地 DNS” 进行解析
+  - tag: whitelist
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/whitelist.txt"
+
+  # 黑名单 加入的域名将屏蔽 DNS 解析
+  - tag: blocklist
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/blocklist.txt"
+
+  # 灰名单 加入的域名始终使用 “远程 DNS” 进行解析
+  - tag: greylist
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/greylist.txt"
+
+  # 自定义 Hosts 重写
+  - tag: hosts
+    type: hosts
+    args:
+      files:
+        - "/etc/mosdns/rule/hosts.txt"
+
+  # 重定向请求的域名
+  - tag: redirect
+    type: redirect
+    args:
+      files:
+        - "/etc/mosdns/rule/redirect.txt"
+
+  # PTR 黑名单 加入的域名将阻止 PTR 请求
+  - tag: local_ptr
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/local-ptr.txt"
+
+  # 屏蔽失效/威胁 URL
+  - tag: sp_low
+    type: domain_set
+    args:
+      files:
+        - "/usr/share/mosdns/sp_low.tdata"
+
+  # 缓存
+  - tag: cache
     type: cache
     args:
       size: 200000
       lazy_cache_ttl: 259200
 
-  - tag: modify_ttl
-    type: ttl
+  # 转发至本地服务器
+  - tag: forward_local
+    type: forward
     args:
-      minimal_ttl: 0
-      maximum_ttl: 0
-
-  - tag: "forward_local"
-    type: fast_forward
-    args:
-      upstream:
+      upstreams:
+        - addr: "https://doh.pub/dns-query"
+          bootstrap: 180.76.76.76
         - addr: 119.29.29.29
-        - addr: 114.114.114.114
 
-  - tag: "forward_remote"
-    type: fast_forward
+  # 转发至远程服务器
+  - tag: forward_remote
+    type: forward
     args:
-      upstream:
+      upstreams:
         - addr: tls://8.8.8.8
-        - addr: tls://1.1.1.1
+          enable_pipeline: false
 
-  - tag: query_is_whitelist_domain
-    type: query_matcher
+  # 修改ttl
+  - tag: modify_ttl
+    type: sequence
     args:
-      domain:
-        - "provider:whitelist"
+      - exec: ttl 0-0
 
-  - tag: query_is_blocklist_domain
-    type: query_matcher
+  # 国内解析
+  - tag: local_sequence
+    type: sequence
     args:
-      domain:
-        - "provider:blocklist"
+      - exec: metrics_collector $forward_local
+      - exec: $forward_local
 
-  - tag: query_is_hosts_domain
-    type: hosts
+  # 国外解析
+  - tag: remote_sequence
+    type: sequence
     args:
-      hosts:
-        - "provider:hosts"
+      - exec: prefer_ipv4
+      - exec: metrics_collector $forward_remote
+      - exec: $forward_remote
 
-  - tag: query_is_redirect_domain
-    type: redirect
+  # 有响应终止返回
+  - tag: has_resp_sequence
+    type: sequence
     args:
-      rule:
-        - "provider:redirect"
+      - exec: $modify_ttl
+      - matches: has_resp
+        exec: accept
 
+  # fallback 用本地服务器 sequence
+  # 返回不包含本地 ip 则 reject
+  - tag: query_is_local_ip
+    type: sequence
+    args:
+      - exec: $local_sequence
+      - matches: resp_ip $geoip_cn
+        exec: accept
+      - exec: reject
+
+  # fallback 用远程服务器 sequence
+  - tag: query_is_remote
+    type: sequence
+    args:
+      - exec: $remote_sequence
+      - exec: accept
+
+  # fallback 用远程服务器 sequence
+  - tag: fallback
+    type: fallback
+    args:
+      primary: query_is_local_ip
+      secondary: query_is_remote
+      threshold: 500
+      always_standby: false
+
+  # 查询国内域名
   - tag: query_is_local_domain
-    type: query_matcher
+    type: sequence
     args:
-      domain:
-        - "provider:geosite:cn"
+      - matches: qname $geosite_cn
+        exec: $local_sequence
 
-  - tag: query_is_non_local_domain
-    type: query_matcher
+  # 查询国外域名
+  - tag: query_is_no_local_domain
+    type: sequence
     args:
-      domain:
-        - "provider:geosite:geolocation-!cn"
+      - matches: qname $geosite_no_cn
+        exec: $remote_sequence
 
-  - tag: response_has_local_ip
-    type: response_matcher
+  # 查询白名单
+  - tag: query_is_whitelist_domain
+    type: sequence
     args:
-      ip:
-        - "provider:geoip:cn"
+      - matches: qname $whitelist
+        exec: $local_sequence
+      - exec: jump has_resp_sequence
 
-  - tag: query_is_ad_domain
-    type: query_matcher
+  # 查询灰名单
+  - tag: query_is_greylist_domain
+    type: sequence
     args:
-      domain:
-        - "provider:geosite:category-ads-all"
+      - matches: qname $greylist
+        exec: $remote_sequence
 
-  - tag: match_qtype65
-    type: query_matcher
+  # 拒绝名单
+  - tag: query_is_reject_domain
+    type: sequence
     args:
-      qtype: [65]
+      - matches: qname $blocklist
+        exec: reject 3
+      - matches: qname $sp_low
+        exec: reject 3
+      - matches:
+        - qtype 12
+        - qname $local_ptr
+        exec: reject 3
+      - matches: qtype 65
+        exec: reject 3
 
-  - tag: "main_sequence"
-    type: "sequence"
+  # 主要的运行逻辑插件
+  # sequence 插件中调用的插件 tag 必须在 sequence 前定义，
+  # 否则 sequence 找不到对应插件。
+  - tag: main_sequence
+    type: sequence
     args:
-      exec:
-        - _misc_optm
-        - query_is_hosts_domain
-        - query_is_redirect_domain
+      - exec: $hosts
+      - exec: jump has_resp_sequence
+      - exec: $redirect
+      - exec: jump has_resp_sequence
+      - exec: $query_is_whitelist_domain
+      - exec: $query_is_reject_domain
+      - exec: $cache
+      - exec: jump has_resp_sequence
+      - exec: $query_is_greylist_domain
+      - exec: jump has_resp_sequence
+      - exec: $query_is_local_domain
+      - exec: jump has_resp_sequence
+      - exec: $query_is_no_local_domain
+      - exec: jump has_resp_sequence
+      - exec: $fallback
 
-        - if: query_is_whitelist_domain
-          exec:
-            - forward_local
-            - modify_ttl
-            - _return
+  # 启动 udp 服务器。
+  - tag: udp_server
+    type: udp_server
+    args:
+      entry: main_sequence
+      listen: ":5335"
 
-        - if: "query_is_blocklist_domain || query_is_ad_domain || match_qtype65"
-          exec:
-            - _new_nxdomain_response
-            - _return
-
-        - lazy_cache
-
-        - if: query_is_local_domain
-          exec:
-            - forward_local
-            - modify_ttl
-            - _return
-
-        - if: query_is_non_local_domain
-          exec:
-            - _prefer_ipv4
-            - forward_remote
-            - modify_ttl
-            - _return
-        - primary:
-            - forward_local
-            - if: "(! response_has_local_ip) && [_response_valid_answer]"
-              exec:
-                - _drop_response
-          secondary:
-            - _prefer_ipv4
-            - forward_remote
-            - modify_ttl
-          fast_fallback: 200
-
-servers:
-  - exec: main_sequence
-    listeners:
-      - protocol: udp
-        addr: ":5335"
-      - protocol: tcp
-        addr: ":5335"
+  # 启动 tcp 服务器。
+  - tag: tcp_server
+    type: tcp_server
+    args:
+      entry: main_sequence
+      listen: ":5335"
