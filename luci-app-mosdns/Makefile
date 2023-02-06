@@ -6,7 +6,7 @@ PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI Support for mosdns
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+mosdns +jsonfilter +luci-compat +curl +v2ray-geoip +v2ray-geosite
+LUCI_DEPENDS:=+mosdns +jsonfilter +luci-compat +curl +v2ray-geoip +v2ray-geosite +v2dat
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/mosdns

@@ -24,6 +24,7 @@ USE_PROCD=1
 PROG=/usr/bin/mosdns
 CONF=$(uci -q get mosdns.config.configfile)
 CRON_FILE=/etc/crontabs/root
+V2DAT_DIR=/usr/share/v2ray
 
 get_config() {
 	config_get enabled $1 enabled 0
@@ -121,14 +122,22 @@ delcron() {
 	crontab $CRON_FILE
 }
 
+v2dat_dump() {
+	mkdir -p /var/mosdns
+	rm -f /var/mosdns/geo*.txt
+	v2dat unpack geoip -o /var/mosdns -f cn $V2DAT_DIR/geoip.dat
+	v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $V2DAT_DIR/geosite.dat
+	[ "$adblock" -eq 1 ] && [ "$ad_source" = "geosite.dat" ] && v2dat unpack geosite -o /var/mosdns -f category-ads-all $V2DAT_DIR/geosite.dat
+}
+
 start_service() {
 	config_load "mosdns"
 	config_foreach get_config "mosdns"
 	[ $enabled != 1 ] && return 1
-	delcron
-	setcron
+	delcron ; setcron
 	[ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
 	:> $(/usr/share/mosdns/mosdns.sh logfile)
+	v2dat_dump >> $(/usr/share/mosdns/mosdns.sh logfile) 2>&1
 	procd_open_instance mosdns
 	procd_set_param command $PROG start -c "$CONF"
 	procd_set_param user root
