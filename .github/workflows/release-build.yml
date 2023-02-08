@@ -45,3 +45,8 @@ jobs:
           allowUpdates: true
           replacesArtifacts: true
           artifacts: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"
+      - name: My action
+        env:
+          MY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+          # Use MY_TOKEN in your script
