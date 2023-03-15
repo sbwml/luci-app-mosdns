@@ -1,9 +1,9 @@
 name: Build
 
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - v5.**
 
 jobs:
   build:
@@ -70,4 +70,5 @@ jobs:
           token: ${{ secrets.workflow_token }}
           allowUpdates: true
           replacesArtifacts: true
+          prerelease: true
           artifacts: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"
