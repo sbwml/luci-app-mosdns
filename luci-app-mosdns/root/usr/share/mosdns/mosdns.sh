@@ -52,7 +52,7 @@ adlist_update() (
 		[ "$google_status" -ne "204" ] && mirror="https://ghproxy.com/"
 	fi
 	echo -e "\e[1;32mDownloading $mirror$ad_source\e[0m"
-	curl --connect-timeout 60 -m 90 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$mirror$ad_source"
+	curl --connect-timeout 60 -m 90 --ipv4 -kfSLo "$AD_TMPDIR/adlist.txt" "$mirror$ad_source"
 	if [ $? -ne 0 ]; then
 		rm -rf "$AD_TMPDIR"
 		exit 1
@@ -68,7 +68,7 @@ geodat_update() (
 		google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
 		[ "$google_status" -ne "204" ] && mirror="https://ghproxy.com/"
 		echo -e "\e[1;32mDownloading "$mirror"https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1\e[0m"
-		curl --connect-timeout 60 -m 900 --ipv4 -fSLo "$TMPDIR/$1" ""$mirror"https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1"
+		curl --connect-timeout 60 -m 900 --ipv4 -kfSLo "$TMPDIR/$1" ""$mirror"https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$1"
 	)
 	TMPDIR=$(mktemp -d) || exit 1
 	geodat_download geoip.dat && geodat_download geosite.dat
