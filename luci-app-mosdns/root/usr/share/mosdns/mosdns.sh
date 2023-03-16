@@ -52,7 +52,7 @@ adlist_update() (
 		[ "$google_status" -ne "204" ] && mirror="https://ghproxy.com/"
 	fi
 	echo -e "\e[1;32mDownloading $mirror$ad_source\e[0m"
-	curl --connect-timeout 60 -m 90 --ipv4 -fSLo "$AD_TMPDIR/adlist.txt" "$mirror$ad_source"
+	curl --connect-timeout 60 -m 90 --ipv4 -kfSLo "$AD_TMPDIR/adlist.txt" "$mirror$ad_source"
 	if [ $? -ne 0 ]; then
 		rm -rf "$AD_TMPDIR"
 		exit 1
