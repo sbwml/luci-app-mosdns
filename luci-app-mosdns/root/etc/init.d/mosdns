@@ -75,29 +75,32 @@ service_triggers() {
 restore_setting() {
 	rm -f /etc/mosdns/redirect.lock
 	sed -i "/list server/d" /etc/config/dhcp
-	uci del network.lan.dns
 	uci set dhcp.@dnsmasq[0].noresolv='0'
 	uci del dhcp.@dnsmasq[0].cachesize
 	uci commit dhcp
+	uci del network.lan.dns
+	uci commit network
 }
 
 redirect_setting() {
 	if [ "${CONF}" = "/etc/mosdns/config.yaml" ]; then
 		sed -i "/list server/d" /etc/config/dhcp
 		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$listen_port"
-		uci set network.lan.dns=$(uci -q get network.lan.ipaddr)
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
 		uci commit dhcp
+		uci set network.lan.dns=$(uci -q get network.lan.ipaddr)
+		uci commit network
 	else
 		sed -i "/list server/d" /etc/config/dhcp
 		uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(cat /etc/mosdns/config_custom.yaml | awk -F'[:" ]+' '/^\s+addr:/{for(i=1;i<=NF;i++){if($i~/^[0-9]+$/){print $i;exit}}}')"
-		uci set network.lan.dns=$(uci -q get network.lan.ipaddr)
 		uci set dhcp.@dnsmasq[0].rebind_protection='0'
 		uci set dhcp.@dnsmasq[0].noresolv="1"
 		uci set dhcp.@dnsmasq[0].cachesize='0'
 		uci commit dhcp
+		uci set network.lan.dns=$(uci -q get network.lan.ipaddr)
+		uci commit network
 	fi
 	touch /etc/mosdns/redirect.lock
 }
