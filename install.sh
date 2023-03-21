@@ -50,13 +50,15 @@ CHECK() (
 DOWNLOAD() (
 	echo -e "\r\n${GREEN_COLOR}Download Packages ...${RES}\r\n"
 	# get repos info
-	curl -sk --connect-timeout 10 "https://api.github.com/repos/sbwml/luci-app-mosdns/releases" | grep "browser_download_url" > $TMPDIR/releases.txt
+	mosdns_version=`curl -sk https://api.github.com/repos/sbwml/luci-app-mosdns/releases | grep "tag_name" | grep v5 | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//;s/ //'`
+	curl -sk --connect-timeout 10 "https://api.github.com/repos/sbwml/luci-app-mosdns/releases" | grep "browser_download_url" | grep "$mosdns_version" > $TMPDIR/releases.txt
 	if [ $? -ne 0 ]; then
 		echo -e "${RED_COLOR}Failed to get version information, Please check the network status.${RES}"
 		rm -rf $TMPDIR
 		exit 1
 	fi
-	mosdns=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep $platform.ipk | head -1 | awk '{print $2}' | sed 's/\"//g')
+	mosdns=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep mosdns_5 | grep $platform.ipk | head -1 | awk '{print $2}' | sed 's/\"//g')
+	v2dat=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep v2dat_ | grep $platform.ipk | head -1 | awk '{print $2}' | sed 's/\"//g')
 	luci_app=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep luci-app-mosdns_ | head -1 | awk '{print $2}' | sed 's/\"//g')
 	luci_i18n=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep luci-i18n-mosdns-zh-cn | head -1 | awk '{print $2}' | sed 's/\"//g')
 	geoip=$(cat $TMPDIR/releases.txt | grep "browser_download_url" | grep v2ray-geoip | head -1 | awk '{print $2}' | sed 's/\"//g')
@@ -67,6 +69,13 @@ DOWNLOAD() (
 	curl --connect-timeout 30 -m 600 -kLo "$TMPDIR/mosdns_$platform.ipk" $mirror$mosdns
 	if [ $? -ne 0 ]; then
 		echo -e "${RED_COLOR}Error! download $mosdns failed.${RES}"
+		rm -rf $TMPDIR
+		exit 1
+	fi
+	echo -e "${GREEN_COLOR}Download $v2dat ...${RES}"
+	curl --connect-timeout 30 -m 600 -kLo "$TMPDIR/v2dat_$platform.ipk" $mirror$v2dat
+	if [ $? -ne 0 ]; then
+		echo -e "${RED_COLOR}Error! download $v2dat failed.${RES}"
 		rm -rf $TMPDIR
 		exit 1
 	fi
@@ -105,6 +114,7 @@ INSTALL() (
 	echo -e "\r\n${GREEN_COLOR}Install Packages ...${RES}\r\n"
 	opkg install --force-overwrite $TMPDIR/geoip.ipk
 	opkg install --force-overwrite $TMPDIR/geosite.ipk
+	opkg install $TMPDIR/v2dat_$platform.ipk
 	opkg install $TMPDIR/mosdns_$platform.ipk
 	opkg install $TMPDIR/luci-app-mosdns.ipk
 	opkg install $TMPDIR/luci-i18n-mosdns-zh-cn.ipk
@@ -112,12 +122,4 @@ INSTALL() (
 	echo -e "${GREEN_COLOR}Done!${RES}"
 )
 
-CHECK
-if [ $? -eq 0 ]; then
-	DOWNLOAD
-else
-	exit 1
-fi
-if [ $? -eq 0 ]; then
-	INSTALL
-fi
+CHECK && DOWNLOAD && INSTALL
