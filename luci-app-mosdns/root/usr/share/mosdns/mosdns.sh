@@ -80,6 +80,10 @@ geodat_update() (
 	rm -rf "$TMPDIR"
 )
 
+restart_service() {
+	service mosdns restart
+}
+
 case $script_action in
 	"dns")
 		interface_dns
@@ -88,13 +92,13 @@ case $script_action in
 		ad_block
 	;;
 	"geodata")
-		geodat_update && adlist_update
+		geodat_update && adlist_update && restart_service
 	;;
 	"logfile")
 		logfile_path
 	;;
 	"adlist_update")
-		adlist_update
+		adlist_update && restart_service
 	;;
 	*)
 		exit 0
