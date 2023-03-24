@@ -80,13 +80,23 @@ remote_dns_pipeline:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
 cache_size.datatype = "and(uinteger,min(0))"
-cache_size.default = "200000"
+cache_size.default = "20000"
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
 cache_size = s:option(Value, "cache_survival_time", translate("Cache Survival Time"))
 cache_size.datatype = "and(uinteger,min(0))"
-cache_size.default = "259200"
+cache_size.default = "86400"
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
+
+cache_dump = s:option(Flag, "dump_file", translate("Save Cache"), translate("Save the cache locally to reload the cache on the next startup"))
+cache_dump.rmempty = false
+cache_dump.default = false
+cache_dump:depends( "configfile", "/etc/mosdns/config.yaml")
+
+cache_dump = s:option(Value, "dump_interval", translate("Auto Save Cache Interval"))
+cache_dump.datatype = "and(uinteger,min(0))"
+cache_dump.default = "600"
+cache_dump:depends("dump_file", "1")
 
 minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
 minimal_ttl.datatype = "and(uinteger,min(0))"

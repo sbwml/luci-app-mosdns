@@ -139,6 +139,15 @@ msgstr "DNS 缓存大小（条）"
 msgid "Cache Survival Time"
 msgstr "缓存生存时间（秒）"
 
+msgid "Save Cache"
+msgstr "保存缓存"
+
+msgid "Save the cache locally to reload the cache on the next startup"
+msgstr "保存缓存到本地文件，以供下次启动时重新载入缓存"
+
+msgid "Auto Save Cache Interval"
+msgstr "自动保存缓存间隔（秒）"
+
 msgid "Minimum TTL"
 msgstr "覆盖最小 TTL 值（默认 0）"
 

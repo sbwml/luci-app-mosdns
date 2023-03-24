@@ -30,8 +30,10 @@ get_config() {
 	config_get enabled $1 enabled 0
 	config_get adblock $1 adblock 0
 	config_get ad_source $1 ad_source ""
-	config_get cache_size $1 cache_size 200000
-	config_get cache_survival_time $1 cache_survival_time 259200
+	config_get cache_size $1 cache_size 20000
+	config_get cache_survival_time $1 cache_survival_time 86400
+	config_get dump_file $1 dump_file 0
+	config_get dump_interval $1 dump_interval 600
 	config_get enable_pipeline $1 enable_pipeline 0
 	config_get geo_auto_update $1 geo_auto_update 0
 	config_get geo_update_day_time $1 geo_update_day_time 2
@@ -62,6 +64,7 @@ init_yaml() {
 	s,maximum_ttl_custom,$maximum_ttl_custom,g; \
 	s,adblock,$adlist,g;s,remote_dns_pipeline,$enable_pipeline,g" \
 	/usr/share/mosdns/default.yaml > $CONF
+	[ "$dump_file" -eq 1 ] && sed -i "/lazy_cache_ttl/a\      dump_file: /etc/mosdns/cache.dump\n      dump_interval: $dump_interval" $CONF
 	echo "${local_dns}" > $tmpdir/local_dns.txt
 	echo "${remote_dns}" > $tmpdir/remote_dns.txt
 	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d};/- addr: remote_dns/{r '$tmpdir/remote_dns.txt -e';d}' \

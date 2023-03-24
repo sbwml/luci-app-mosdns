@@ -10,6 +10,7 @@ LUCI_DEPENDS:=+mosdns +jsonfilter +luci-compat +curl +v2ray-geoip +v2ray-geosite
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/mosdns
+/etc/mosdns/cache.dump
 /etc/mosdns/config_custom.yaml
 /etc/mosdns/rule
 endef
