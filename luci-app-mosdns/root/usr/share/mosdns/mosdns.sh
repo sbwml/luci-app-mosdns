@@ -100,6 +100,9 @@ case $script_action in
 	"adlist_update")
 		adlist_update && restart_service
 	;;
+	"version")
+		mosdns version
+	;;
 	*)
 		exit 0
 	;;

@@ -1,5 +1,10 @@
+if nixio.fs.access("/usr/bin/mosdns") then
+    mosdns_version=luci.sys.exec("/usr/share/mosdns/mosdns.sh version")
+else
+    mosdns_version="Unknown Version"
+end
 m = Map("mosdns")
-m.title = translate("MosDNS")
+m.title = translate("MosDNS") .. " " .. mosdns_version
 m.description = translate("MosDNS is a 'programmable' DNS forwarder.")
 
 m:section(SimpleSection).template = "mosdns/mosdns_status"
