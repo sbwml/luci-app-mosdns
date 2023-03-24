@@ -60,11 +60,11 @@ init_yaml() {
 	s,maximum_ttl_custom,$maximum_ttl_custom,g; \
 	s,adblock,$adlist,g;s,remote_dns_pipeline,$enable_pipeline,g" \
 	/usr/share/mosdns/default.yaml > $CONF
-	[ "$custom_local_dns" -eq 0 ] && sed -i "/bootstrap/d" $CONF || \
 	echo "${local_dns}" > $tmpdir/local_dns.txt
 	echo "${remote_dns}" > $tmpdir/remote_dns.txt
 	sed -i -e '/- addr: local_dns/{r '$tmpdir/local_dns.txt -e';d};/- addr: remote_dns/{r '$tmpdir/remote_dns.txt -e';d}' \
 	$CONF
+	[ "$custom_local_dns" -eq 0 ] && sed -i "/bootstrap/d" $CONF
 	rm -rf $tmpdir
 }
 
