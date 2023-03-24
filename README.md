@@ -12,7 +12,7 @@
   # remove v2ray-geodata package from feeds (openwrt-22.03 & master)
   rm -rf feeds/packages/net/v2ray-geodata
 
-  git clone https://github.com/sbwml/luci-app-mosdns package/mosdns
+  git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
   git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
   make menuconfig # choose LUCI -> Applications -> luci-app-mosdns
   make V=s
@@ -25,7 +25,7 @@
   find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
   find ./ | grep Makefile | grep mosdns | xargs rm -f
 
-  git clone https://github.com/sbwml/luci-app-mosdns package/mosdns
+  git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
   git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
   make menuconfig # choose LUCI -> Applications -> luci-app-mosdns
   make V=s
@@ -45,11 +45,11 @@
 
 - Execute install script (Multi-architecture support)
   ```shell
-  sh -c "$(curl -ksS https://raw.githubusercontent.com/sbwml/luci-app-mosdns/v5-dev/install.sh)"
+  sh -c "$(curl -ksS https://raw.githubusercontent.com/sbwml/luci-app-mosdns/v5/install.sh)"
   ```
 
 --------------
 
-![](https://user-images.githubusercontent.com/16485166/206000249-3fdc64ea-cb4d-47f6-8247-c029f54e405e.png)
+![](https://user-images.githubusercontent.com/16485166/227606820-17d80ac6-844d-421d-b332-2f457a398b71.png)
 
 
