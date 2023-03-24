@@ -77,8 +77,10 @@ plugins:
   - tag: cache
     type: cache
     args:
-      size: 200000
-      lazy_cache_ttl: 259200
+      size: 20000
+      lazy_cache_ttl: 86400
+      dump_file: "/etc/mosdns/cache.dump"
+      dump_interval: 600
 
   # 转发至本地服务器
   - tag: forward_local
@@ -127,21 +129,19 @@ plugins:
         exec: accept
 
   # fallback 用本地服务器 sequence
-  # 返回不包含本地 ip 则 reject
+  # 返回非国内 ip 则 drop_resp
   - tag: query_is_local_ip
     type: sequence
     args:
       - exec: $local_sequence
-      - matches: resp_ip $geoip_cn
-        exec: accept
-      - exec: reject
+      - matches: "!resp_ip $geoip_cn"
+        exec: drop_resp
 
   # fallback 用远程服务器 sequence
   - tag: query_is_remote
     type: sequence
     args:
       - exec: $remote_sequence
-      - exec: accept
 
   # fallback 用远程服务器 sequence
   - tag: fallback
@@ -150,7 +150,7 @@ plugins:
       primary: query_is_local_ip
       secondary: query_is_remote
       threshold: 500
-      always_standby: false
+      always_standby: true
 
   # 查询国内域名
   - tag: query_is_local_domain

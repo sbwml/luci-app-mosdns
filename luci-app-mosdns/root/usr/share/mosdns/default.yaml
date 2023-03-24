@@ -116,15 +116,13 @@ plugins:
     type: sequence
     args:
       - exec: $local_sequence
-      - matches: resp_ip $geoip_cn
-        exec: accept
-      - exec: reject
+      - matches: "!resp_ip $geoip_cn"
+        exec: drop_resp
 
   - tag: query_is_remote
     type: sequence
     args:
       - exec: $remote_sequence
-      - exec: accept
 
   - tag: fallback
     type: fallback
@@ -132,7 +130,7 @@ plugins:
       primary: query_is_local_ip
       secondary: query_is_remote
       threshold: 500
-      always_standby: false
+      always_standby: true
 
   - tag: query_is_local_domain
     type: sequence
