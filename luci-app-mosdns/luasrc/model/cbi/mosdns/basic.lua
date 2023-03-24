@@ -78,7 +78,7 @@ bootstrap_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
 bootstrap_dns.default = "119.29.29.29"
 bootstrap_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
-remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("Connection Multiplexing (TCP/DoT)"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
+remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 remote_dns_pipeline.rmempty = false
 remote_dns_pipeline.default = false
 remote_dns_pipeline:depends( "configfile", "/etc/mosdns/config.yaml")
@@ -93,7 +93,7 @@ cache_size.datatype = "and(uinteger,min(0))"
 cache_size.default = "86400"
 cache_size:depends( "configfile", "/etc/mosdns/config.yaml")
 
-cache_dump = s:option(Flag, "dump_file", translate("Save Cache"), translate("Save the cache locally to reload the cache on the next startup"))
+cache_dump = s:option(Flag, "dump_file", translate("Cache Dump"), translate("Save the cache locally and reload the cache dump on the next startup"))
 cache_dump.rmempty = false
 cache_dump.default = false
 cache_dump:depends( "configfile", "/etc/mosdns/config.yaml")

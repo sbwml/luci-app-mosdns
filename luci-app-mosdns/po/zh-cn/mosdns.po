@@ -32,7 +32,7 @@ msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
 
 msgid "ADblock Source"
-msgstr "广告过滤来源"
+msgstr "广告过滤规则来源"
 
 msgid "Reload Service"
 msgstr "重载服务"
@@ -47,7 +47,7 @@ msgid "Geodata Update"
 msgstr "更新数据库"
 
 msgid "Update GeoIP & GeoSite dat"
-msgstr "更新 GeoIP & GeoSite 数据库"
+msgstr "更新广告规则、GeoIP & GeoSite 数据库"
 
 msgid "Update Time"
 msgstr "更新时间"
@@ -113,7 +113,7 @@ msgid "Local DNS"
 msgstr "本地 DNS"
 
 msgid "Follow WAN interface DNS if not enabled"
-msgstr "不启用则遵循 WAN 接口 DNS"
+msgstr "不启用则使用 WAN 接口 DNS"
 
 msgid "Upstream DNS servers"
 msgstr "上游 DNS 服务器"
@@ -122,13 +122,13 @@ msgid "Bootstrap DNS servers"
 msgstr "Bootstrap DNS 服务器"
 
 msgid "Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"
-msgstr "Bootstrap DNS 服务器用于解析你指定为上游的 DoH / DoT 解析器的 IP 地址"
+msgstr "Bootstrap DNS 服务器用于解析您指定为上游的 DoH / DoT 解析器的 IP 地址"
 
 msgid "Remote DNS"
 msgstr "远程 DNS"
 
-msgid "Connection Multiplexing (TCP/DoT)"
-msgstr "连接复用（TCP/DoT）"
+msgid "TCP/DoT Connection Multiplexing"
+msgstr "TCP/DoT 连接复用"
 
 msgid "Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"
 msgstr "启用 TCP/DoT RFC 7766 新型 Query Pipelining 连接复用模式"
@@ -139,11 +139,11 @@ msgstr "DNS 缓存大小（条）"
 msgid "Cache Survival Time"
 msgstr "缓存生存时间（秒）"
 
-msgid "Save Cache"
-msgstr "保存缓存"
+msgid "Cache Dump"
+msgstr "自动保存缓存"
 
-msgid "Save the cache locally to reload the cache on the next startup"
-msgstr "保存缓存到本地文件，以供下次启动时重新载入缓存"
+msgid "Save the cache locally and reload the cache dump on the next startup"
+msgstr "保存缓存到本地文件，以供下次启动时重新载入使用"
 
 msgid "Auto Save Cache Interval"
 msgstr "自动保存缓存间隔（秒）"
