@@ -25,7 +25,7 @@ interface_dns() (
 			echo $interface_status | jsonfilter -e "@['dns-server'][0]"
 			echo $interface_status | jsonfilter -e "@['dns-server'][1]"
 		fi
-		[ $? -ne 0 ] && echo "119.29.29.29"
+		[ $? -ne 0 ] && echo "119.29.29.29 223.5.5.5"
 	fi
 )
 
