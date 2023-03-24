@@ -13,7 +13,7 @@ logfile_path() (
 )
 
 interface_dns() (
-	if [ "$(uci -q get mosdns.config.custom_local_dns)" -eq 1 ]; then
+	if [ "$(uci -q get mosdns.config.custom_local_dns)" = 1 ]; then
 		uci -q get mosdns.config.local_dns
 	else
 		peerdns=$(uci -q get network.wan.peerdns)
@@ -31,7 +31,7 @@ interface_dns() (
 
 ad_block() (
 	adblock=$(uci -q get mosdns.config.adblock)
-	if [ "$adblock" -eq 1 ]; then
+	if [ "$adblock" = 1 ]; then
 		ad_source=$(uci -q get mosdns.config.ad_source)
 		if [ "$ad_source" = "geosite.dat" ]; then
 			echo "/var/mosdns/geosite_category-ads-all.txt"
