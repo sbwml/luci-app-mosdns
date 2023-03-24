@@ -122,7 +122,7 @@ msgid "Bootstrap DNS servers"
 msgstr "Bootstrap DNS 服务器"
 
 msgid "Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"
-msgstr "Bootstrap DNS 服务器用于解析所指定为上游的 DoH / DoT 解析器的 IP 地址"
+msgstr "Bootstrap DNS 服务器用于解析你指定为上游的 DoH / DoT 解析器的 IP 地址"
 
 msgid "Remote DNS"
 msgstr "远程 DNS"

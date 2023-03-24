@@ -51,17 +51,6 @@ custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
 custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
 custom_local_dns:depends("custom_local_dns", "1")
 
-custom_local_dns = s:option(ListValue, "bootstrap_dns", translate("Bootstrap DNS servers"), translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
-custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
-custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
-custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
-custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
-custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
-custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
-custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
-custom_local_dns.default = "119.29.29.29"
-custom_local_dns:depends("custom_local_dns", "1")
-
 remote_dns = s:option(DynamicList, "remote_dns", translate("Remote DNS"))
 remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
 remote_dns:value("tls://1.0.0.1", "1.0.0.1 (CloudFlare DNS)")
@@ -73,6 +62,17 @@ remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
 remote_dns:value("tls://208.67.222.222", "208.67.222.222 (Open DNS)")
 remote_dns:value("tls://208.67.220.220", "208.67.220.220 (Open DNS)")
 remote_dns:depends( "configfile", "/etc/mosdns/config.yaml")
+
+bootstrap_dns = s:option(ListValue, "bootstrap_dns", translate("Bootstrap DNS servers"), translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
+bootstrap_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+bootstrap_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+bootstrap_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+bootstrap_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+bootstrap_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+bootstrap_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+bootstrap_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+bootstrap_dns.default = "119.29.29.29"
+bootstrap_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
 remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("Remote DNS Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 remote_dns_pipeline.rmempty = false

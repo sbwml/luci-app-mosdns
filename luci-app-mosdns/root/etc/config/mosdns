@@ -16,6 +16,7 @@ config mosdns 'config'
 	option maximum_ttl '0'
 	option custom_local_dns '0'
 	option enable_pipeline '0'
+	option bootstrap_dns '119.29.29.29'
 	list remote_dns 'tls://8.8.8.8'
 	list remote_dns 'tls://1.1.1.1'
 
