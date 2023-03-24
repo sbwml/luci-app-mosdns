@@ -51,7 +51,9 @@ init_yaml() {
 	tmpdir=$(mktemp -d) || exit 1
 	adlist=$(/usr/share/mosdns/mosdns.sh ad)
 	[ $enable_pipeline = 1 ] && enable_pipeline=true || enable_pipeline=false
-	local_dns=$(/usr/share/mosdns/mosdns.sh dns | awk '{for(i=1;i<=NF;i++)printf "%s- addr: %s\n%s  bootstrap: '${bootstrap_dns}'\n",s,$i,s}' s='        ')
+	[ "$custom_local_dns" -eq 1 ] && \
+	local_dns=$(/usr/share/mosdns/mosdns.sh dns | awk '{for(i=1;i<=NF;i++)printf "%s- addr: %s\n%s  bootstrap: '${bootstrap_dns}'\n%s  enable_pipeline: '${enable_pipeline}'\n",s,$i,s,s}' s='        ') || \
+	local_dns=$(/usr/share/mosdns/mosdns.sh dns | awk '{for(i=1;i<=NF;i++)printf "%s- addr: %s\n",s,$i,s}' s='        ')
 	remote_dns=$(echo $remote_dns | awk '{for(i=1;i<=NF;i++)printf "%s- addr: %s\n%s  bootstrap: '${bootstrap_dns}'\n%s  enable_pipeline: '${enable_pipeline}'\n",s,$i,s,s}' s='        ')
 	sed "s,log_level,$log_level,g;s,log_file,$log_file,g; \
 	s,listen_port,$listen_port,g;s,cache_size,$cache_size,g; \

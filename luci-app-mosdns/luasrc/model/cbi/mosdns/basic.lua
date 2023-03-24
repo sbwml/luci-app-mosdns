@@ -40,10 +40,9 @@ redirect.default = true
 custom_local_dns = s:option(Flag, "custom_local_dns", translate("Local DNS"), translate("Follow WAN interface DNS if not enabled"))
 custom_local_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 custom_local_dns.default = false
-
 custom_local_dns = s:option(DynamicList, "local_dns", translate("Upstream DNS servers"))
-custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
-custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+custom_local_dns:value("tls://1.12.12.12", "1.12.12.12 (DNSPod DoT Primary)")
+custom_local_dns:value("tls://120.53.53.53", "120.53.53.53 (DNSPod DoT Secondary)")
 custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
 custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
 custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
@@ -74,7 +73,7 @@ bootstrap_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
 bootstrap_dns.default = "119.29.29.29"
 bootstrap_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 
-remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("Remote DNS Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
+remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("Connection Multiplexing (TCP/DoT)"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 remote_dns_pipeline.rmempty = false
 remote_dns_pipeline.default = false
 remote_dns_pipeline:depends( "configfile", "/etc/mosdns/config.yaml")

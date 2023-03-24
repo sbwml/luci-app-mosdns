@@ -127,8 +127,8 @@ msgstr "Bootstrap DNS 服务器用于解析你指定为上游的 DoH / DoT 解�
 msgid "Remote DNS"
 msgstr "远程 DNS"
 
-msgid "Remote DNS Connection Multiplexing"
-msgstr "远程 DNS 连接复用"
+msgid "Connection Multiplexing (TCP/DoT)"
+msgstr "连接复用（TCP/DoT）"
 
 msgid "Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"
 msgstr "启用 TCP/DoT RFC 7766 新型 Query Pipelining 连接复用模式"
