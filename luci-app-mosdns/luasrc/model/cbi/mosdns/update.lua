@@ -20,7 +20,7 @@ o.default = "*"
 
 update_time = s:option(ListValue, "geo_update_day_time", translate("Update Time"))
 for t = 0, 23 do
-  update_time:value(t, t..":00")
+    update_time:value(t, t..":00")
 end
 update_time.default = 0
 
