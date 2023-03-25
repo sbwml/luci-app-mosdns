@@ -81,7 +81,7 @@ geodat_update() (
 )
 
 restart_service() {
-    service mosdns restart
+    /etc/init.d/mosdns restart
 }
 
 case $script_action in
