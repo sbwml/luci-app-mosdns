@@ -95,14 +95,12 @@ plugins:
   - tag: local_sequence
     type: sequence
     args:
-      - exec: metrics_collector $forward_local
       - exec: $forward_local
 
   - tag: remote_sequence
     type: sequence
     args:
       - exec: prefer_ipv4
-      - exec: metrics_collector $forward_remote
       - exec: $forward_remote
 
   - tag: has_resp_sequence
@@ -149,7 +147,6 @@ plugins:
     args:
       - matches: qname $whitelist
         exec: $local_sequence
-      - exec: jump has_resp_sequence
 
   - tag: query_is_greylist_domain
     type: sequence
@@ -181,6 +178,7 @@ plugins:
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_whitelist_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_reject_domain
       - exec: $cache
       - exec: jump has_resp_sequence

@@ -99,7 +99,7 @@ plugins:
         - addr: tls://8.8.8.8
           enable_pipeline: false
 
-  # 修改ttl
+  # 修改ttl（默认0 不修改ttl）
   - tag: modify_ttl
     type: sequence
     args:
@@ -109,7 +109,6 @@ plugins:
   - tag: local_sequence
     type: sequence
     args:
-      - exec: metrics_collector $forward_local
       - exec: $forward_local
 
   # 国外解析
@@ -117,7 +116,6 @@ plugins:
     type: sequence
     args:
       - exec: prefer_ipv4
-      - exec: metrics_collector $forward_remote
       - exec: $forward_remote
 
   # 有响应终止返回
@@ -172,7 +170,6 @@ plugins:
     args:
       - matches: qname $whitelist
         exec: $local_sequence
-      - exec: jump has_resp_sequence
 
   # 查询灰名单
   - tag: query_is_greylist_domain
@@ -207,6 +204,7 @@ plugins:
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_whitelist_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_reject_domain
       - exec: $cache
       - exec: jump has_resp_sequence
