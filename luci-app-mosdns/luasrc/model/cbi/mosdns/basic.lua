@@ -46,13 +46,16 @@ custom_local_dns = s:option(Flag, "custom_local_dns", translate("Local DNS"), tr
 custom_local_dns:depends( "configfile", "/etc/mosdns/config.yaml")
 custom_local_dns.default = false
 custom_local_dns = s:option(DynamicList, "local_dns", translate("Upstream DNS servers"))
-custom_local_dns:value("tls://1.12.12.12", "1.12.12.12 (DNSPod DoT Primary)")
-custom_local_dns:value("tls://120.53.53.53", "120.53.53.53 (DNSPod DoT Secondary)")
+custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
 custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
 custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
 custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
 custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
 custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+custom_local_dns:value("https://doh.pub/dns-query", "DNSPod DoH")
+custom_local_dns:value("https://dns.alidns.com/dns-query", "AliDNS DoH")
+custom_local_dns:value("https://doh.360.cn/dns-query", "360DNS DoH")
 custom_local_dns:depends("custom_local_dns", "1")
 
 remote_dns = s:option(DynamicList, "remote_dns", translate("Remote DNS"))
