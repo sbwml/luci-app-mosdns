@@ -145,7 +145,11 @@ start_service() {
     delcron ; setcron
     [ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
     :> $($MOSDNS_SCRIPT logfile)
-    v2dat_dump >> $($MOSDNS_SCRIPT logfile) 2>&1
+    if [ "${log_level}" = "error" ] || [ "${log_level}" = "warn" ]; then
+        v2dat_dump > /dev/null 2>&1
+    else
+        v2dat_dump >> $($MOSDNS_SCRIPT logfile) 2>&1
+    fi
     procd_open_instance mosdns
     procd_set_param command $PROG start -c "$CONF"
     procd_set_param user root
