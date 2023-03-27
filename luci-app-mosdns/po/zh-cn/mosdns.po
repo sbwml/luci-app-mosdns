@@ -154,6 +154,12 @@ msgstr "最大连接数（默认 2）"
 msgid "Set the Maximum connections for DoH and pipeline's TCP/DoT, Except for the HTTP/3 protocol"
 msgstr "设置 DoH 和已启用 Query Pipelining 连接复用模式的 TCP/DoT 最大连接数，HTTP/3 协议除外"
 
+msgid "Idle Timeout"
+msgstr "空闲超时"
+
+msgid "DoH/TCP/DoT Connection Multiplexing idle timeout (default 30 seconds)"
+msgstr "DoH/TCP/DoT 连接复用空闲保持时间（默认 30 秒）"
+
 msgid "TCP/DoT Connection Multiplexing"
 msgstr "TCP/DoT 连接复用"
 

@@ -99,6 +99,11 @@ o.datatype = "and(uinteger,min(1))"
 o.default = "2"
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Value, "idle_timeout", translate("Idle Timeout"), translate("DoH/TCP/DoT Connection Multiplexing idle timeout (default 30 seconds)"))
+o.datatype = "and(uinteger,min(1))"
+o.default = "30"
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 o.rmempty = false
 o.default = false
