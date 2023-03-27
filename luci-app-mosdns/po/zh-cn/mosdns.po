@@ -25,6 +25,9 @@ msgstr "启用"
 msgid "Listen port"
 msgstr "监听端口"
 
+msgid "API Setting"
+msgstr "API 设置"
+
 msgid "Enabled API"
 msgstr "启用 API"
 
