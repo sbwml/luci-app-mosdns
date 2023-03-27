@@ -142,6 +142,12 @@ msgstr "Bootstrap DNS 服务器用于解析您指定为上游的 DoH / DoT 解�
 msgid "Remote DNS"
 msgstr "远程 DNS"
 
+msgid "Concurrent"
+msgstr "DNS 服务器并发数（默认 1）"
+
+msgid "DNS query request concurrency, The number of upstream DNS servers that are allowed to initiate requests at the same time"
+msgstr "DNS 查询请求并发数，允许同时发起请求的上游 DNS 服务器数量"
+
 msgid "TCP/DoT Connection Multiplexing"
 msgstr "TCP/DoT 连接复用"
 

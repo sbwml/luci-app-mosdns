@@ -88,6 +88,12 @@ o:depends("configfile", "/etc/mosdns/config.yaml")
 
 s:tab("advanced", translate("Advanced Options"))
 
+o = s:taboption("advanced", Value, "concurrent", translate("Concurrent"), translate("DNS query request concurrency, The number of upstream DNS servers that are allowed to initiate requests at the same time"))
+o.datatype = "and(uinteger,min(1))"
+o.datatype = "and(uinteger,max(3))"
+o.default = "1"
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 o.rmempty = false
 o.default = false

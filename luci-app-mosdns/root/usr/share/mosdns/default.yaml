@@ -83,12 +83,14 @@ plugins:
   - tag: forward_local
     type: forward
     args:
+      concurrent: concurrent_num
       upstreams:
         - addr: local_dns
 
   - tag: forward_remote
     type: forward
     args:
+      concurrent: concurrent_num
       upstreams:
         - addr: remote_dns
 

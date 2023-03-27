@@ -55,6 +55,7 @@ get_config() {
     config_get bootstrap_dns $1 bootstrap_dns "119.29.29.29"
     config_get enabled_api $1 enabled_api 0
     config_get listen_port_api $1 listen_port_api 9091
+    config_get concurrent $1 concurrent 1
 }
 
 init_yaml() {
@@ -70,6 +71,7 @@ init_yaml() {
     s,cache_survival_time,$cache_survival_time,g; \
     s,minimal_ttl_custom,$minimal_ttl_custom,g; \
     s,maximum_ttl_custom,$maximum_ttl_custom,g; \
+    s,concurrent_num,$concurrent,g; \
     s,adblock,$adlist,g;s,remote_dns_pipeline,$enable_pipeline,g" $DEFAULT_CONF > $CONF
     echo "${local_dns}" > $TMPDIR/local_dns.txt
     echo "${remote_dns}" > $TMPDIR/remote_dns.txt
