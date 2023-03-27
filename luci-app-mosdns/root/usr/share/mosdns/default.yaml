@@ -2,6 +2,11 @@ log:
   level: log_level
   file: "log_file"
 
+api:
+  http: "0.0.0.0:api_port"
+
+include: []
+
 plugins:
   - tag: geosite_cn
     type: domain_set

@@ -25,6 +25,12 @@ msgstr "启用"
 msgid "Listen port"
 msgstr "监听端口"
 
+msgid "Enabled API"
+msgstr "启用 API"
+
+msgid "API Listen port"
+msgstr "API 监听端口"
+
 msgid "Log Level"
 msgstr "日志等级"
 

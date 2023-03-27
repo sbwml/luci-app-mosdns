@@ -158,4 +158,15 @@ function o.write(self, section, value)
     fs.writefile("/etc/mosdns/config_custom.yaml", value)
 end
 
+s:tab("api", translate("API Setting"))
+
+o = s:taboption("api", Flag, "enabled_api", translate("Enabled API"))
+o:depends("configfile", "/etc/mosdns/config.yaml")
+o.default = false
+
+o = s:taboption("api", Value, "listen_port_api", translate("API Listen port"))
+o.datatype = "and(port,min(1))"
+o.default = 9091
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 return m
