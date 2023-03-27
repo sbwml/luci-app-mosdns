@@ -1,6 +1,12 @@
 msgid "Basic Setting"
 msgstr "基本设置"
 
+msgid "Basic Options"
+msgstr "基本选项"
+
+msgid "Advanced Options"
+msgstr "高级选项"
+
 msgid "MosDNS is a 'programmable' DNS forwarder."
 msgstr "MosDNS 是一个插件化的 DNS 转发/分流器。"
 
@@ -13,7 +19,7 @@ msgstr "未运行"
 msgid "Collecting data..."
 msgstr "获取数据中..."
 
-msgid "Enable"
+msgid "Enabled"
 msgstr "启用"
 
 msgid "Listen port"
@@ -33,6 +39,9 @@ msgstr "启用 DNS 广告过滤"
 
 msgid "ADblock Source"
 msgstr "广告过滤规则来源"
+
+msgid "When using custom rule sources, use the rule types supported by MosDNS"
+msgstr "使用自定义规则来源时，请使用 MosDNS 支持的规则类型"
 
 msgid "Reload Service"
 msgstr "重载服务"
@@ -151,8 +160,14 @@ msgstr "自动保存缓存间隔（秒）"
 msgid "Minimum TTL"
 msgstr "覆盖最小 TTL 值（默认 0）"
 
+msgid "Modify the Minimum TTL value (seconds) for DNS answer results, 0 indicating no modification"
+msgstr "修改 DNS 应答结果的最小 TTL 值 (秒)，0 表示不修改"
+
 msgid "Maximum TTL"
 msgstr "覆盖最大 TTL 值（默认 0）"
+
+msgid "Modify the Maximum TTL value (seconds) for DNS answer results, 0 indicating no modification"
+msgstr "修改 DNS 应答结果的最大 TTL 值（秒），0 表示不修改"
 
 msgid "Logs"
 msgstr "日志"

@@ -1,3 +1,6 @@
+local sys  = require "luci.sys"
+local http = require "luci.http"
+
 module("luci.controller.mosdns", package.seeall)
 
 function index()
@@ -21,22 +24,22 @@ end
 
 function act_status()
     local e = {}
-    e.running = luci.sys.call("pgrep -f mosdns >/dev/null") == 0
-    luci.http.prepare_content("application/json")
-    luci.http.write_json(e)
+    e.running = sys.call("pgrep -f mosdns >/dev/null") == 0
+    http.prepare_content("application/json")
+    http.write_json(e)
 end
 
 function get_log()
-    luci.http.write(luci.sys.exec("cat $(/usr/share/mosdns/mosdns.sh logfile)"))
+    http.write(sys.exec("cat $(/usr/share/mosdns/mosdns.sh logfile)"))
 end
 
 function clear_log()
-    luci.sys.call("cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)")
+    sys.call("cat /dev/null > $(/usr/share/mosdns/mosdns.sh logfile)")
 end
 
 function geo_update()
     local e = {}
-    e.updating = luci.sys.call("/usr/share/mosdns/mosdns.sh geodata >/dev/null") == 0
-    luci.http.prepare_content("application/json")
-    luci.http.write_json(e)
+    e.updating = sys.call("/usr/share/mosdns/mosdns.sh geodata >/dev/null") == 0
+    http.prepare_content("application/json")
+    http.write_json(e)
 end

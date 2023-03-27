@@ -1,5 +1,8 @@
-if nixio.fs.access("/usr/bin/mosdns") then
-    mosdns_version = luci.sys.exec("/usr/share/mosdns/mosdns.sh version")
+local fs   = require "nixio.fs"
+local sys  = require "luci.sys"
+
+if fs.access("/usr/bin/mosdns") then
+    mosdns_version = sys.exec("/usr/share/mosdns/mosdns.sh version")
 else
     mosdns_version = "Unknown Version"
 end
@@ -13,142 +16,146 @@ s = m:section(TypedSection, "mosdns")
 s.addremove = false
 s.anonymous = true
 
-enable = s:option(Flag, "enabled", translate("Enable"))
-enable.rmempty = false
+s:tab("basic", translate("Basic Options"))
 
-configfile = s:option(ListValue, "configfile", translate("Config File"))
-configfile:value("/etc/mosdns/config.yaml", translate("Default Config"))
-configfile:value("/etc/mosdns/config_custom.yaml", translate("Custom Config"))
-configfile.default = "/etc/mosdns/config.yaml"
+o = s:taboption("basic", Flag, "enabled", translate("Enabled"))
+o.rmempty = false
 
-listenport = s:option(Value, "listen_port", translate("Listen port"))
-listenport.datatype = "and(port,min(1))"
-listenport.default = 5335
-listenport:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", ListValue, "configfile", translate("Config File"))
+o:value("/etc/mosdns/config.yaml", translate("Default Config"))
+o:value("/etc/mosdns/config_custom.yaml", translate("Custom Config"))
+o.default = "/etc/mosdns/config.yaml"
 
-loglevel = s:option(ListValue, "log_level", translate("Log Level"))
-loglevel:value("debug", translate("Debug"))
-loglevel:value("info", translate("Info"))
-loglevel:value("warn", translate("Warning"))
-loglevel:value("error", translate("Error"))
-loglevel.default = "info"
-loglevel:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", Value, "listen_port", translate("Listen port"))
+o.datatype = "and(port,min(1))"
+o.default = 5335
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-logfile = s:option(Value, "logfile", translate("Log File"))
-logfile.placeholder = "/tmp/mosdns.log"
-logfile.default = "/tmp/mosdns.log"
-logfile:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", ListValue, "log_level", translate("Log Level"))
+o:value("debug", translate("Debug"))
+o:value("info", translate("Info"))
+o:value("warn", translate("Warning"))
+o:value("error", translate("Error"))
+o.default = "info"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-redirect = s:option(Flag, "redirect", translate("DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
-redirect.default = true
+o = s:taboption("basic", Value, "logfile", translate("Log File"))
+o.placeholder = "/tmp/mosdns.log"
+o.default = "/tmp/mosdns.log"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-custom_local_dns = s:option(Flag, "custom_local_dns", translate("Local DNS"), translate("Follow WAN interface DNS if not enabled"))
-custom_local_dns:depends( "configfile", "/etc/mosdns/config.yaml")
-custom_local_dns.default = false
-custom_local_dns = s:option(DynamicList, "local_dns", translate("Upstream DNS servers"))
-custom_local_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
-custom_local_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
-custom_local_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
-custom_local_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
-custom_local_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
-custom_local_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
-custom_local_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
-custom_local_dns:value("https://doh.pub/dns-query", "DNSPod DoH")
-custom_local_dns:value("https://dns.alidns.com/dns-query", "AliDNS DoH")
-custom_local_dns:value("https://doh.360.cn/dns-query", "360DNS DoH")
-custom_local_dns:depends("custom_local_dns", "1")
+o = s:taboption("basic", Flag, "redirect", translate("DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
+o.default = true
 
-remote_dns = s:option(DynamicList, "remote_dns", translate("Remote DNS"))
-remote_dns:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
-remote_dns:value("tls://1.0.0.1", "1.0.0.1 (CloudFlare DNS)")
-remote_dns:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
-remote_dns:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
-remote_dns:value("tls://9.9.9.9", "9.9.9.9 (Quad9 DNS)")
-remote_dns:value("tls://149.112.112.112", "149.112.112.112 (Quad9 DNS)")
-remote_dns:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
-remote_dns:value("tls://208.67.222.222", "208.67.222.222 (Open DNS)")
-remote_dns:value("tls://208.67.220.220", "208.67.220.220 (Open DNS)")
-remote_dns:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", Flag, "custom_local_dns", translate("Local DNS"), translate("Follow WAN interface DNS if not enabled"))
+o:depends( "configfile", "/etc/mosdns/config.yaml")
+o.default = false
+o = s:taboption("basic", DynamicList, "local_dns", translate("Upstream DNS servers"))
+o:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+o:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+o:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+o:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+o:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+o:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+o:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+o:value("https://doh.pub/dns-query", "DNSPod DoH")
+o:value("https://dns.alidns.com/dns-query", "AliDNS DoH")
+o:value("https://doh.360.cn/dns-query", "360DNS DoH")
+o:depends("custom_local_dns", "1")
 
-bootstrap_dns = s:option(ListValue, "bootstrap_dns", translate("Bootstrap DNS servers"), translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
-bootstrap_dns:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
-bootstrap_dns:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
-bootstrap_dns:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
-bootstrap_dns:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
-bootstrap_dns:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
-bootstrap_dns:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
-bootstrap_dns:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
-bootstrap_dns.default = "119.29.29.29"
-bootstrap_dns:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", DynamicList, "remote_dns", translate("Remote DNS"))
+o:value("tls://1.1.1.1", "1.1.1.1 (CloudFlare DNS)")
+o:value("tls://1.0.0.1", "1.0.0.1 (CloudFlare DNS)")
+o:value("tls://8.8.8.8", "8.8.8.8 (Google DNS)")
+o:value("tls://8.8.4.4", "8.8.4.4 (Google DNS)")
+o:value("tls://9.9.9.9", "9.9.9.9 (Quad9 DNS)")
+o:value("tls://149.112.112.112", "149.112.112.112 (Quad9 DNS)")
+o:value("tls://45.11.45.11", "45.11.45.11 (DNS.SB)")
+o:value("tls://208.67.222.222", "208.67.222.222 (Open DNS)")
+o:value("tls://208.67.220.220", "208.67.220.220 (Open DNS)")
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-remote_dns_pipeline = s:option(Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
-remote_dns_pipeline.rmempty = false
-remote_dns_pipeline.default = false
-remote_dns_pipeline:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("basic", ListValue, "bootstrap_dns", translate("Bootstrap DNS servers"), translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
+o:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
+o:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
+o:value("223.5.5.5", "223.5.5.5 (AliDNS Primary)")
+o:value("223.6.6.6", "223.6.6.6 (AliDNS Secondary)")
+o:value("114.114.114.114", "114.114.114.114 (114DNS Primary)")
+o:value("114.114.115.115", "114.114.115.115 (114DNS Secondary)")
+o:value("180.76.76.76", "180.76.76.76 (Baidu DNS)")
+o.default = "119.29.29.29"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-cache_size = s:option(Value, "cache_size", translate("DNS Cache Size"))
-cache_size.datatype = "and(uinteger,min(0))"
-cache_size.default = "20000"
-cache_size:depends("configfile", "/etc/mosdns/config.yaml")
+s:tab("advanced", translate("Advanced Options"))
 
-cache_size = s:option(Value, "cache_survival_time", translate("Cache Survival Time"))
-cache_size.datatype = "and(uinteger,min(0))"
-cache_size.default = "86400"
-cache_size:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("advanced", Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-cache_dump = s:option(Flag, "dump_file", translate("Cache Dump"), translate("Save the cache locally and reload the cache dump on the next startup"))
-cache_dump.rmempty = false
-cache_dump.default = false
-cache_dump:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"))
+o.datatype = "and(uinteger,min(0))"
+o.default = "20000"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-cache_dump = s:option(Value, "dump_interval", translate("Auto Save Cache Interval"))
-cache_dump.datatype = "and(uinteger,min(0))"
-cache_dump.default = "600"
-cache_dump:depends("dump_file", "1")
+o = s:taboption("advanced", Value, "cache_survival_time", translate("Cache Survival Time"))
+o.datatype = "and(uinteger,min(0))"
+o.default = "86400"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-minimal_ttl = s:option(Value, "minimal_ttl", translate("Minimum TTL"))
-minimal_ttl.datatype = "and(uinteger,min(0))"
-minimal_ttl.datatype = "and(uinteger,max(3600))"
-minimal_ttl.default = "0"
-minimal_ttl:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("advanced", Flag, "dump_file", translate("Cache Dump"), translate("Save the cache locally and reload the cache dump on the next startup"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-maximum_ttl = s:option(Value, "maximum_ttl", translate("Maximum TTL"))
-maximum_ttl.datatype = "and(uinteger,min(0))"
-maximum_ttl.default = "0"
-maximum_ttl:depends("configfile", "/etc/mosdns/config.yaml")
+o = s:taboption("advanced", Value, "dump_interval", translate("Auto Save Cache Interval"))
+o.datatype = "and(uinteger,min(0))"
+o.default = "600"
+o:depends("dump_file", "1")
 
-adblock = s:option(Flag, "adblock", translate("Enable DNS ADblock"))
-adblock:depends("configfile", "/etc/mosdns/config.yaml")
-adblock.default = false
+o = s:taboption("advanced", Value, "minimal_ttl", translate("Minimum TTL"), translate("Modify the Minimum TTL value (seconds) for DNS answer results, 0 indicating no modification"))
+o.datatype = "and(uinteger,min(0))"
+o.datatype = "and(uinteger,max(3600))"
+o.default = "0"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-adblock = s:option(Value, "ad_source", translate("ADblock Source"))
-adblock:depends("adblock", "1")
-adblock.default = "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt"
-adblock:value("geosite.dat", "v2ray-geosite")
-adblock:value("https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt", "anti-AD")
-adblock:value("https://raw.githubusercontent.com/ookangzheng/dbl-oisd-nl/master/dbl_light.txt", "oisd (small)")
-adblock:value("https://raw.githubusercontent.com/ookangzheng/dbl-oisd-nl/master/dbl.txt", "oisd (big)")
-adblock:value("https://raw.githubusercontent.com/QiuSimons/openwrt-mos/master/dat/serverlist.txt", "QiuSimons/openwrt-mos")
+o = s:taboption("advanced", Value, "maximum_ttl", translate("Maximum TTL"), translate("Modify the Maximum TTL value (seconds) for DNS answer results, 0 indicating no modification"))
+o.datatype = "and(uinteger,min(0))"
+o.default = "0"
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
-reload_service = s:option( Button, "_reload", translate("Reload Service"), translate("Reload service to take effect of new configuration"))
-reload_service.write = function()
-  luci.sys.exec("/etc/init.d/mosdns reload")
+o = s:taboption("advanced", Flag, "adblock", translate("Enable DNS ADblock"))
+o:depends("configfile", "/etc/mosdns/config.yaml")
+o.default = false
+
+o = s:taboption("advanced", Value, "ad_source", translate("ADblock Source"), translate("When using custom rule sources, use the rule types supported by MosDNS"))
+o:depends("adblock", "1")
+o.default = "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt"
+o:value("geosite.dat", "v2ray-geosite")
+o:value("https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt", "anti-AD")
+o:value("https://raw.githubusercontent.com/ookangzheng/dbl-oisd-nl/master/dbl_light.txt", "oisd (small)")
+o:value("https://raw.githubusercontent.com/ookangzheng/dbl-oisd-nl/master/dbl.txt", "oisd (big)")
+o:value("https://raw.githubusercontent.com/QiuSimons/openwrt-mos/master/dat/serverlist.txt", "QiuSimons/openwrt-mos")
+
+o = s:taboption("basic",  Button, "_reload", translate("Reload Service"), translate("Reload service to take effect of new configuration"))
+o.write = function()
+  sys.exec("/etc/init.d/mosdns reload")
 end
-reload_service:depends("configfile", "/etc/mosdns/config_custom.yaml")
+o:depends("configfile", "/etc/mosdns/config_custom.yaml")
 
-config = s:option(TextValue, "manual-config")
-config.description = translate("<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>")
-config.template = "cbi/tvalue"
-config.rows = 25
-config:depends("configfile", "/etc/mosdns/config_custom.yaml")
+o = s:taboption("basic", TextValue, "manual-config")
+o.description = translate("<font color=\"ff0000\"><strong>View the Custom YAML Configuration file used by this MosDNS. You can edit it as you own need.</strong></font>")
+o.template = "cbi/tvalue"
+o.rows = 25
+o:depends("configfile", "/etc/mosdns/config_custom.yaml")
 
-function config.cfgvalue(self, section)
-    return nixio.fs.readfile("/etc/mosdns/config_custom.yaml")
+function o.cfgvalue(self, section)
+    return fs.readfile("/etc/mosdns/config_custom.yaml")
 end
 
-function config.write(self, section, value)
+function o.write(self, section, value)
     value = value:gsub("\r\n?", "\n")
-    nixio.fs.writefile("/etc/mosdns/config_custom.yaml", value)
+    fs.writefile("/etc/mosdns/config_custom.yaml", value)
 end
 
 return m
