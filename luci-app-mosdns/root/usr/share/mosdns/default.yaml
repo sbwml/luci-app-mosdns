@@ -108,6 +108,7 @@ plugins:
     type: sequence
     args:
       - exec: prefer_ipv4
+      - exec: ecs_remote
       - exec: $forward_remote
 
   - tag: has_resp_sequence
