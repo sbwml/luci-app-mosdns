@@ -160,6 +160,12 @@ msgstr "TCP/DoT 连接复用"
 msgid "Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"
 msgstr "启用 TCP/DoT RFC 7766 新型 Query Pipelining 连接复用模式"
 
+msgid "Disable TLS Certificate"
+msgstr "禁用 TLS 证书"
+
+msgid "Disable TLS Servers certificate validation, Can be useful if system CA certificate expires or the system time is out of order"
+msgstr "禁用 TLS 服务器证书验证，当系统 CA 证书过期或系统时间错乱时，本选项可能会有用"
+
 msgid "DNS Cache Size"
 msgstr "DNS 缓存大小（条）"
 

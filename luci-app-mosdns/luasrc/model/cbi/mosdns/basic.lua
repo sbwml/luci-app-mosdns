@@ -104,6 +104,11 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Flag, "insecure_skip_verify", translate("Disable TLS Certificate"), translate("Disable TLS Servers certificate validation, Can be useful if system CA certificate expires or the system time is out of order"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"))
 o.datatype = "and(uinteger,min(0))"
 o.default = "20000"
