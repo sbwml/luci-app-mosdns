@@ -114,6 +114,11 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Flag, "enable_http3", translate("Enable HTTP/3"), translate("Enable DoH HTTP/3 protocol support for remote DNS, Upstream DNS server support is required (Experimental)"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"))
 o.datatype = "and(uinteger,min(0))"
 o.default = "20000"
