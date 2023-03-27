@@ -94,6 +94,11 @@ o.datatype = "and(uinteger,max(3))"
 o.default = "1"
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Value, "max_conns", translate("Maximum Connections"), translate("Set the Maximum connections for DoH and pipeline's TCP/DoT, Except for the HTTP/3 protocol"))
+o.datatype = "and(uinteger,min(1))"
+o.default = "2"
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Flag, "enable_pipeline", translate("TCP/DoT Connection Multiplexing"), translate("Enable TCP/DoT RFC 7766 new Query Pipelining connection multiplexing mode"))
 o.rmempty = false
 o.default = false
