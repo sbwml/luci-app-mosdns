@@ -6,6 +6,7 @@ local grey_list_file = "/etc/mosdns/rule/greylist.txt"
 local hosts_list_file = "/etc/mosdns/rule/hosts.txt"
 local redirect_list_file = "/etc/mosdns/rule/redirect.txt"
 local local_ptr_file = "/etc/mosdns/rule/local-ptr.txt"
+local ddns_list_file = "/etc/mosdns/rule/ddnslist.txt"
 
 m = Map("mosdns")
 
@@ -15,6 +16,7 @@ s.anonymous = true
 s:tab("white_list", translate("White Lists"))
 s:tab("block_list", translate("Block Lists"))
 s:tab("grey_list", translate("Grey Lists"))
+s:tab("ddns_list", translate("DDNS Lists"))
 s:tab("hosts_list", translate("Hosts"))
 s:tab("redirect_list", translate("Redirect"))
 s:tab("local_ptr_list", translate("Block PTR"))
@@ -45,6 +47,16 @@ o.wrap = "off"
 o.cfgvalue = function(self, section) return nixio.fs.readfile(grey_list_file) or "" end
 o.write = function(self, section, value) nixio.fs.writefile(grey_list_file, value:gsub("\r\n", "\n")) end
 o.remove = function(self, section, value) nixio.fs.writefile(grey_list_file, "") end
+o.validate = function(self, value)
+    return value
+end
+
+o = s:taboption("ddns_list", TextValue, "ddns", "", "<font color='red'>" .. translate("These domains are always resolved using local DNS. And force TTL 5 seconds, DNS resolution results will not enter the cache. For example: myddns.example.com.") .. "</font>" .. "<font color='#00bd3e'>" .. translate("<br>The list of rules only apply to 'Default Config' profiles.") .. "</font>")
+o.rows = 15
+o.wrap = "off"
+o.cfgvalue = function(self, section) return nixio.fs.readfile(ddns_list_file) or "" end
+o.write = function(self, section, value) nixio.fs.writefile(ddns_list_file, value:gsub("\r\n", "\n")) end
+o.remove = function(self, section, value) nixio.fs.writefile(ddns_list_file, "") end
 o.validate = function(self, value)
     return value
 end

@@ -44,6 +44,12 @@ plugins:
       files:
         - "/etc/mosdns/rule/greylist.txt"
 
+  - tag: ddnslist
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/ddnslist.txt"
+
   - tag: hosts
     type: hosts
     args:
@@ -138,6 +144,15 @@ plugins:
       threshold: 500
       always_standby: true
 
+  - tag: query_is_ddns_domain
+    type: sequence
+    args:
+      - matches: qname $ddnslist
+        exec: ttl 5
+      - exec: $forward_local
+      - matches: has_resp
+        exec: accept
+
   - tag: query_is_local_domain
     type: sequence
     args:
@@ -187,6 +202,7 @@ plugins:
       - exec: jump has_resp_sequence
       - exec: $redirect
       - exec: jump has_resp_sequence
+      - exec: $query_is_ddns_domain
       - exec: $query_is_whitelist_domain
       - exec: $query_is_reject_domain
       - exec: $cache
