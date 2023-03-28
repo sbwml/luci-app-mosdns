@@ -94,6 +94,10 @@ ecs_remote() {
     echo "ecs ${ipaddr%.*}.0/24"
 }
 
+flush_cache() {
+    curl -s 127.0.0.1:$(uci -q get mosdns.config.listen_port_api)/plugins/cache/flush || exit 1
+}
+
 case $script_action in
     "dns")
         interface_dns
@@ -115,6 +119,9 @@ case $script_action in
     ;;
     "ecs_remote")
         ecs_remote
+    ;;
+    "flush")
+        flush_cache
     ;;
     "version")
         mosdns version

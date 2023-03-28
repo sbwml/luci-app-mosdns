@@ -20,6 +20,7 @@ function index()
     entry({"admin", "services", "mosdns", "get_log"}, call("get_log")).leaf = true
     entry({"admin", "services", "mosdns", "clear_log"}, call("clear_log")).leaf = true
     entry({"admin", "services", "mosdns", "geo_update"}, call("geo_update")).leaf = true
+    entry({"admin", "services", "mosdns", "flush_cache"}, call("flush_cache")).leaf = true
 end
 
 function act_status()
@@ -40,6 +41,13 @@ end
 function geo_update()
     local e = {}
     e.updating = sys.call("/usr/share/mosdns/mosdns.sh geodata >/dev/null") == 0
+    http.prepare_content("application/json")
+    http.write_json(e)
+end
+
+function flush_cache()
+    local e = {}
+    e.flushing = sys.call("/usr/share/mosdns/mosdns.sh flush >/dev/null") == 0
     http.prepare_content("application/json")
     http.write_json(e)
 end

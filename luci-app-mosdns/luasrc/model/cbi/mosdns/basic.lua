@@ -170,7 +170,7 @@ o:value("https://raw.githubusercontent.com/QiuSimons/openwrt-mos/master/dat/serv
 
 o = s:taboption("basic",  Button, "_reload", translate("Reload Service"), translate("Reload service to take effect of new configuration"))
 o.write = function()
-  sys.exec("/etc/init.d/mosdns reload")
+    sys.exec("/etc/init.d/mosdns reload")
 end
 o:depends("configfile", "/etc/mosdns/config_custom.yaml")
 
@@ -199,5 +199,10 @@ o = s:taboption("api", Value, "listen_port_api", translate("API Listen port"))
 o.datatype = "and(port,min(1))"
 o.default = 9091
 o:depends("configfile", "/etc/mosdns/config.yaml")
+
+o = s:taboption("api", Button, "flush_cache", translate("Flush Cache"), translate("Flushing Cache will clear any IP addresses or DNS records from MosDNS cache"))
+o.rawhtml = true
+o.template = "mosdns/mosdns_flush_cache"
+o:depends("enabled_api", "1")
 
 return m

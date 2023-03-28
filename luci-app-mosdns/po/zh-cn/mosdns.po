@@ -34,6 +34,21 @@ msgstr "启用 API"
 msgid "API Listen port"
 msgstr "API 监听端口"
 
+msgid "Flush Cache"
+msgstr "刷新缓存"
+
+msgid "Flushing Cache will clear any IP addresses or DNS records from MosDNS cache"
+msgstr "刷新缓存会清空 MosDNS 所有 IP 地址和 DNS 解析缓存"
+
+msgid "Flushing..."
+msgstr "正在刷新..."
+
+msgid "Flushing Success"
+msgstr "刷新成功"
+
+msgid "Flushing Failed, Please check if the API is enabled"
+msgstr "刷新失败，请检查 API 是否已启用"
+
 msgid "Log Level"
 msgstr "日志等级"
 
