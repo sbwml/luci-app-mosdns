@@ -154,7 +154,9 @@ plugins:
     type: sequence
     args:
       - matches: qname $whitelist
-        exec: $local_sequence
+        exec: $cache
+      - exec: $local_sequence
+      - exec: jump has_resp_sequence
 
   - tag: query_is_greylist_domain
     type: sequence
@@ -186,7 +188,6 @@ plugins:
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_whitelist_domain
-      - exec: jump has_resp_sequence
       - exec: $query_is_reject_domain
       - exec: $cache
       - exec: jump has_resp_sequence
