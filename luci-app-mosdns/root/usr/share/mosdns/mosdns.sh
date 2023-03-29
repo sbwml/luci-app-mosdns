@@ -98,6 +98,22 @@ flush_cache() {
     curl -s 127.0.0.1:$(uci -q get mosdns.config.listen_port_api)/plugins/cache/flush || exit 1
 }
 
+v2dat_dump() {
+    # env
+    v2dat_dir=/usr/share/v2ray
+    adblock=$(uci -q get mosdns.config.adblock)
+    ad_source=$(uci -q get mosdns.config.ad_source)
+    configfile=$(uci -q get mosdns.config.configfile)
+    mkdir -p /var/mosdns
+    rm -f /var/mosdns/geo*.txt
+    # default config
+    if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then
+        v2dat unpack geoip -o /var/mosdns -f cn $v2dat_dir/geoip.dat
+        v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $v2dat_dir/geosite.dat
+        [ "$adblock" -eq 1 ] && [ "$ad_source" = "geosite.dat" ] && v2dat unpack geosite -o /var/mosdns -f category-ads-all $v2dat_dir/geosite.dat
+    fi
+}
+
 case $script_action in
     "dns")
         interface_dns
@@ -122,6 +138,9 @@ case $script_action in
     ;;
     "flush")
         flush_cache
+    ;;
+    "v2dat_dump")
+        v2dat_dump
     ;;
     "version")
         mosdns version

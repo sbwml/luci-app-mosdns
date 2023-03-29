@@ -26,7 +26,6 @@ USE_PROCD=1
 PROG=/usr/bin/mosdns
 CONF=$(uci -q get mosdns.config.configfile)
 CRON_FILE=/etc/crontabs/root
-V2DAT_DIR=/usr/share/v2ray
 DUMP_FILE=/etc/mosdns/cache.dump
 DUMP_FILE_DEFAULT=/usr/share/mosdns/cache.dump
 DEFAULT_CONF=/usr/share/mosdns/default.yaml
@@ -150,11 +149,7 @@ delcron() {
 }
 
 v2dat_dump() {
-    mkdir -p /var/mosdns
-    rm -f /var/mosdns/geo*.txt
-    v2dat unpack geoip -o /var/mosdns -f cn $V2DAT_DIR/geoip.dat
-    v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $V2DAT_DIR/geosite.dat
-    [ "$adblock" -eq 1 ] && [ "$ad_source" = "geosite.dat" ] && v2dat unpack geosite -o /var/mosdns -f category-ads-all $V2DAT_DIR/geosite.dat
+    $MOSDNS_SCRIPT v2dat_dump
 }
 
 start_service() {
