@@ -106,11 +106,19 @@ v2dat_dump() {
     configfile=$(uci -q get mosdns.config.configfile)
     mkdir -p /var/mosdns
     rm -f /var/mosdns/geo*.txt
-    # default config
     if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then
+        # default config
         v2dat unpack geoip -o /var/mosdns -f cn $v2dat_dir/geoip.dat
         v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $v2dat_dir/geosite.dat
         [ "$adblock" -eq 1 ] && [ "$ad_source" = "geosite.dat" ] && v2dat unpack geosite -o /var/mosdns -f category-ads-all $v2dat_dir/geosite.dat
+    else
+        # custom config
+        v2dat unpack geoip -o /var/mosdns -f cn $v2dat_dir/geoip.dat
+        v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $v2dat_dir/geosite.dat
+        geoip_tags=$(uci -q get mosdns.config.geoip_tags)
+        geosite_tags=$(uci -q get mosdns.config.geosite_tags)
+        [ -n "$geoip_tags" ] && v2dat unpack geoip -o /var/mosdns $(echo $geoip_tags | sed -r 's/\w+/-f &/g') $v2dat_dir/geoip.dat
+        [ -n "$geosite_tags" ] && v2dat unpack geosite -o /var/mosdns $(echo $geosite_tags | sed -r 's/\w+/-f &/g') $v2dat_dir/geosite.dat
     fi
 }
 

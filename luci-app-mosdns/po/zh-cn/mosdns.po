@@ -288,3 +288,21 @@ msgstr "PTR 黑名单"
 
 msgid "These domains are blocked from PTR requests"
 msgstr "加入的域名将阻止 PTR 请求（每个域名一行，支持域名匹配规则）"
+
+msgid "GeoData Export"
+msgstr "GeoData 导出"
+
+msgid "GeoSite Tags"
+msgstr "GeoSite 标签"
+
+msgid "Enter the GeoSite.dat category to be exported, Allow add multiple tags"
+msgstr "填写需要导出的 GeoSite.dat 类别条目，允许添加多个标签"
+
+msgid "GeoIP Tags"
+msgstr "GeoIP 标签"
+
+msgid "Enter the GeoIP.dat category to be exported, Allow add multiple tags"
+msgstr "输入需要导出的 GeoIP.dat 类别条目，允许添加多个标签"
+
+msgid "Export directory: /var/mosdns"
+msgstr "导出目录：/var/mosdns"

@@ -205,4 +205,12 @@ o.rawhtml = true
 o.template = "mosdns/mosdns_flush_cache"
 o:depends("enabled_api", "1")
 
+s:tab("geodata", translate("GeoData Export"))
+
+o = s:taboption("geodata", DynamicList, "geosite_tags", translate("GeoSite Tags"), translate("Enter the GeoSite.dat category to be exported, Allow add multiple tags") .. '<br />' .. translate("Export directory: /var/mosdns"))
+o:depends("configfile", "/etc/mosdns/config_custom.yaml")
+
+o = s:taboption("geodata", DynamicList, "geoip_tags", translate("GeoIP Tags"), translate("Enter the GeoIP.dat category to be exported, Allow add multiple tags") .. '<br />' .. translate("Export directory: /var/mosdns"))
+o:depends("configfile", "/etc/mosdns/config_custom.yaml")
+
 return m
