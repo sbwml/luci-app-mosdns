@@ -80,7 +80,7 @@ plugins:
       files:
         - "/usr/share/mosdns/sp_low.tdata"
 
-  - tag: cache
+  - tag: lazy_cache
     type: cache
     args:
       size: cache_size
@@ -105,6 +105,11 @@ plugins:
     args:
       - exec: ttl minimal_ttl_custom-maximum_ttl_custom
 
+  - tag: modify_ddns_ttl
+    type: sequence
+    args:
+      - exec: ttl 5-5
+
   - tag: local_sequence
     type: sequence
     args:
@@ -120,7 +125,10 @@ plugins:
   - tag: has_resp_sequence
     type: sequence
     args:
-      - exec: $modify_ttl
+      - matches: qname $ddnslist
+        exec: $modify_ddns_ttl
+      - matches: "!qname $ddnslist"
+        exec: $modify_ttl
       - matches: has_resp
         exec: accept
 
@@ -148,10 +156,7 @@ plugins:
     type: sequence
     args:
       - matches: qname $ddnslist
-        exec: ttl 5
-      - exec: $forward_local
-      - matches: has_resp
-        exec: accept
+        exec: $local_sequence
 
   - tag: query_is_local_domain
     type: sequence
@@ -169,9 +174,7 @@ plugins:
     type: sequence
     args:
       - matches: qname $whitelist
-        exec: $cache
-      - exec: $local_sequence
-      - exec: jump has_resp_sequence
+        exec: $local_sequence
 
   - tag: query_is_greylist_domain
     type: sequence
@@ -195,17 +198,30 @@ plugins:
       - matches: qtype 65
         exec: reject 3
 
+  - tag: cache
+    type: sequence
+    args:
+      - matches:
+        - "!qname $ddnslist"
+        - "!qname $blocklist"
+        - "!qname $adlist"
+        - "!qname $sp_low"
+        - "!qname $local_ptr"
+        exec: $lazy_cache
+
   - tag: main_sequence
     type: sequence
     args:
       - exec: $hosts
       - exec: jump has_resp_sequence
+      - exec: $cache
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_ddns_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_whitelist_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_reject_domain
-      - exec: $cache
       - exec: jump has_resp_sequence
       - exec: $query_is_greylist_domain
       - exec: jump has_resp_sequence

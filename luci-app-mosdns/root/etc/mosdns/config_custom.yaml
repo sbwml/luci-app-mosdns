@@ -2,6 +2,12 @@ log:
   level: info
   file: "/tmp/mosdns.log"
 
+# API 入口设置
+api:
+  http: "0.0.0.0:9091"
+
+include: []
+
 plugins:
   # 国内域名
   - tag: geosite_cn
@@ -45,6 +51,13 @@ plugins:
       files:
         - "/etc/mosdns/rule/greylist.txt"
 
+  # DDNS域名 加入的域名始终使用 “本地 DNS” 进行解析，并且修改 TTL 为 5 秒，解析结果不进行缓存
+  - tag: ddnslist
+    type: domain_set
+    args:
+      files:
+        - "/etc/mosdns/rule/ddnslist.txt"
+
   # 自定义 Hosts 重写
   - tag: hosts
     type: hosts
@@ -74,7 +87,7 @@ plugins:
         - "/usr/share/mosdns/sp_low.tdata"
 
   # 缓存
-  - tag: cache
+  - tag: lazy_cache
     type: cache
     args:
       size: 20000
@@ -105,6 +118,12 @@ plugins:
     args:
       - exec: ttl 0-0
 
+  # 修改 ddns 域名 ttl（默认 5秒）
+  - tag: modify_ddns_ttl
+    type: sequence
+    args:
+      - exec: ttl 5-5
+
   # 国内解析
   - tag: local_sequence
     type: sequence
@@ -118,11 +137,14 @@ plugins:
       - exec: prefer_ipv4
       - exec: $forward_remote
 
-  # 有响应终止返回
+  # 有响应则修改 TTL 并终止返回
   - tag: has_resp_sequence
     type: sequence
     args:
-      - exec: $modify_ttl
+      - matches: qname $ddnslist
+        exec: $modify_ddns_ttl
+      - matches: "!qname $ddnslist"
+        exec: $modify_ttl
       - matches: has_resp
         exec: accept
 
@@ -150,6 +172,13 @@ plugins:
       threshold: 500
       always_standby: true
 
+  # 查询 DDNS 域名
+  - tag: query_is_ddns_domain
+    type: sequence
+    args:
+      - matches: qname $ddnslist
+        exec: $local_sequence
+
   # 查询国内域名
   - tag: query_is_local_domain
     type: sequence
@@ -169,9 +198,7 @@ plugins:
     type: sequence
     args:
       - matches: qname $whitelist
-        exec: $cache
-      - exec: $local_sequence
-      - exec: jump has_resp_sequence
+        exec: $local_sequence
 
   # 查询灰名单
   - tag: query_is_greylist_domain
@@ -195,6 +222,17 @@ plugins:
       - matches: qtype 65
         exec: reject 3
 
+  # 非 拒绝名单 或 DDNS域名 则启用缓存
+  - tag: cache
+    type: sequence
+    args:
+      - matches:
+        - "!qname $ddnslist"
+        - "!qname $blocklist"
+        - "!qname $sp_low"
+        - "!qname $local_ptr"
+        exec: $lazy_cache
+
   # 主要的运行逻辑插件
   # sequence 插件中调用的插件 tag 必须在 sequence 前定义，
   # 否则 sequence 找不到对应插件。
@@ -203,11 +241,14 @@ plugins:
     args:
       - exec: $hosts
       - exec: jump has_resp_sequence
+      - exec: $cache
       - exec: $redirect
       - exec: jump has_resp_sequence
+      - exec: $query_is_ddns_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_whitelist_domain
+      - exec: jump has_resp_sequence
       - exec: $query_is_reject_domain
-      - exec: $cache
       - exec: jump has_resp_sequence
       - exec: $query_is_greylist_domain
       - exec: jump has_resp_sequence
