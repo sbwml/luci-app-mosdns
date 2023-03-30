@@ -52,7 +52,6 @@ get_config() {
     config_get remote_dns $1 remote_dns "tls://8.8.8.8 tls://1.1.1.1"
     config_get custom_local_dns $1 custom_local_dns 0
     config_get bootstrap_dns $1 bootstrap_dns "119.29.29.29"
-    config_get enabled_api $1 enabled_api 0
     config_get listen_port_api $1 listen_port_api 9091
     config_get concurrent $1 concurrent 1
     config_get max_conns $1 max_conns 2
@@ -77,13 +76,11 @@ init_yaml() {
     s,cache_survival_time,$cache_survival_time,g; \
     s,minimal_ttl_custom,$minimal_ttl_custom,g; \
     s,maximum_ttl_custom,$maximum_ttl_custom,g; \
-    s,concurrent_num,$concurrent,g; \
+    s,concurrent_num,$concurrent,g;s,api_port,$listen_port_api,g; \
     s,adblock,$adlist,g;s,remote_dns_pipeline,$enable_pipeline,g" $DEFAULT_CONF > $CONF
     echo "${local_dns}" > $TMPDIR/local_dns.txt
     echo "${remote_dns}" > $TMPDIR/remote_dns.txt
     sed -i -e '/- addr: local_dns/{r '$TMPDIR/local_dns.txt -e';d};/- addr: remote_dns/{r '$TMPDIR/remote_dns.txt -e';d}' $CONF
-    [ "$enabled_api" -eq 1 ] && sed -i "s/api_port/$listen_port_api/g" $CONF
-    [ "$enabled_api" -eq 0 ] && sed -i "/api:/d;/http:/d;" $CONF
     [ "$dump_file" -eq 1 ] && sed -i "/lazy_cache_ttl/a\      dump_file: $DUMP_FILE\n      dump_interval: $dump_interval" $CONF
     [ "$dump_file" -eq 1 ] && [ ! -f $DUMP_FILE ] && cp -a $DUMP_FILE_DEFAULT $DUMP_FILE
     [ "$dump_file" -eq 0 ] && \cp -a $DUMP_FILE_DEFAULT $DUMP_FILE

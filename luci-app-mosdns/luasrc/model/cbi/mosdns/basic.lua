@@ -189,11 +189,7 @@ function o.write(self, section, value)
     fs.writefile("/etc/mosdns/config_custom.yaml", value)
 end
 
-s:tab("api", translate("API Setting"))
-
-o = s:taboption("api", Flag, "enabled_api", translate("Enabled API"))
-o:depends("configfile", "/etc/mosdns/config.yaml")
-o.default = false
+s:tab("api", translate("API Options"))
 
 o = s:taboption("api", Value, "listen_port_api", translate("API Listen port"))
 o.datatype = "and(port,min(1))"
@@ -203,7 +199,7 @@ o:depends("configfile", "/etc/mosdns/config.yaml")
 o = s:taboption("api", Button, "flush_cache", translate("Flush Cache"), translate("Flushing Cache will clear any IP addresses or DNS records from MosDNS cache"))
 o.rawhtml = true
 o.template = "mosdns/mosdns_flush_cache"
-o:depends("enabled_api", "1")
+o:depends("configfile", "/etc/mosdns/config.yaml")
 
 s:tab("geodata", translate("GeoData Export"))
 

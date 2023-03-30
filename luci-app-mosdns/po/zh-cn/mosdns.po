@@ -7,6 +7,9 @@ msgstr "基本选项"
 msgid "Advanced Options"
 msgstr "高级选项"
 
+msgid "API Options"
+msgstr "API 选项"
+
 msgid "MosDNS is a 'programmable' DNS forwarder."
 msgstr "MosDNS 是一个插件化的 DNS 转发/分流器。"
 
@@ -25,12 +28,6 @@ msgstr "启用"
 msgid "Listen port"
 msgstr "监听端口"
 
-msgid "API Setting"
-msgstr "API 设置"
-
-msgid "Enabled API"
-msgstr "启用 API"
-
 msgid "API Listen port"
 msgstr "API 监听端口"
 
@@ -46,8 +43,8 @@ msgstr "正在刷新..."
 msgid "Flushing Success"
 msgstr "刷新成功"
 
-msgid "Flushing Failed, Please check if the API is enabled"
-msgstr "刷新失败，请检查 API 是否已启用"
+msgid "Flushing Failed, Please check if MosDNS is enabled"
+msgstr "刷新失败，请检查 MosDNS 是否已启用"
 
 msgid "Log Level"
 msgstr "日志等级"
