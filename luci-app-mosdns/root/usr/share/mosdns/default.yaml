@@ -198,9 +198,11 @@ plugins:
       - matches: qtype 65
         exec: reject 3
 
-  - tag: cache
+  - tag: main_sequence
     type: sequence
     args:
+      - exec: $hosts
+      - exec: jump has_resp_sequence
       - matches:
         - "!qname $ddnslist"
         - "!qname $blocklist"
@@ -208,13 +210,6 @@ plugins:
         - "!qname $sp_low"
         - "!qname $local_ptr"
         exec: $lazy_cache
-
-  - tag: main_sequence
-    type: sequence
-    args:
-      - exec: $hosts
-      - exec: jump has_resp_sequence
-      - exec: $cache
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_ddns_domain

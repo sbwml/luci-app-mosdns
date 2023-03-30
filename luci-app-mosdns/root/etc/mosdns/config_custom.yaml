@@ -222,17 +222,6 @@ plugins:
       - matches: qtype 65
         exec: reject 3
 
-  # 非 拒绝名单 或 DDNS域名 则启用缓存
-  - tag: cache
-    type: sequence
-    args:
-      - matches:
-        - "!qname $ddnslist"
-        - "!qname $blocklist"
-        - "!qname $sp_low"
-        - "!qname $local_ptr"
-        exec: $lazy_cache
-
   # 主要的运行逻辑插件
   # sequence 插件中调用的插件 tag 必须在 sequence 前定义，
   # 否则 sequence 找不到对应插件。
@@ -241,7 +230,13 @@ plugins:
     args:
       - exec: $hosts
       - exec: jump has_resp_sequence
-      - exec: $cache
+      # 非 “拒绝名单” 或 “DDNS域名” 则启用缓存
+      - matches:
+        - "!qname $ddnslist"
+        - "!qname $blocklist"
+        - "!qname $sp_low"
+        - "!qname $local_ptr"
+        exec: $lazy_cache
       - exec: $redirect
       - exec: jump has_resp_sequence
       - exec: $query_is_ddns_domain
