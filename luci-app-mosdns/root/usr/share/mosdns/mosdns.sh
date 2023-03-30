@@ -95,7 +95,7 @@ ecs_remote() {
 }
 
 flush_cache() {
-    curl -s 127.0.0.1:$(uci -q get mosdns.config.listen_port_api)/plugins/cache/flush || exit 1
+    curl -s 127.0.0.1:$(uci -q get mosdns.config.listen_port_api)/plugins/lazy_cache/flush || exit 1
 }
 
 v2dat_dump() {
