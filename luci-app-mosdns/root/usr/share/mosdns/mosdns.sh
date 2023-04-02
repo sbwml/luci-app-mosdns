@@ -85,12 +85,12 @@ restart_service() {
 }
 
 ecs_local() {
-    ipaddr=$(curl -s -4 --connect-timeout 2 -H "Host:ip.3322.org" 118.184.169.32) || ipaddr=119.29.0.0
+    ipaddr=$(curl -s --connect-timeout 3 -H "Host:ip.3322.org" 118.184.169.32) || ipaddr=119.29.0.0
     echo "ecs ${ipaddr%.*}.0/24"
 }
 
 ecs_remote() {
-    ipaddr=$(curl -s -4 --connect-timeout 2 -H "Host:icanhazip.com" 104.18.114.97) || ipaddr=103.103.65.0
+    ipaddr=$(curl -s --connect-timeout 3 -H "Host:ifconfig.me" 34.160.111.145) || ipaddr=103.103.65.0
     echo "ecs ${ipaddr%.*}.0/24"
 }
 
