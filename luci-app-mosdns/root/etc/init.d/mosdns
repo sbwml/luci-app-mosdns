@@ -59,6 +59,7 @@ get_config() {
     config_get idle_timeout $1 idle_timeout 30
     config_get enable_http3 $1 enable_http3 0
     config_get enable_ecs_remote $1 enable_ecs_remote 0
+    config_get prefer_filter $1 prefer_filter 'prefer_ipv4'
 }
 
 init_yaml() {
@@ -89,6 +90,12 @@ init_yaml() {
         sed -i "s,ecs_remote,$ecs_remote,g" $CONF
     else
         sed -i "/ecs_remote/d;" $CONF
+    fi
+
+    if [ "$prefer_filter" = 'disabled' ]; then
+        sed -i "/option_prefer_filter/d;" $CONF
+    else
+        sed -i "s,option_prefer_filter,$prefer_filter,g" $CONF
     fi
     rm -rf $TMPDIR
 }

@@ -112,7 +112,7 @@ plugins:
   - tag: remote_sequence
     type: sequence
     args:
-      - exec: prefer_ipv4
+      - exec: option_prefer_filter
       - exec: ecs_remote
       - exec: $forward_remote
 
