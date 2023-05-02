@@ -123,6 +123,13 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Value, "prefer_filter", translate("Query Filter Type"), translate("prefer v4: do not block domain AAAA if domain does not have an A record") .. '<br />' .. translate("prefer v6: do not block domain A if domain does not have an AAAA record") .. '<br />' .. translate("https://github.com/IrineSistiana/mosdns/blob/main/plugin/executable/dual_selector/dual_selector_test.go"))
+o.default = "prefer_ipv4"
+o:value("prefer_ipv4", "Prefer ipv4 (Default)")
+o:value("prefer_ipv6", "Prefer ipv6")
+o:value("disabled", "Disabled")
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"))
 o.datatype = "and(uinteger,min(0))"
 o.default = "20000"
