@@ -123,6 +123,11 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
+o = s:taboption("advanced", Flag, "dns_leak", translate("Prevent DNS Leaks"), translate("Enable this option fallback policy forces forwarding to remote DNS"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/etc/mosdns/config.yaml")
+
 o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"))
 o.datatype = "and(uinteger,min(0))"
 o.default = "20000"
