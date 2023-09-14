@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - v5.**
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Back to Commit'
+        required: false
+        default: ''  
 
 jobs:
   build:
