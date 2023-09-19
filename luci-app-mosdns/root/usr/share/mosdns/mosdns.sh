@@ -136,6 +136,10 @@ v2dat_dump() {
     fi
 }
 
+
+cloudflare_ip() {
+    uci -q get mosdns.config.cloudflare_ip
+}
 sleep_time() {
     touch /var/mosdns_sleep.lock
     [ $(awk -F. '{print $1}' /proc/uptime) -lt "120" ] && delayed_time=$(uci -q get mosdns.config.delayed_time) || delayed_time=0
@@ -168,6 +172,9 @@ case $script_action in
     ;;
     "v2dat_dump")
         v2dat_dump
+    ;;
+    "cloudflare")
+        cloudflare_ip
     ;;
     "version")
         mosdns version
