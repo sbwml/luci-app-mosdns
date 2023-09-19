@@ -206,7 +206,6 @@ o.default = false
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
 o = s:taboption("cloudflare", DynamicList, "cloudflare_ip", translate("Custom IP"))
-o.rmempty = false
 o.datatype = "ipaddr"
 o:depends("configfile", "/etc/mosdns/config.yaml")
 
