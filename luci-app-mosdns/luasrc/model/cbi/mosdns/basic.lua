@@ -169,7 +169,7 @@ o = s:taboption("advanced", Flag, "adblock", translate("Enable DNS ADblock"))
 o:depends("configfile", "/etc/mosdns/config.yaml")
 o.default = false
 
-o = s:taboption("advanced", DynamicList, "ad_source", translate("ADblock Source"), translate("When using custom rule sources, please use rule types supported by MosDNS (domain lists)."))
+o = s:taboption("advanced", DynamicList, "ad_source", translate("ADblock Source"), translate("When using custom rule sources, please use rule types supported by MosDNS (domain lists).") .. '<br />' .. translate("Support for local files, such as: file:///var/mosdns/example.txt"))
 o:depends("adblock", "1")
 o:value("geosite.dat", "v2ray-geosite")
 o:value("https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt", "anti-AD")
