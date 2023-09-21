@@ -38,6 +38,8 @@ get_adlist() (
         do
 		    if [ $(echo $url) = 'geosite.dat' ]; then
                 echo "        - \"/var/mosdns/geosite_category-ads-all.txt\""
+            elif echo "$url" | grep -Eq "^file://" ; then
+                echo "        - \"$(echo "$url" | sed 's/file:\/\///')\""
             else
                 echo "        - \"/etc/mosdns/rule/adlist/$(basename $url)\""
                 [ ! -f "/etc/mosdns/rule/adlist/$(basename $url)" ] && touch /etc/mosdns/rule/adlist/$(basename $url)
@@ -60,7 +62,7 @@ adlist_update() (
     has_update=0
     for url in $ad_source;
     do
-        if [ "$url" != "geosite.dat" ]; then
+        if [ "$url" != "geosite.dat" ] && [ $(echo "$url" | grep -c -E "^file://") -eq 0 ]; then
             echo "$url" >> /etc/mosdns/rule/.ad_source
             filename=$(basename $url)
             if echo "$url" | grep -Eq "^https://raw.githubusercontent.com" ; then
