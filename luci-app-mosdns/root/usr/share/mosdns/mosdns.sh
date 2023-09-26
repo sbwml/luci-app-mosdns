@@ -36,7 +36,7 @@ get_adlist() (
         ad_source=$(uci -q get mosdns.config.ad_source)
         for url in $ad_source;
         do
-		    if [ $(echo $url) = 'geosite.dat' ]; then
+            if [ $(echo $url) = 'geosite.dat' ]; then
                 echo "        - \"/var/mosdns/geosite_category-ads-all.txt\""
             elif echo "$url" | grep -Eq "^file://" ; then
                 echo "        - \"$(echo "$url" | sed 's/file:\/\///')\""
@@ -44,7 +44,7 @@ get_adlist() (
                 echo "        - \"/etc/mosdns/rule/adlist/$(basename $url)\""
                 [ ! -f "/etc/mosdns/rule/adlist/$(basename $url)" ] && touch /etc/mosdns/rule/adlist/$(basename $url)
             fi
-	    done
+        done
     else
         rm -rf /etc/mosdns/rule/adlist /etc/mosdns/rule/.ad_source /etc/mosdns/rule/adlist.txt
         touch /var/disable-ads.txt
@@ -53,7 +53,7 @@ get_adlist() (
 )
 
 adlist_update() (
-    [ $(uci -q get mosdns.config.adblock) -eq 0 ] && exit 0
+    [ "$(uci -q get mosdns.config.adblock)" != 1 ] && exit 0
     ad_source=$(uci -q get mosdns.config.ad_source)
     AD_TMPDIR=$(mktemp -d) || exit 1
     google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
