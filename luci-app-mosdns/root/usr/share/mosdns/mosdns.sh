@@ -52,7 +52,7 @@ get_adlist() (
     fi
 )
 
-adlist_update() (
+adlist_update() {
     [ "$(uci -q get mosdns.config.adblock)" != 1 ] && exit 0
     ad_source=$(uci -q get mosdns.config.ad_source)
     AD_TMPDIR=$(mktemp -d) || exit 1
@@ -83,10 +83,9 @@ adlist_update() (
             rm -rf /etc/mosdns/rule/adlist/*
             \cp $AD_TMPDIR/* /etc/mosdns/rule/adlist
             rm -rf "$AD_TMPDIR"
-            restart_service
         }
     fi
-)
+}
 
 geodat_update() (
     TMPDIR=$(mktemp -d) || exit 1
@@ -120,7 +119,7 @@ geodat_update() (
         exit 1
     fi
     rm -rf "$TMPDIR"/*.sha256sum
-    cp -f "$TMPDIR"/* /usr/share/v2ray
+    \cp -a "$TMPDIR"/* /usr/share/v2ray
     rm -rf "$TMPDIR"
 )
 
@@ -179,7 +178,7 @@ case $script_action in
         logfile_path
     ;;
     "adlist_update")
-        adlist_update
+        adlist_update && [ "$has_update" -eq 1 ] && restart_service
     ;;
     "ecs_remote")
         ecs_remote
