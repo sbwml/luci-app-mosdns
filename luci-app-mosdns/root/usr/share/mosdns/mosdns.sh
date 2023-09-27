@@ -147,7 +147,7 @@ v2dat_dump() {
     if [ "$configfile" = "/etc/mosdns/config.yaml" ]; then
         # default config
         v2dat unpack geoip -o /var/mosdns -f cn $v2dat_dir/geoip.dat
-        v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' $v2dat_dir/geosite.dat
+        v2dat unpack geosite -o /var/mosdns -f cn -f apple -f 'geolocation-!cn' $v2dat_dir/geosite.dat
         [ "$adblock" -eq 1 ] && [ $(echo $ad_source | grep -c geosite.dat) -ge '1' ] && v2dat unpack geosite -o /var/mosdns -f category-ads-all $v2dat_dir/geosite.dat
     else
         # custom config

@@ -160,6 +160,12 @@ msgstr "本地 DNS"
 msgid "Follow WAN interface DNS if not enabled"
 msgstr "不启用则使用 WAN 接口 DNS"
 
+msgid "Apple domains optimization"
+msgstr "Apple 域名解析优化"
+
+msgid "For Apple domains equipped with Chinese mainland CDN, always responsive to Chinese CDN IP addresses"
+msgstr "配备中国大陆 CDN 的 Apple 域名，始终应答中国大陆 CDN 地址"
+
 msgid "Upstream DNS servers"
 msgstr "上游 DNS 服务器"
 

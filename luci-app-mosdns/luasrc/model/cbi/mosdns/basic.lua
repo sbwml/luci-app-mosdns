@@ -50,6 +50,11 @@ o.default = true
 o = s:taboption("basic", Flag, "custom_local_dns", translate("Local DNS"), translate("Follow WAN interface DNS if not enabled"))
 o:depends( "configfile", "/etc/mosdns/config.yaml")
 o.default = false
+
+o = s:taboption("basic", Flag, "apple_optimization", translate("Apple domains optimization"), translate("For Apple domains equipped with Chinese mainland CDN, always responsive to Chinese CDN IP addresses"))
+o:depends("custom_local_dns", "1")
+o.default = true
+
 o = s:taboption("basic", DynamicList, "local_dns", translate("Upstream DNS servers"))
 o:value("119.29.29.29", "119.29.29.29 (DNSPod Primary)")
 o:value("119.28.28.28", "119.28.28.28 (DNSPod Secondary)")
