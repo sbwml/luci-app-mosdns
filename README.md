@@ -4,6 +4,7 @@
 
 ## DNS protocol standard
 
+
 **General DNS (UDP):** `119.29.29.29` **&** `udp://119.29.29.29:53`
 
 **General DNS (TCP):** `tcp://119.29.29.29` **&** `tcp://119.29.29.29:53`
@@ -15,6 +16,7 @@
 **DNS-over-HTTPS (HTTP/3):** `h3://dns.alidns.com/dns-query`
 
 **DNS-over-QUIC:** `quic://dns.alidns.com` **&** `doq://dns.alidns.com`
+
 
 --------------
 
