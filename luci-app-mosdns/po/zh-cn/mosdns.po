@@ -359,7 +359,7 @@ msgid "These domains are always resolved using local DNS. And force TTL 5 second
 msgstr "加入的域名始终使用 “本地 DNS” 进行解析，并且强制 TTL 5 秒，解析结果不会进入缓存（每个域名一行，支持域名匹配规则）"
 
 msgid "Hosts For example: baidu.com 10.0.0.1"
-msgstr "自定义 Hosts 重写，如：baidu.com 10.0.0.1（每个规则一行）"
+msgstr "自定义 Hosts 重写，如：baidu.com 10.0.0.1（每个规则一行，支持域名匹配规则）"
 
 msgid "Redirect"
 msgstr "重定向"
