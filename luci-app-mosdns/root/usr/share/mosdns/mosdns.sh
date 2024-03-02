@@ -53,44 +53,45 @@ get_adlist() (
 )
 
 adlist_update() {
-    [ "$(uci -q get mosdns.config.adblock)" != 1 ] && exit 0
-    lock_file=/var/lock/mosdns_ad_update.lock
-    ad_source=$(uci -q get mosdns.config.ad_source)
-    AD_TMPDIR=$(mktemp -d) || exit 1
-    mirror=""
-    : > /etc/mosdns/rule/.ad_source
-    if [ -f "$lock_file" ]; then
-        has_update=0
-        exit 0
-    else
-        : > $lock_file
-    fi
-    has_update=0
-    for url in $ad_source;
-    do
-        if [ "$url" != "geosite.dat" ] && [ $(echo "$url" | grep -c -E "^file://") -eq 0 ]; then
-            has_update=1
-            echo "$url" >> /etc/mosdns/rule/.ad_source
-            filename=$(basename $url)
-            if echo "$url" | grep -Eq "^https://raw.githubusercontent.com" ; then
-                [ -n "$(uci -q get mosdns.config.github_proxy)" ] && mirror="$(uci -q get mosdns.config.github_proxy)/"
-            fi
-            echo -e "\e[1;32mDownloading $mirror$url\e[0m"
-            curl --connect-timeout 5 -m 90 --ipv4 -kfSLo "$AD_TMPDIR/$filename" "$mirror$url"
+    if [ "$(uci -q get mosdns.config.adblock)" == 1 ];then
+        lock_file=/var/lock/mosdns_ad_update.lock
+        ad_source=$(uci -q get mosdns.config.ad_source)
+        AD_TMPDIR=$(mktemp -d) || exit 1
+        mirror=""
+        : > /etc/mosdns/rule/.ad_source
+        if [ -f "$lock_file" ]; then
+            has_update=0
+            exit 0
+        else
+            : > $lock_file
         fi
-    done
-    if [ $? -ne 0 ]; then
-        echo -e "\e[1;31mRules download failed.\e[0m"
-        rm -rf "$AD_TMPDIR"
-        exit 1
-    else
-        [ $has_update -eq 1 ] && {
-            mkdir -p /etc/mosdns/rule/adlist
-            rm -rf /etc/mosdns/rule/adlist/*
-            \cp $AD_TMPDIR/* /etc/mosdns/rule/adlist
-        }
+        has_update=0
+        for url in $ad_source;
+        do
+            if [ "$url" != "geosite.dat" ] && [ $(echo "$url" | grep -c -E "^file://") -eq 0 ]; then
+                has_update=1
+                echo "$url" >> /etc/mosdns/rule/.ad_source
+                filename=$(basename $url)
+                if echo "$url" | grep -Eq "^https://raw.githubusercontent.com" ; then
+                    [ -n "$(uci -q get mosdns.config.github_proxy)" ] && mirror="$(uci -q get mosdns.config.github_proxy)/"
+                fi
+                echo -e "\e[1;32mDownloading $mirror$url\e[0m"
+                curl --connect-timeout 5 -m 90 --ipv4 -kfSLo "$AD_TMPDIR/$filename" "$mirror$url"
+            fi
+        done
+        if [ $? -ne 0 ]; then
+            echo -e "\e[1;31mRules download failed.\e[0m"
+            rm -rf "$AD_TMPDIR"
+            exit 1
+        else
+            [ $has_update -eq 1 ] && {
+                mkdir -p /etc/mosdns/rule/adlist
+                rm -rf /etc/mosdns/rule/adlist/*
+                \cp $AD_TMPDIR/* /etc/mosdns/rule/adlist
+            }
+        fi
+        rm -rf "$AD_TMPDIR" $lock_file
     fi
-    rm -rf "$AD_TMPDIR" $lock_file
 }
 
 geodat_update() (
@@ -130,6 +131,7 @@ geodat_update() (
 
 restart_service() {
     /etc/init.d/mosdns restart
+    return 0
 }
 
 flush_cache() {
