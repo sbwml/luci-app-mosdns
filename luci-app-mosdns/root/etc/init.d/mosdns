@@ -20,7 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-START=99
+START=51
 USE_PROCD=1
 
 PROG=/usr/bin/mosdns
