@@ -56,7 +56,6 @@ adlist_update() {
     [ "$(uci -q get mosdns.config.adblock)" != 1 ] && return 0
     lock_file=/var/lock/mosdns_ad_update.lock
     ad_source=$(uci -q get mosdns.config.ad_source)
-    AD_TMPDIR=$(mktemp -d) || exit 1
     mirror=""
     : > /etc/mosdns/rule/.ad_source
     if [ -f "$lock_file" ]; then
@@ -65,6 +64,7 @@ adlist_update() {
     else
         : > $lock_file
     fi
+    AD_TMPDIR=$(mktemp -d) || exit 1
     has_update=0
     for url in $ad_source;
     do
@@ -81,7 +81,7 @@ adlist_update() {
     done
     if [ $? -ne 0 ]; then
         echo -e "\e[1;31mRules download failed.\e[0m"
-        rm -rf "$AD_TMPDIR"
+        rm -rf "$AD_TMPDIR" "$lock_file"
         exit 1
     else
         [ $has_update -eq 1 ] && {
@@ -90,7 +90,7 @@ adlist_update() {
             \cp $AD_TMPDIR/* /etc/mosdns/rule/adlist
         }
     fi
-    rm -rf "$AD_TMPDIR" $lock_file
+    rm -rf "$AD_TMPDIR" "$lock_file"
 }
 
 geodat_update() (
