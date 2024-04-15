@@ -56,7 +56,6 @@ adlist_update() {
     [ "$(uci -q get mosdns.config.adblock)" != 1 ] && return 0
     lock_file=/var/lock/mosdns_ad_update.lock
     ad_source=$(uci -q get mosdns.config.ad_source)
-    mirror=""
     : > /etc/mosdns/rule/.ad_source
     if [ -f "$lock_file" ]; then
         has_update=0
@@ -74,6 +73,8 @@ adlist_update() {
             filename=$(basename $url)
             if echo "$url" | grep -Eq "^https://raw.githubusercontent.com" ; then
                 [ -n "$(uci -q get mosdns.config.github_proxy)" ] && mirror="$(uci -q get mosdns.config.github_proxy)/"
+            else
+                mirror=""
             fi
             echo -e "\e[1;32mDownloading $mirror$url\e[0m"
             curl --connect-timeout 5 -m 90 --ipv4 -kfSLo "$AD_TMPDIR/$filename" "$mirror$url"
