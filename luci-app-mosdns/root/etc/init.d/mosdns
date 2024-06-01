@@ -130,8 +130,6 @@ generate_config() {
     json_add_string "type" "domain_set"
     json_add_object "args"
     json_add_array "files"
-    json_add_string "" "/var/mosdns/geosite_netflix.txt"
-    json_add_string "" "/var/mosdns/disney.txt"
     json_add_string "" "/etc/mosdns/rule/streamlist.txt"
     json_close_array
     json_close_object
