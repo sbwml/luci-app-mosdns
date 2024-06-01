@@ -396,3 +396,19 @@ msgstr "输入需要导出的 GeoIP.dat 类别条目，允许添加多个标签"
 
 msgid "Export directory: /var/mosdns"
 msgstr "导出目录：/var/mosdns"
+
+
+msgid "Custom Stream DNS"
+msgstr "自定义流媒体DNS"
+
+msgid "Custom Stream Service DNS if enabled  (Netflix, Disney+, etc..)"
+msgstr "自定义流媒体DNS 奈飞/迪士尼+ 等"
+
+msgid "Custom Stream DNS Server"
+msgstr "流媒体DNS服务器"
+
+msgid "These domains are Stream Service. Please input the domain names of websites, every line can input only one website domain. For example: baidu.com."
+msgstr "加入的域名将使用流媒体 DNS 解析（每个域名一行，支持域名匹配规则）"
+
+msgid "Stream Lists"
+msgstr "流媒体"

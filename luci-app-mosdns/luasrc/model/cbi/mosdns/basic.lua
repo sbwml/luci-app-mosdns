@@ -59,6 +59,14 @@ o = s:taboption("basic", Flag, "apple_optimization", translate("Apple domains op
 o:depends("custom_local_dns", "1")
 o.default = false
 
+o = s:taboption("basic", Flag, "custom_stream", translate("Custom Stream DNS"), translate("Custom Stream Service DNS if enabled  (Netflix, Disney+, etc..)"))
+o:depends( "configfile", "/var/etc/mosdns.json")
+o.default = false
+
+o = s:taboption("basic", Value, "custom_stream_dns", translate("Custom Stream DNS Server"), translate("Custom Stream Dns Server"))
+o:depends("custom_stream", "1")
+o.default = "127.0.0.1:5335"
+
 o = s:taboption("basic", DynamicList, "local_dns", translate("China DNS server"))
 o:value("119.29.29.29", translate("Tencent Public DNS (119.29.29.29)"))
 o:value("119.28.28.28", translate("Tencent Public DNS (119.28.28.28)"))

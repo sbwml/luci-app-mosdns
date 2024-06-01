@@ -7,6 +7,7 @@ local hosts_list_file = "/etc/mosdns/rule/hosts.txt"
 local redirect_list_file = "/etc/mosdns/rule/redirect.txt"
 local local_ptr_file = "/etc/mosdns/rule/local-ptr.txt"
 local ddns_list_file = "/etc/mosdns/rule/ddnslist.txt"
+local stream_list_file = "/etc/mosdns/rule/streamlist.txt"
 
 m = Map("mosdns")
 
@@ -20,6 +21,7 @@ s:tab("ddns_list", translate("DDNS Lists"))
 s:tab("hosts_list", translate("Hosts"))
 s:tab("redirect_list", translate("Redirect"))
 s:tab("local_ptr_list", translate("Block PTR"))
+s:tab("stream_list", translate("Stream Lists"))
 
 o = s:taboption("white_list", TextValue, "whitelist", "", "<font color='red'>" .. translate("These domain names allow DNS resolution with the highest priority. Please input the domain names of websites, every line can input only one website domain. For example: hm.baidu.com.") .. "</font>" .. "<font color='#00bd3e'>" .. translate("<br>The list of rules only apply to 'Default Config' profiles.") .. "</font>")
 o.rows = 15
@@ -87,6 +89,16 @@ o.wrap = "off"
 o.cfgvalue = function(self, section) return nixio.fs.readfile(local_ptr_file) or "" end
 o.write = function(self, section, value) nixio.fs.writefile(local_ptr_file, value:gsub("\r\n", "\n")) end
 o.remove = function(self, section, value) nixio.fs.writefile(local_ptr_file, "") end
+o.validate = function(self, value)
+    return value
+end
+
+o = s:taboption("stream_list", TextValue, "stream_list", "", "<font color='red'>" .. translate("These domains are Stream Service. Please input the domain names of websites, every line can input only one website domain. For example: baidu.com.") .. "</font>" .. "<font color='#00bd3e'>" .. translate("<br>The list of rules only apply to 'Default Config' profiles.") .. "</font>")
+o.rows = 15
+o.wrap = "off"
+o.cfgvalue = function(self, section) return nixio.fs.readfile(stream_list_file) or "" end
+o.write = function(self, section, value) nixio.fs.writefile(stream_list_file, value:gsub("\r\n", "\n")) end
+o.remove = function(self, section, value) nixio.fs.writefile(stream_list_file, "") end
 o.validate = function(self, value)
     return value
 end
