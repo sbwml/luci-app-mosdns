@@ -63,9 +63,16 @@ o = s:taboption("basic", Flag, "custom_stream", translate("Custom Stream DNS"), 
 o:depends( "configfile", "/var/etc/mosdns.json")
 o.default = false
 
-o = s:taboption("basic", Value, "custom_stream_dns", translate("Custom Stream DNS Server"), translate("Custom Stream Dns Server"))
+o = s:taboption("basic", DynamicList, "custom_stream_dns", translate("Custom Stream DNS Server"), translate("Custom Stream Dns Server"))
+o:value("tls://1.1.1.1", translate("CloudFlare Public DNS (1.1.1.1)"))
+o:value("tls://1.0.0.1", translate("CloudFlare Public DNS (1.0.0.1)"))
+o:value("tls://8.8.8.8", translate("Google Public DNS (8.8.8.8)"))
+o:value("tls://8.8.4.4", translate("Google Public DNS (8.8.4.4)"))
+o:value("tls://9.9.9.9", translate("Quad9 Public DNS (9.9.9.9)"))
+o:value("tls://149.112.112.112", translate("Quad9 Public DNS (149.112.112.112)"))
+o:value("tls://208.67.222.222", translate("Cisco Public DNS (208.67.222.222)"))
+o:value("tls://208.67.220.220", translate("Cisco Public DNS (208.67.220.220)"))
 o:depends("custom_stream", "1")
-o.default = "127.0.0.1:5335"
 
 o = s:taboption("basic", DynamicList, "local_dns", translate("China DNS server"))
 o:value("119.29.29.29", translate("Tencent Public DNS (119.29.29.29)"))
