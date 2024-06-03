@@ -47,7 +47,7 @@ o:depends("configfile", "/var/etc/mosdns.json")
 o = s:taboption("basic", Flag, "redirect", translate("DNS Forward"), translate("Forward Dnsmasq Domain Name resolution requests to MosDNS"))
 o.default = true
 
-o = s:taboption("basic", Flag, "prefer_ipv4", translate("Remote DNS prefer IPv4"), translate("IPv4 is preferred for remote DNS resolution of dual-stack addresses, and is not affected when the destination is IPv6 only"))
+o = s:taboption("basic", Flag, "prefer_ipv4", translate("Remote DNS prefer IPv4"), translate("IPv4 is preferred for Remote / Streaming Media DNS resolution of dual-stack addresses, and is not affected when the destination is IPv6 only"))
 o:depends( "configfile", "/var/etc/mosdns.json")
 o.default = true
 
@@ -84,6 +84,22 @@ o:value("tls://149.112.112.112", translate("Quad9 Public DNS (149.112.112.112)")
 o:value("tls://208.67.222.222", translate("Cisco Public DNS (208.67.222.222)"))
 o:value("tls://208.67.220.220", translate("Cisco Public DNS (208.67.220.220)"))
 o:depends("configfile", "/var/etc/mosdns.json")
+
+o = s:taboption("basic", Flag, "custom_stream_media_dns", translate("Custom Stream Media DNS"), translate("Netflix, Disney+, Hulu and streaming media rules list will use this DNS"))
+o:depends( "configfile", "/var/etc/mosdns.json")
+o.default = false
+
+o = s:taboption("basic", DynamicList, "stream_media_dns", translate("Streaming Media DNS server"))
+o:value("tls://1.1.1.1", translate("CloudFlare Public DNS (1.1.1.1)"))
+o:value("tls://1.0.0.1", translate("CloudFlare Public DNS (1.0.0.1)"))
+o:value("tls://8.8.8.8", translate("Google Public DNS (8.8.8.8)"))
+o:value("tls://8.8.4.4", translate("Google Public DNS (8.8.4.4)"))
+o:value("tls://9.9.9.9", translate("Quad9 Public DNS (9.9.9.9)"))
+o:value("tls://149.112.112.112", translate("Quad9 Public DNS (149.112.112.112)"))
+o:value("tls://208.67.222.222", translate("Cisco Public DNS (208.67.222.222)"))
+o:value("tls://208.67.220.220", translate("Cisco Public DNS (208.67.220.220)"))
+o.default = "tls://8.8.8.8"
+o:depends("custom_stream_media_dns", "1")
 
 o = s:taboption("basic", ListValue, "bootstrap_dns", translate("Bootstrap DNS servers"), translate("Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams"))
 o:value("119.29.29.29", translate("Tencent Public DNS (119.29.29.29)"))
@@ -125,7 +141,7 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/var/etc/mosdns.json")
 
-o = s:taboption("advanced", Value, "remote_ecs_ip", translate("IP Address"), translate("Please provide the IP address you use when accessing foreign websites. This IP subnet (0/24) will be used as the ECS address for Remote DNS requests") .. '<br />' .. translate("This feature is typically used when using a self-built DNS server as an Remote DNS upstream (requires support from the upstream server)"))
+o = s:taboption("advanced", Value, "remote_ecs_ip", translate("IP Address"), translate("Please provide the IP address you use when accessing foreign websites. This IP subnet (0/24) will be used as the ECS address for Remote / Streaming Media DNS requests") .. '<br />' .. translate("This feature is typically used when using a self-built DNS server as an Remote / Streaming Media DNS upstream (requires support from the upstream server)"))
 o.datatype = "ipaddr"
 o:depends("enable_ecs_remote", "1")
 

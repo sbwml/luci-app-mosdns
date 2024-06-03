@@ -51,6 +51,8 @@ get_config() {
     config_get remote_dns $1 remote_dns "tls://8.8.8.8 tls://1.1.1.1"
     config_get custom_local_dns $1 custom_local_dns 0
     config_get apple_optimization $1 apple_optimization 0
+    config_get custom_stream_media_dns $1 custom_stream_media_dns 0
+    config_get stream_media_dns $1 stream_media_dns "tls://8.8.8.8"
     config_get bootstrap_dns $1 bootstrap_dns "119.29.29.29"
     config_get listen_port_api $1 listen_port_api 9091
     config_get concurrent $1 concurrent 1
@@ -205,6 +207,19 @@ generate_config() {
     json_close_array
     json_close_object
     json_close_object
+    # plugin: stream_media
+    json_add_object
+    json_add_string "tag" "stream_media"
+    json_add_string "type" "domain_set"
+    json_add_object "args"
+    json_add_array "files"
+    json_add_string "" "/var/mosdns/geosite_disney.txt"
+    json_add_string "" "/var/mosdns/geosite_netflix.txt"
+    json_add_string "" "/var/mosdns/geosite_hulu.txt"
+    json_add_string "" "/etc/mosdns/rule/streaming.txt"
+    json_close_array
+    json_close_object
+    json_close_object
     # plugin: cloudflare_cidr
     json_add_object
     json_add_string "tag" "cloudflare_cidr"
@@ -312,6 +327,51 @@ generate_config() {
     }
     json_add_object
     json_add_string "exec" "\$forward_remote"
+    json_close_object
+    json_close_array
+    json_close_object
+    # plugin: forward_stream_media
+    json_add_object
+    json_add_string "tag" "forward_stream_media"
+    json_add_string "type" "forward"
+    json_add_object "args"
+    json_add_int "concurrent" "$concurrent"
+    json_add_array "upstreams"
+    for addr in $stream_media_dns; do
+        enable_http3=0
+        if echo "$addr" | grep -q "^h3://"; then
+            enable_http3=1
+            addr=$(echo $addr | sed 's/h3:\/\//https:\/\//g')
+        fi
+        json_add_object
+        json_add_string "addr" "$addr"
+        json_add_string "bootstrap" "$bootstrap_dns"
+        json_add_boolean "enable_pipeline" "$enable_pipeline"
+        json_add_boolean "insecure_skip_verify" "$insecure_skip_verify"
+        json_add_int "idle_timeout" "$idle_timeout"
+        [ "$enable_http3" -eq 1 ] && json_add_boolean "enable_http3" "1"
+        json_close_object
+    done
+    json_close_array
+    json_close_object
+    json_close_object
+    # plugin: forward_stream_media_upstream
+    json_add_object
+    json_add_string "tag" "forward_stream_media_upstream"
+    json_add_string "type" "sequence"
+    json_add_array "args"
+    [ "$prefer_ipv4" -eq 1 ] && {
+        json_add_object
+        json_add_string "exec" "prefer_ipv4"
+        json_close_object
+    }
+    [ "$enable_ecs_remote" -eq 1 ] && {
+        json_add_object
+        json_add_string "exec" "ecs $remote_ecs_ip"
+        json_close_object
+    }
+    json_add_object
+    json_add_string "exec" "\$forward_stream_media"
     json_close_object
     json_close_array
     json_close_object
@@ -491,6 +551,17 @@ generate_config() {
     json_close_object
     json_close_array
     json_close_object
+    # plugin: query_is_stream_media_domain
+    json_add_object
+    json_add_string "tag" "query_is_stream_media_domain"
+    json_add_string "type" "sequence"
+    json_add_array "args"
+    json_add_object
+    json_add_string "matches" "qname \$stream_media"
+    json_add_string "exec" "\$forward_stream_media_upstream"
+    json_close_object
+    json_close_array
+    json_close_object
     # plugin: main_sequence
     json_add_object
     json_add_string "tag" "main_sequence"
@@ -545,6 +616,12 @@ generate_config() {
     json_close_object
     json_add_object
     json_add_string "exec" "\$query_is_greylist_domain"
+    json_close_object
+    json_add_object
+    json_add_string "exec" "jump has_resp_sequence"
+    json_close_object
+    json_add_object
+    json_add_string "exec" "\$query_is_stream_media_domain"
     json_close_object
     json_add_object
     json_add_string "exec" "jump has_resp_sequence"
