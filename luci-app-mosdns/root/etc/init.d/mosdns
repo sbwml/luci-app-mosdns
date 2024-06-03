@@ -620,12 +620,14 @@ generate_config() {
     json_add_object
     json_add_string "exec" "jump has_resp_sequence"
     json_close_object
-    json_add_object
-    json_add_string "exec" "\$query_is_stream_media_domain"
-    json_close_object
-    json_add_object
-    json_add_string "exec" "jump has_resp_sequence"
-    json_close_object
+    [ "$custom_stream_media_dns" -eq 1 ] && {
+        json_add_object
+        json_add_string "exec" "\$query_is_stream_media_domain"
+        json_close_object
+        json_add_object
+        json_add_string "exec" "jump has_resp_sequence"
+        json_close_object
+    }
     json_add_object
     json_add_string "exec" "\$query_is_local_domain"
     json_close_object
