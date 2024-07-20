@@ -17,14 +17,16 @@ fi
 TMPDIR=$(mktemp -d) || exit 1
 
 # GitHub mirror
-ip_info=$(curl -sk https://ip.cooluc.com)
-country_code=$(echo $ip_info | sed -r 's/.*country_code":"([^"]*).*/\1/')
-if [ $country_code = "CN" ]; then
-	google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
-	if [ ! $google_status = "204" ];then
-		mirror="https://gh.cooluc.com/"
-	fi
+ip_info=$(curl -sk https://api.live.bilibili.com/client/v1/Ip/getInfoNew)
+country=$(echo $ip_info | sed -n 's/.*"country":"\([^"]*\)".*/\1/p')
+if [ "$country" = "中国" ]; then
+    google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
+    if [ ! $google_status = "204" ]; then
+        mirror="https://gh.cooluc.com/"
+		echo -e "\r\n${GREEN_COLOR}已启用GitHub镜像${RES}\r\n"
+    fi
 fi
+
 
 # Check
 CHECK() (
