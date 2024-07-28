@@ -150,20 +150,25 @@ o.rmempty = false
 o.default = false
 o:depends("configfile", "/var/etc/mosdns.json")
 
-o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"), translate("DNS cache size (in piece). To disable caching, please set to 0."))
+o = s:taboption("advanced", Flag, "cache", translate("Enable DNS Cache"))
+o.rmempty = false
+o.default = false
+o:depends("configfile", "/var/etc/mosdns.json")
+
+o = s:taboption("advanced", Value, "cache_size", translate("DNS Cache Size"), translate("DNS cache size (in piece)."))
 o.datatype = "and(uinteger,min(0))"
 o.default = "8000"
-o:depends("configfile", "/var/etc/mosdns.json")
+o:depends("cache", "1")
 
 o = s:taboption("advanced", Value, "lazy_cache_ttl", translate("Lazy Cache TTL"), translate("Lazy cache survival time (in second). To disable Lazy Cache, please set to 0."))
 o.datatype = "and(uinteger,min(0))"
 o.default = "86400"
-o:depends("configfile", "/var/etc/mosdns.json")
+o:depends("cache", "1")
 
 o = s:taboption("advanced", Flag, "dump_file", translate("Cache Dump"), translate("Save the cache locally and reload the cache dump on the next startup"))
 o.rmempty = false
 o.default = false
-o:depends("configfile", "/var/etc/mosdns.json")
+o:depends("cache", "1")
 
 o = s:taboption("advanced", Value, "dump_interval", translate("Auto Save Cache Interval"))
 o.datatype = "and(uinteger,min(0))"

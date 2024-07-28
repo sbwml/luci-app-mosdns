@@ -33,6 +33,7 @@ get_config() {
     config_get enabled $1 enabled 0
     config_get adblock $1 adblock 0
     config_get ad_source $1 ad_source ""
+    config_get cache $1 cache 0
     config_get cache_size $1 cache_size 8000
     config_get lazy_cache_ttl $1 lazy_cache_ttl 86400
     config_get dump_file $1 dump_file 0
@@ -231,18 +232,20 @@ generate_config() {
     json_close_object
     json_close_object
     # plugin: lazy_cache
-    json_add_object
-    json_add_string "tag" "lazy_cache"
-    json_add_string "type" "cache"
-    json_add_object "args"
-    json_add_int "size" "$cache_size"
-    json_add_int "lazy_cache_ttl" "$lazy_cache_ttl"
-    [ "$dump_file" -eq 1 ] && {
-        json_add_string "dump_file" "/etc/mosdns/cache.dump"
-        json_add_int "dump_interval" "$dump_interval"
+    [ "$cache" -eq 1 ] && {
+        json_add_object
+        json_add_string "tag" "lazy_cache"
+        json_add_string "type" "cache"
+        json_add_object "args"
+        json_add_int "size" "$cache_size"
+        json_add_int "lazy_cache_ttl" "$lazy_cache_ttl"
+        [ "$dump_file" -eq 1 ] && {
+            json_add_string "dump_file" "/etc/mosdns/cache.dump"
+            json_add_int "dump_interval" "$dump_interval"
+        }
+        json_close_object
+        json_close_object
     }
-    json_close_object
-    json_close_object
     # plugin: forward_xinfeng_udp
     json_add_object
     json_add_string "tag" "forward_xinfeng_udp"
@@ -573,15 +576,17 @@ generate_config() {
     json_add_object
     json_add_string "exec" "jump has_resp_sequence"
     json_close_object
-    json_add_object
-    json_add_array "matches"
-    json_add_string "" "!qname \$ddnslist"
-    json_add_string "" "!qname \$blocklist"
-    json_add_string "" "!qname \$adlist"
-    json_add_string "" "!qname \$local_ptr"
-    json_close_array
-    json_add_string "exec" "\$lazy_cache"
-    json_close_object
+    [ "$cache" -eq 1 ] && {
+        json_add_object
+        json_add_array "matches"
+        json_add_string "" "!qname \$ddnslist"
+        json_add_string "" "!qname \$blocklist"
+        json_add_string "" "!qname \$adlist"
+        json_add_string "" "!qname \$local_ptr"
+        json_close_array
+        json_add_string "exec" "\$lazy_cache"
+        json_close_object
+    }
     json_add_object
     json_add_string "exec" "\$redirect"
     json_close_object

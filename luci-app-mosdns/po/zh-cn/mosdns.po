@@ -292,11 +292,14 @@ msgstr "防止 DNS 泄漏"
 msgid "Enable this option fallback policy forces forwarding to remote DNS"
 msgstr "启用此选项 fallback 策略会强制转发到远程 DNS"
 
+msgid "Enable DNS Cache"
+msgstr "启用 DNS 缓存"
+
 msgid "DNS Cache Size"
 msgstr "DNS 缓存大小"
 
-msgid "DNS cache size (in piece). To disable caching, please set to 0."
-msgstr "DNS 缓存大小（单位：条），要禁用缓存，请设置为 0"
+msgid "DNS cache size (in piece)."
+msgstr "DNS 缓存大小（单位：条）"
 
 msgid "Lazy Cache TTL"
 msgstr "乐观缓存 TTL"
