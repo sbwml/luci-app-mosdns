@@ -37,6 +37,12 @@ function renderStatus(isRunning) {
 }
 
 return view.extend({
+	load: function() {
+		return Promise.all([
+			L.resolveDefault(fs.exec('/usr/bin/mosdns', ['version']), null),
+		]);
+	},
+
 	handleFlushCache: function (m, section_id, ev) {
 		return fs.exec('/usr/share/mosdns/mosdns.sh', ['flush'])
 			.then(function (lazy_cache) {
@@ -49,10 +55,14 @@ return view.extend({
 			});
 	},
 
-	render: function () {
-		var m, s, o;
+	render: function (basic) {
+		var m, s, o, v;
+		v = '';
 
-		m = new form.Map('mosdns', _('MosDNS'),
+		if (basic[0] && basic[0].code === 0) {
+			v = basic[0].stdout.trim();
+		}
+		m = new form.Map('mosdns', _('MosDNS') + '&#160;' + v,
 			_('MosDNS is a plugin-based DNS forwarder/traffic splitter.'));
 
 		s = m.section(form.TypedSection);
