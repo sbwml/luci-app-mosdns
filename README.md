@@ -24,10 +24,10 @@
 
 - Openwrt official SnapShots
 
-  * requires golang 1.20.x or latest version (openwrt-21.02 & older version needs)
+  * requires golang 1.22.x or latest version
   ```shell
   rm -rf feeds/packages/lang/golang
-  git clone https://github.com/sbwml/packages_lang_golang -b 20.x feeds/packages/lang/golang
+  git clone https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
   ```
 
   ```shell

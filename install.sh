@@ -13,6 +13,13 @@ else
 	exit 1
 fi
 
+# Check
+if [ ! -d "/usr/share/luci/menu.d" ]; then
+	echo -e "${RED_COLOR}OpenWrt LuCI version is not supports.${RES}"
+	echo -e "${RED_COLOR}Minimum OpenWrt Version: openwrt-21.02 or latest${RES}"
+	exit 1
+fi
+
 # TMP
 TMPDIR=$(mktemp -d) || exit 1
 
@@ -22,7 +29,7 @@ country_code=$(echo $ip_info | sed -r 's/.*country_code":"([^"]*).*/\1/')
 if [ $country_code = "CN" ]; then
 	google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
 	if [ ! $google_status = "204" ];then
-		mirror="https://hub.gitmirror.com/"
+		mirror="https://mirror.ghproxy.com/"
 	fi
 fi
 
@@ -40,10 +47,6 @@ CHECK() (
 	if [[ ! $verif ]]; then
 		echo -e "${RED_COLOR}Error! The current \"$platform\" platform is not currently supported.${RES}"
 		exit 1;
-	else
-		echo -e "${GREEN_COLOR}Update opkg sources ...${RES}"
-		opkg update
-		opkg install luci-compat
 	fi
 )
 
