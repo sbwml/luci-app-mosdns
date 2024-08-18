@@ -37,7 +37,7 @@ function renderStatus(isRunning) {
 }
 
 return view.extend({
-	load: function() {
+	load: function () {
 		return Promise.all([
 			L.resolveDefault(fs.exec('/usr/bin/mosdns', ['version']), null),
 		]);
@@ -314,10 +314,15 @@ return view.extend({
 			return fs.trimmed('/etc/mosdns/rule/cloudflare-cidr.txt');
 		};
 		o.write = function (section_id, formvalue) {
-			return fs.write('/etc/mosdns/rule/cloudflare-cidr.txt', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
-				.then(function (i) {
-					return fs.exec('/etc/init.d/mosdns', ['restart']);
-				});
+			return this.cfgvalue(section_id).then(function (value) {
+				if (value == formvalue) {
+					return;
+				}
+				return fs.write('/etc/mosdns/rule/cloudflare-cidr.txt', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
+					.then(function (i) {
+						return fs.exec('/etc/init.d/mosdns', ['restart']);
+					});
+			});
 		};
 
 		/* api */
@@ -344,14 +349,19 @@ return view.extend({
 			return fs.trimmed('/etc/mosdns/config_custom.yaml');
 		};
 		o.write = function (section_id, formvalue) {
-			return fs.write('/etc/mosdns/config_custom.yaml', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
-				.then(function (i) {
-					ui.addNotification(null, E('p', _('Configuration have been saved.')), 'info');
-					return fs.exec('/etc/init.d/mosdns', ['restart']);
-				})
-				.catch(function (e) {
-					ui.addNotification(null, E('p', _('Unable to save contents: %s').format(e.message)));
-				});
+			return this.cfgvalue(section_id).then(function (value) {
+				if (value == formvalue) {
+					return;
+				}
+				return fs.write('/etc/mosdns/config_custom.yaml', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
+					.then(function (i) {
+						ui.addNotification(null, E('p', _('Configuration have been saved.')), 'info');
+						return fs.exec('/etc/init.d/mosdns', ['restart']);
+					})
+					.catch(function (e) {
+						ui.addNotification(null, E('p', _('Unable to save contents: %s').format(e.message)));
+					});
+			});
 		};
 
 		o = s.taboption('geodata', form.DynamicList, 'geosite_tags', _('GeoSite Tags'),
