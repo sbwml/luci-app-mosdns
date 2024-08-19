@@ -36,6 +36,44 @@ function renderStatus(isRunning) {
 	return renderHTML;
 }
 
+async function loadCodeMirrorResources() {
+	const styles = [
+		'/luci-static/resources/codemirror5/codemirror.min.css',
+		'/luci-static/resources/codemirror5/addon/fold/foldgutter.min.css',
+		'/luci-static/resources/codemirror5/addon/lint/lint.min.css',
+		'/luci-static/resources/codemirror5/theme/dracula.min.css',
+	];
+	const scripts = [
+		'/luci-static/resources/codemirror5/codemirror.min.js',
+		'/luci-static/resources/codemirror5/addon/display/autorefresh.min.js',
+		'/luci-static/resources/codemirror5/addon/fold/foldcode.min.js',
+		'/luci-static/resources/codemirror5/addon/fold/foldgutter.min.js',
+		'/luci-static/resources/codemirror5/addon/fold/indent-fold.min.js',
+		'/luci-static/resources/codemirror5/addon/lint/lint.min.js',
+		'/luci-static/resources/codemirror5/addon/lint/yaml-lint.min.js',
+		'/luci-static/resources/codemirror5/libs/js-yaml.min.js',
+		'/luci-static/resources/codemirror5/mode/yaml/yaml.min.js',
+	];
+	const loadStyles = async () => {
+		for (const href of styles) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = href;
+			document.head.appendChild(link);
+		}
+	};
+	const loadScripts = async () => {
+		for (const src of scripts) {
+			const script = document.createElement('script');
+			script.src = src;
+			document.head.appendChild(script);
+			await new Promise(resolve => script.onload = resolve);
+		}
+	};
+	await loadStyles();
+	await loadScripts();
+}
+
 return view.extend({
 	load: function () {
 		return Promise.all([
@@ -80,6 +118,9 @@ return view.extend({
 					});
 				});
 			}, 100);
+
+			/* dynamically loading Codemirror resources */
+			loadCodeMirrorResources();
 
 			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
 				E('p', { id: 'service_status' }, _('Collecting data...'))
@@ -346,6 +387,26 @@ return view.extend({
 		o.depends('cache', '1');
 
 		/* configuration */
+		var configeditor = null;
+		setTimeout(function () {
+			var textarea = document.getElementById('widget.cbid.mosdns.config._custom');
+			if (textarea) {
+				configeditor = CodeMirror.fromTextArea(textarea, {
+					autoRefresh: true,
+					lineNumbers: true,
+					lineWrapping: true,
+					lint: true,
+					gutters: ['CodeMirror-lint-markers'],
+					matchBrackets: true,
+					mode: "text/yaml",
+					styleActiveLine: true,
+					theme: "dracula",
+					fontSize: "14",
+					viewportMargin: Infinity
+				});
+				console.log('CodeMirror editor initialized.');
+			}
+		}, 120);
 		o = s.taboption('basic', form.TextValue, '_custom', _('Configuration Editor'),
 			_('This is the content of the file \'/etc/mosdns/config_custom.yaml\' from which your MosDNS configuration will be generated. \
 			Only accepts configuration content in yaml format.'));
@@ -355,19 +416,23 @@ return view.extend({
 			return fs.trimmed('/etc/mosdns/config_custom.yaml');
 		};
 		o.write = function (section_id, formvalue) {
-			return this.cfgvalue(section_id).then(function (value) {
-				if (value == formvalue) {
+			if (configeditor) {
+				var editorContent = configeditor.getValue();
+				if (editorContent === formvalue) {
 					return;
 				}
-				return fs.write('/etc/mosdns/config_custom.yaml', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
+				return fs.write('/etc/mosdns/config_custom.yaml', editorContent.trim().replace(/\r\n/g, '\n') + '\n')
 					.then(function (i) {
 						ui.addNotification(null, E('p', _('Configuration have been saved.')), 'info');
 						return fs.exec('/etc/init.d/mosdns', ['restart']);
 					})
+					.then(function () {
+						window.location.reload();
+					})
 					.catch(function (e) {
 						ui.addNotification(null, E('p', _('Unable to save contents: %s').format(e.message)));
 					});
-			});
+			}
 		};
 
 		o = s.taboption('geodata', form.DynamicList, 'geosite_tags', _('GeoSite Tags'),
