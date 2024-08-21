@@ -38,21 +38,17 @@ function renderStatus(isRunning) {
 
 async function loadCodeMirrorResources() {
 	const styles = [
-		'/luci-static/resources/codemirror5/codemirror.min.css',
-		'/luci-static/resources/codemirror5/addon/fold/foldgutter.min.css',
-		'/luci-static/resources/codemirror5/addon/lint/lint.min.css',
 		'/luci-static/resources/codemirror5/theme/dracula.min.css',
+		'/luci-static/resources/codemirror5/addon/lint/lint.min.css',
+		'/luci-static/resources/codemirror5/codemirror.min.css',
 	];
 	const scripts = [
+		'/luci-static/resources/codemirror5/libs/js-yaml.min.js',
 		'/luci-static/resources/codemirror5/codemirror.min.js',
 		'/luci-static/resources/codemirror5/addon/display/autorefresh.min.js',
-		'/luci-static/resources/codemirror5/addon/fold/foldcode.min.js',
-		'/luci-static/resources/codemirror5/addon/fold/foldgutter.min.js',
-		'/luci-static/resources/codemirror5/addon/fold/indent-fold.min.js',
+		'/luci-static/resources/codemirror5/mode/yaml/yaml.min.js',
 		'/luci-static/resources/codemirror5/addon/lint/lint.min.js',
 		'/luci-static/resources/codemirror5/addon/lint/yaml-lint.min.js',
-		'/luci-static/resources/codemirror5/libs/js-yaml.min.js',
-		'/luci-static/resources/codemirror5/mode/yaml/yaml.min.js',
 	];
 	const loadStyles = async () => {
 		for (const href of styles) {
@@ -400,13 +396,10 @@ return view.extend({
 					matchBrackets: true,
 					mode: "text/yaml",
 					styleActiveLine: true,
-					theme: "dracula",
-					fontSize: "14",
-					viewportMargin: Infinity
+					theme: "dracula"
 				});
-				console.log('CodeMirror editor initialized.');
 			}
-		}, 120);
+		}, 150);
 		o = s.taboption('basic', form.TextValue, '_custom', _('Configuration Editor'),
 			_('This is the content of the file \'/etc/mosdns/config_custom.yaml\' from which your MosDNS configuration will be generated. \
 			Only accepts configuration content in yaml format.'));
@@ -419,15 +412,14 @@ return view.extend({
 			if (configeditor) {
 				var editorContent = configeditor.getValue();
 				if (editorContent === formvalue) {
-					return;
+					return window.location.reload();
 				}
 				return fs.write('/etc/mosdns/config_custom.yaml', editorContent.trim().replace(/\r\n/g, '\n') + '\n')
 					.then(function (i) {
-						ui.addNotification(null, E('p', _('Configuration have been saved.')), 'info');
 						return fs.exec('/etc/init.d/mosdns', ['restart']);
 					})
 					.then(function () {
-						window.location.reload();
+						return window.location.reload();
 					})
 					.catch(function (e) {
 						ui.addNotification(null, E('p', _('Unable to save contents: %s').format(e.message)));

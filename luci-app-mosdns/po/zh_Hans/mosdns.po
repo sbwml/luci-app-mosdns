@@ -371,9 +371,6 @@ msgstr "规则列表"
 msgid "Rule Settings"
 msgstr "自定义规则列表"
 
-msgid "Rules have been saved."
-msgstr "规则已保存"
-
 msgid "Unable to save contents: %s"
 msgstr "无法保存内容：%s"
 
