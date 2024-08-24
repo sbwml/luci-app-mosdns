@@ -399,7 +399,7 @@ return view.extend({
 					theme: "dracula"
 				});
 			}
-		}, 150);
+		}, 600);
 		o = s.taboption('basic', form.TextValue, '_custom', _('Configuration Editor'),
 			_('This is the content of the file \'/etc/mosdns/config_custom.yaml\' from which your MosDNS configuration will be generated. \
 			Only accepts configuration content in yaml format.'));
