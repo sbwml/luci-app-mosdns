@@ -140,6 +140,21 @@ msgstr "每周六"
 msgid "Every Sunday"
 msgstr "每周日"
 
+msgid "GeoIP Type"
+msgstr "GeoIP 类型"
+
+msgid "Little"
+msgstr "轻量"
+
+msgid "Little: only include Mainland China and Private IP addresses."
+msgstr "轻量：仅包含中国大陆和私有 IP 地址。"
+
+msgid "Full"
+msgstr "全量"
+
+msgid "Full: includes all Countries and Private IP addresses."
+msgstr "全量：包含所有国家和私有 IP 地址。"
+
 msgid "GitHub Proxy"
 msgstr "GitHub 代理"
 

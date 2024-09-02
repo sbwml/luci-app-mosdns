@@ -47,9 +47,20 @@ return view.extend({
 		};
 		o.default = 3;
 
+		o = s.option(form.ListValue, 'geoip_type', _('GeoIP Type'),
+			_('Little: only include Mainland China and Private IP addresses.') +
+			'<br>' +
+			_('Full: includes all Countries and Private IP addresses.')
+			);
+		o.value('geoip', _('Full'));
+		o.value('geoip-only-cn-private', _('Little'));
+		o.rmempty = false;
+		o.default = 'geoip';
+
 		o = s.option(form.Value, 'github_proxy', _('GitHub Proxy'),
 			_('Update data files with GitHub Proxy, leave blank to disable proxy downloads.'));
 		o.value('https://hub.gitmirror.com', _('https://hub.gitmirror.com'));
+		o.value('https://mirror.ghproxy.com', _('https://mirror.ghproxy.com'));
 		o.rmempty = true;
 		o.default = '';
 
