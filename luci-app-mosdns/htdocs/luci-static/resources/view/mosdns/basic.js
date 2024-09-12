@@ -285,8 +285,7 @@ return view.extend({
 		o.default = false;
 		o.depends('configfile', '/var/etc/mosdns.json');
 
-		o = s.taboption('advanced', form.Value, 'cache_size', _('DNS Cache Size'),
-			_('DNS cache size (in piece). To disable caching, please set to 0.'));
+		o = s.taboption('advanced', form.Value, 'cache_size', _('DNS Cache Size'));
 		o.datatype = 'and(uinteger,min(0))';
 		o.default = 8000;
 		o.depends('cache', '1');
