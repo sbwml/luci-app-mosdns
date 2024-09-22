@@ -7,8 +7,6 @@ Subject: [PATCH 5/5] format logtime
  mlog/logger.go | 18 ++++++++++++++----
  1 file changed, 14 insertions(+), 4 deletions(-)
 
-diff --git a/mlog/logger.go b/mlog/logger.go
-index 861f091..1508db0 100644
 --- a/mlog/logger.go
 +++ b/mlog/logger.go
 @@ -21,9 +21,11 @@ package mlog
@@ -24,7 +22,7 @@ index 861f091..1508db0 100644
  )
  
  type LogConfig struct {
-@@ -64,10 +66,18 @@ func NewLogger(lc LogConfig) (*zap.Logger, error) {
+@@ -64,10 +66,18 @@ func NewLogger(lc LogConfig) (*zap.Logge
  		out = stderr
  	}
  
@@ -46,6 +44,3 @@ index 861f091..1508db0 100644
  }
  
  // L is a global logger.
--- 
-2.42.0
-

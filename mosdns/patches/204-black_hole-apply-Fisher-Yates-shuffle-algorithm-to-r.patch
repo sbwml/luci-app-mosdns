@@ -8,8 +8,6 @@ Subject: [PATCH 4/5] black_hole: apply Fisher-Yates shuffle algorithm to
  plugin/executable/black_hole/black_hole.go | 15 +++++++++++++++
  1 file changed, 15 insertions(+)
 
-diff --git a/plugin/executable/black_hole/black_hole.go b/plugin/executable/black_hole/black_hole.go
-index 775253d..f955019 100644
 --- a/plugin/executable/black_hole/black_hole.go
 +++ b/plugin/executable/black_hole/black_hole.go
 @@ -27,6 +27,8 @@ import (
@@ -21,7 +19,7 @@ index 775253d..f955019 100644
  )
  
  const PluginType = "black_hole"
-@@ -40,6 +42,7 @@ var _ sequence.Executable = (*BlackHole)(nil)
+@@ -40,6 +42,7 @@ var _ sequence.Executable = (*BlackHole)
  type BlackHole struct {
  	ipv4 []netip.Addr
  	ipv6 []netip.Addr
@@ -29,7 +27,7 @@ index 775253d..f955019 100644
  }
  
  // QuickSetup format: [ipv4|ipv6] ...
-@@ -65,9 +68,21 @@ func NewBlackHole(ips []string) (*BlackHole, error) {
+@@ -65,9 +68,21 @@ func NewBlackHole(ips []string) (*BlackH
  	return b, nil
  }
  
@@ -51,6 +49,3 @@ index 775253d..f955019 100644
  	if r := b.Response(qCtx.Q()); r != nil {
  		qCtx.SetResponse(r)
  	}
--- 
-2.42.0
-
