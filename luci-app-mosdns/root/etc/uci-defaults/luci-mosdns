@@ -1,11 +1,13 @@
 #!/bin/sh
 
+[ -f "/etc/config/ucitrack" ] && {
 uci -q batch <<-EOF >/dev/null
 	delete ucitrack.@mosdns[-1]
 	add ucitrack mosdns
 	set ucitrack.@mosdns[-1].init=mosdns
 	commit ucitrack
 EOF
+}
 
 rm -rf /tmp/luci-*
 exit 0
