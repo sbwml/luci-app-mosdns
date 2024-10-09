@@ -25,7 +25,7 @@ end
 
 function act_status()
     local e = {}
-    e.running = sys.call("pgrep -f mosdns >/dev/null") == 0
+    e.running = sys.call("pgrep -f /usr/bin/mosdns >/dev/null") == 0
     http.prepare_content("application/json")
     http.write_json(e)
 end
