@@ -29,7 +29,7 @@ country_code=$(echo $ip_info | sed -r 's/.*country_code":"([^"]*).*/\1/')
 if [ $country_code = "CN" ]; then
 	google_status=$(curl -I -4 -m 3 -o /dev/null -s -w %{http_code} http://www.google.com/generate_204)
 	if [ ! $google_status = "204" ];then
-		mirror="https://mirror.ghproxy.com/"
+		mirror="https://gh-proxy.com/"
 	fi
 fi
 
