@@ -27,15 +27,31 @@ PKG_BUILD_FLAGS:=no-mips16
 
 GO_PKG:=github.com/urlesistiana/v2dat
 
+include $(TOPDIR)/include/version.mk
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/v2dat
-  SECTION:=utils
-  CATEGORY:=Utilities
-  TITLE:=V2ray geo/ip data unpack tools
-  URL:=https://github.com/urlesistiana/v2dat
-  DEPENDS:=$(GO_ARCH_DEPENDS)
+	SECTION:=utils
+	CATEGORY:=Utilities
+	TITLE:=V2ray geo/ip data unpack tools
+	URL:=https://github.com/urlesistiana/v2dat
+	DEPENDS:=$(GO_ARCH_DEPENDS)
+endef
+
+OPENWRT_MAJOR_VERSION := $(shell echo $(VERSION_NUMBER) | cut -d'.' -f1)
+
+ifeq ($(OPENWRT_MAJOR_VERSION),24)
+  PATCH_DIR := patches-24.10
+else
+  PATCH_DIR := patches-23.05
+endif
+
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	@if [ -d $(CURDIR)/$(PATCH_DIR) ]; then \
+		cp -a $(CURDIR)/$(PATCH_DIR)/* $(CURDIR)/patches/; \
+	fi
 endef
 
 define Package/v2dat/install
