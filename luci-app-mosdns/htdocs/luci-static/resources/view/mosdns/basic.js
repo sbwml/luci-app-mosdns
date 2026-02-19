@@ -181,6 +181,11 @@ return view.extend({
 		o.depends('configfile', '/var/etc/mosdns.json');
 		o.default = false;
 
+		o = s.taboption('basic', form.Flag, 'whitelist_enable_ipv6', _('Whitelist enable IPv6'),
+			_('When enabled, whitelist domain rules ignore prefer IPv4 settings and allow IPv6 responses as normal.'));
+		o.depends('configfile', '/var/etc/mosdns.json');
+		o.default = false;
+
 		o = s.taboption('basic', form.Flag, 'custom_local_dns', _('Custom China DNS'), _('Follow WAN interface DNS if not enabled'));
 		o.depends('configfile', '/var/etc/mosdns.json');
 		o.default = false;

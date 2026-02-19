@@ -218,6 +218,12 @@ msgstr "远程 DNS 首选 IPv4"
 msgid "IPv4 is preferred for Remote / Streaming Media DNS resolution of dual-stack addresses, and is not affected when the destination is IPv6 only"
 msgstr "远程 / 流媒体 DNS 解析双栈地址时首选 IPv4，目标仅 IPv6 时不受影响"
 
+msgid "Whitelist enable IPv6"
+msgstr "白名单启用 IPv6"
+
+msgid "When enabled, whitelist domain rules ignore prefer IPv4 settings and allow IPv6 responses as normal."
+msgstr "启用后，白名单域名规则将忽略首选 IPv4 设置，并正常使用 IPv6 应答。"
+
 msgid "Custom China DNS"
 msgstr "自定义国内 DNS"
 
