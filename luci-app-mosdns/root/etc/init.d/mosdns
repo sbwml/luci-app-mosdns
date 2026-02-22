@@ -252,6 +252,7 @@ migrate_legacy_config() {
 
 	local local_dns remote_dns
 	local old_remote old_adblock old_ad_source old_custom_stream old_apple_optimization
+	local old_prefer_ipv4_cn old_prefer_ipv4
 	local cn_id global_id
 
 	local_dns=$(uci -q get mosdns.config.local_dns)
@@ -263,6 +264,8 @@ migrate_legacy_config() {
 	old_ad_source=$(uci -q get mosdns.config.ad_source)
 	old_custom_stream=$(uci -q get mosdns.config.custom_stream_media_dns)
 	old_apple_optimization=$(uci -q get mosdns.config.apple_optimization)
+	old_prefer_ipv4_cn=$(uci -q get mosdns.config.prefer_ipv4_cn)
+	old_prefer_ipv4=$(uci -q get mosdns.config.prefer_ipv4)
 
 	cn_id=$(uci -q add mosdns dns_group)
 	uci -q set mosdns.$cn_id.name='国内'
@@ -355,7 +358,7 @@ migrate_legacy_config() {
 	uci -q set mosdns.$rid.name='白名单'
 	uci -q set mosdns.$rid.mode='custom'
 	uci -q set mosdns.$rid.dns_group="$cn_id"
-	uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	uci -q set mosdns.$rid.ip_strategy='auto'
 	uci -q set mosdns.$rid.ttl='0'
 	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/whitelist.txt'
 
@@ -365,7 +368,11 @@ migrate_legacy_config() {
 	uci -q set mosdns.$rid.mode='builtin'
 	uci -q set mosdns.$rid.builtin_type='cn_domain'
 	uci -q set mosdns.$rid.dns_group="$cn_id"
-	uci -q set mosdns.$rid.ip_strategy='auto'
+	if [ "$old_prefer_ipv4_cn" = "1" ]; then
+		uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	else
+		uci -q set mosdns.$rid.ip_strategy='auto'
+	fi
 	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_cn.txt'
 
 	rid=$(uci -q add mosdns rule)
@@ -374,7 +381,11 @@ migrate_legacy_config() {
 	uci -q set mosdns.$rid.mode='builtin'
 	uci -q set mosdns.$rid.builtin_type='noncn_domain'
 	uci -q set mosdns.$rid.dns_group="$global_id"
-	uci -q set mosdns.$rid.ip_strategy='ipv4'
+	if [ "$old_prefer_ipv4" = "1" ]; then
+		uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	else
+		uci -q set mosdns.$rid.ip_strategy='auto'
+	fi
 	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
 	uci -q set mosdns.config.schema_version='2'
