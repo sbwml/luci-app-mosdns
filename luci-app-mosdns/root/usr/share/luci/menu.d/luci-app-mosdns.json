@@ -15,7 +15,7 @@
 		"order": 10,
 		"action": {
 			"type": "view",
-			"path": "mosdns/basic"
+			"path": "mosdns/basic_v2"
 		}
 	},
 	"admin/services/mosdns/dns_groups": {
@@ -23,7 +23,7 @@
 		"order": 15,
 		"action": {
 			"type": "view",
-			"path": "mosdns/dns_groups"
+			"path": "mosdns/dns_groups_v2"
 		}
 	},
 	"admin/services/mosdns/rules": {
@@ -31,7 +31,7 @@
 		"order": 16,
 		"action": {
 			"type": "view",
-			"path": "mosdns/rules"
+			"path": "mosdns/rules_v2"
 		}
 	},
 	"admin/services/mosdns/update": {
@@ -39,7 +39,7 @@
 		"order": 20,
 		"action": {
 			"type": "view",
-			"path": "mosdns/update"
+			"path": "mosdns/update_v2"
 		}
 	},
 	"admin/services/mosdns/logs": {
@@ -47,7 +47,7 @@
 		"order": 25,
 		"action": {
 			"type": "view",
-			"path": "mosdns/logs"
+			"path": "mosdns/logs_v2"
 		}
 	}
 }
