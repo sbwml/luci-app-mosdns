@@ -520,30 +520,30 @@ add_rule_plugins_v2() {
 					json_add_string "matches" "!qname \$${set_tag}"
 					json_add_string "exec" "return"
 					json_close_object
-					case "$builtin_ip_strategy" in
-						ipv4)
-							json_add_object
-							json_add_string "matches" "qtype 28"
-							json_add_string "exec" "reject 3"
-							json_close_object
-							json_add_object
-							json_add_string "exec" "prefer_ipv4"
-							json_close_object
-						;;
+						case "$builtin_ip_strategy" in
+							ipv4)
+								json_add_object
+								json_add_string "matches" "qtype 28"
+								json_add_string "exec" "reject 0"
+								json_close_object
+								json_add_object
+								json_add_string "exec" "prefer_ipv4"
+								json_close_object
+							;;
 						ipv4_first)
 							json_add_object
 							json_add_string "exec" "prefer_ipv4"
 							json_close_object
 						;;
-						ipv6)
-							json_add_object
-							json_add_string "matches" "qtype 1"
-							json_add_string "exec" "reject 3"
-							json_close_object
-							json_add_object
-							json_add_string "exec" "prefer_ipv6"
-							json_close_object
-						;;
+							ipv6)
+								json_add_object
+								json_add_string "matches" "qtype 1"
+								json_add_string "exec" "reject 0"
+								json_close_object
+								json_add_object
+								json_add_string "exec" "prefer_ipv6"
+								json_close_object
+							;;
 						ipv6_first)
 							json_add_object
 							json_add_string "exec" "prefer_ipv6"
@@ -691,7 +691,7 @@ add_rule_plugins_v2() {
 				ipv4)
 					json_add_object
 					json_add_string "matches" "qtype 28"
-					json_add_string "exec" "reject 3"
+					json_add_string "exec" "reject 0"
 					json_close_object
 					json_add_object
 					json_add_string "exec" "prefer_ipv4"
@@ -705,7 +705,7 @@ add_rule_plugins_v2() {
 				ipv6)
 					json_add_object
 					json_add_string "matches" "qtype 1"
-					json_add_string "exec" "reject 3"
+					json_add_string "exec" "reject 0"
 					json_close_object
 					json_add_object
 					json_add_string "exec" "prefer_ipv6"
