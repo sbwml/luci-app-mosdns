@@ -18,9 +18,17 @@
 			"path": "mosdns/basic"
 		}
 	},
+	"admin/services/mosdns/dns_groups": {
+		"title": "DNS Groups",
+		"order": 15,
+		"action": {
+			"type": "view",
+			"path": "mosdns/dns_groups"
+		}
+	},
 	"admin/services/mosdns/rules": {
 		"title": "Rules",
-		"order": 15,
+		"order": 16,
 		"action": {
 			"type": "view",
 			"path": "mosdns/rules"

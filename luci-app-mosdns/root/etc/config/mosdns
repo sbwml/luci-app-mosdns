@@ -1,6 +1,7 @@
 
 config mosdns 'config'
 	option enabled '0'
+	option schema_version '2'
 	option listen_port '5335'
 	option listen_address '0.0.0.0'
 	option geo_auto_update '0'
@@ -17,15 +18,121 @@ config mosdns 'config'
 	option enable_pipeline '1'
 	option insecure_skip_verify '0'
 	option dns_leak '0'
-	option cloudflare '0'
 	option listen_port_api '9091'
 	option bootstrap_dns '119.29.29.29'
-	list remote_dns 'tls://8.8.8.8'
 	option redirect '1'
-	option prefer_ipv4 '1'
-	option whitelist_enable_ipv6 '0'
 	option enable_ecs_remote '0'
 	option cache_size '8000'
 	option lazy_cache_ttl '86400'
 	option dump_file '0'
 	option reject_type65 '1'
+	option adblock '0'
+	list ad_source 'geosite.dat'
+
+config dns_group 'dns_cn'
+	option name '国内'
+	option is_default '0'
+	option use_default_dns '0'
+	list dns '119.29.29.29'
+
+config dns_group 'dns_global'
+	option name '国外'
+	option is_default '1'
+	option use_default_dns '0'
+	list dns 'tls://8.8.8.8'
+
+config rule
+	option enabled '0'
+	option name '广告过滤'
+	option mode 'builtin'
+	option builtin_type 'adblock'
+	list ad_source 'geosite.dat'
+
+config rule
+	option enabled '1'
+	option name 'Hosts'
+	option mode 'hosts'
+	option rule_file '/etc/mosdns/rule/hosts.txt'
+
+config rule
+	option enabled '1'
+	option name '重定向'
+	option mode 'redirect'
+	option rule_file '/etc/mosdns/rule/redirect.txt'
+
+config rule
+	option enabled '1'
+	option name 'PTR黑名单'
+	option mode 'blacklist'
+	option blacklist_type 'ptr'
+	option rule_file '/etc/mosdns/rule/local-ptr.txt'
+
+config rule
+	option enabled '1'
+	option name '黑名单'
+	option mode 'blacklist'
+	option blacklist_type 'domain'
+	option rule_file '/etc/mosdns/rule/blocklist.txt'
+
+config rule
+	option enabled '1'
+	option name 'DDNS域名'
+	option mode 'custom'
+	option dns_group 'dns_cn'
+	option ip_strategy 'auto'
+	option ttl '5'
+	option rule_file '/etc/mosdns/rule/ddnslist.txt'
+
+config rule
+	option enabled '0'
+	option name '流媒体'
+	option mode 'builtin'
+	option builtin_type 'stream_media'
+	option dns_group 'dns_global'
+	option ip_strategy 'ipv4_first'
+	option rule_file '/etc/mosdns/rule/streaming.txt'
+
+config rule
+	option enabled '0'
+	option name 'Apple 域名优化'
+	option mode 'builtin'
+	option builtin_type 'apple_domain'
+	option dns_group 'dns_cn'
+	option ip_strategy 'auto'
+	option rule_file '/var/mosdns/geosite_apple.txt'
+
+config rule
+	option enabled '1'
+	option name '灰名单'
+	option mode 'custom'
+	option dns_group 'dns_global'
+	option ip_strategy 'ipv4_first'
+	option ttl '0'
+	option rule_file '/etc/mosdns/rule/greylist.txt'
+
+config rule
+	option enabled '1'
+	option name '白名单'
+	option mode 'custom'
+	option dns_group 'dns_cn'
+	option ip_strategy 'ipv4_first'
+	option ttl '0'
+	option rule_file '/etc/mosdns/rule/whitelist.txt'
+
+config rule
+	option enabled '1'
+	option name '国内域名'
+	option mode 'builtin'
+	option builtin_type 'cn_domain'
+	option dns_group 'dns_cn'
+	option ip_strategy 'auto'
+	option rule_file '/var/mosdns/geosite_cn.txt'
+
+config rule
+	option enabled '1'
+	option name '国外域名'
+	option mode 'builtin'
+	option builtin_type 'noncn_domain'
+	option dns_group 'dns_global'
+	option ip_strategy 'ipv4'
+	option rule_file '/var/mosdns/geosite_geolocation-!cn.txt'

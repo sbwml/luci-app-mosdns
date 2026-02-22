@@ -24,8 +24,12 @@ return view.extend({
 		m = new form.Map('mosdns', _('Update GeoIP & GeoSite databases'),
 			_('Automatically update GeoIP and GeoSite databases as well as ad filtering rules through scheduled tasks.'));
 
-		s = m.section(form.TypedSection);
+		s = m.section(form.TypedSection, 'mosdns');
 		s.anonymous = true;
+		s.addremove = false;
+		s.cfgsections = function () {
+			return [ 'config' ];
+		};
 
 		o = s.option(form.Flag, 'geo_auto_update', _('Enable Auto Database Update'));
 		o.rmempty = false;

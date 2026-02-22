@@ -1,0 +1,3 @@
+/etc/config/mosdns
+/etc/mosdns/rule/
+/etc/mosdns/cache.dump

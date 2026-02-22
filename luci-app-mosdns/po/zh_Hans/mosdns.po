@@ -493,3 +493,189 @@ msgstr "流媒体"
 
 msgid "When enabling 'Custom Stream Media DNS', added domains will always use the 'Streaming Media DNS server' for resolution (one domain per line, supports domain matching rules)."
 msgstr "启用 “自定义流媒体 DNS” 时，加入的域名始终使用 “流媒体 DNS 服务器” 进行解析（每个域名一行，支持域名匹配规则）"
+
+msgid "DNS Groups"
+msgstr "DNS 分组"
+
+msgid "Manage upstream DNS groups. One group must be set as default fallback."
+msgstr "管理上游 DNS 分组。必须设置一个默认分组用于兜底。"
+
+msgid "DNS Group List"
+msgstr "DNS 分组列表"
+
+msgid "Group Name"
+msgstr "分组名称"
+
+msgid "DNS Group"
+msgstr "DNS 分组"
+
+msgid "DNS Servers"
+msgstr "DNS 服务器"
+
+msgid "Use Interface Default DNS"
+msgstr "使用接口默认 DNS"
+
+msgid "Use DNS from WAN static config or PPPoE/DHCP dynamic assignment."
+msgstr "使用 WAN 静态配置或 PPPoE/DHCP 动态分配的 DNS。"
+
+msgid "Set As Default"
+msgstr "设为默认"
+
+msgid "Failed to identify current DNS group."
+msgstr "无法识别当前 DNS 分组。"
+
+msgid "Default DNS group marked. Please click Save or Save & Apply to take effect."
+msgstr "已标记默认 DNS 分组。请点击“保存”或“保存并应用”使其生效。"
+
+msgid "Rule List"
+msgstr "规则列表"
+
+msgid "Rules are matched from top to bottom. If no rule matches, the default DNS group is used as fallback."
+msgstr "规则按从上到下顺序匹配。若无规则命中，则使用默认 DNS 分组兜底。"
+
+msgid "Rule"
+msgstr "规则"
+
+msgid "Add Rule"
+msgstr "添加规则"
+
+msgid "Rule Name"
+msgstr "规则名称"
+
+msgid "New Rule"
+msgstr "新规则"
+
+msgid "Mode"
+msgstr "模式"
+
+msgid "Blacklist"
+msgstr "黑名单"
+
+msgid "Built-in Rule"
+msgstr "内置规则"
+
+msgid "IP Mapping"
+msgstr "IP 映射"
+
+msgid "HOSTS"
+msgstr "HOSTS"
+
+msgid "Custom Rule"
+msgstr "自定义规则"
+
+msgid "Blacklist Type"
+msgstr "黑名单类型"
+
+msgid "Domain Blacklist"
+msgstr "域名黑名单"
+
+msgid "PTR Blacklist"
+msgstr "PTR 黑名单"
+
+msgid "Built-in Type"
+msgstr "内置类型"
+
+msgid "ADBlock Rule"
+msgstr "广告过滤规则"
+
+msgid "China Domain"
+msgstr "国内域名"
+
+msgid "Global Domain"
+msgstr "国外域名"
+
+msgid "Apple Domain Optimization"
+msgstr "Apple 域名优化"
+
+msgid "When using custom rule sources, please use domain lists supported by MosDNS."
+msgstr "使用自定义规则来源时，请使用 MosDNS 支持的域名列表格式。"
+
+msgid "Support local files, e.g. file:///var/mosdns/example.txt"
+msgstr "支持本地文件，例如：file:///var/mosdns/example.txt"
+
+msgid "Mapped IP"
+msgstr "映射 IP"
+
+msgid "Default DNS Group"
+msgstr "默认 DNS 分组"
+
+msgid "IP Resolve Strategy"
+msgstr "IP 解析策略"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "IPv4 Only"
+msgstr "仅 IPv4"
+
+msgid "IPv6 Only"
+msgstr "仅 IPv6"
+
+msgid "IPv4 First"
+msgstr "IPv4 优先"
+
+msgid "IPv6 First"
+msgstr "IPv6 优先"
+
+msgid "TTL Override"
+msgstr "TTL 覆盖"
+
+msgid "Rule Content"
+msgstr "规则文本"
+
+msgid "Rule File"
+msgstr "规则文件"
+
+msgid "Add DNS Group"
+msgstr "添加 DNS 分组"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "No"
+msgstr "否"
+
+msgid "CloudFlare Public DNS (DoT 1.1.1.1)"
+msgstr "CloudFlare 公共 DNS（DoT 1.1.1.1）"
+
+msgid "CloudFlare Public DNS (DoT 1.0.0.1)"
+msgstr "CloudFlare 公共 DNS（DoT 1.0.0.1）"
+
+msgid "Google Public DNS (DoT 8.8.8.8)"
+msgstr "Google 公共 DNS（DoT 8.8.8.8）"
+
+msgid "Google Public DNS (DoT 8.8.4.4)"
+msgstr "Google 公共 DNS（DoT 8.8.4.4）"
+
+msgid "Aliyun Public DNS (DoH)"
+msgstr "阿里云公共 DNS（DoH）"
+
+msgid "Aliyun Public DNS (DoH3)"
+msgstr "阿里云公共 DNS（DoH3）"
+
+msgid "Tencent Public DNS (DoH)"
+msgstr "腾讯公共 DNS（DoH）"
+
+msgid "Aliyun Public DNS (DoQ)"
+msgstr "阿里云公共 DNS（DoQ）"
+
+msgid "Default Actions"
+msgstr "默认操作"
+
+msgid "Restore Default Rules"
+msgstr "恢复默认规则"
+
+msgid "This operation will clear current rule settings and restore default DNS groups (CN/Global). Continue?"
+msgstr "此操作将清空当前规则配置，并恢复默认 DNS 分组（国内/国外）。是否继续？"
+
+msgid "Failed to restore default rules."
+msgstr "恢复默认规则失败。"
+
+msgid "Default rules restored."
+msgstr "已恢复默认规则。"
+
+msgid "Restore Default Rules (Keep DNS Groups)"
+msgstr "恢复默认规则（保留 DNS 分组）"
+
+msgid "This operation will clear current rule settings only and keep current DNS groups. Continue?"
+msgstr "此操作仅清空当前规则配置，并保留当前 DNS 分组。是否继续？"

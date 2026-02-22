@@ -14,6 +14,7 @@ MOSDNS_SCRIPT=/usr/share/mosdns/mosdns.sh
 
 get_config() {
 	config_get enabled $1 enabled 0
+	config_get schema_version $1 schema_version 1
 	config_get adblock $1 adblock 0
 	config_get ad_source $1 ad_source ""
 	config_get cache $1 cache 0
@@ -52,6 +53,801 @@ get_config() {
 	config_get cloudflare $1 cloudflare 0
 	config_get cloudflare_ip $1 cloudflare_ip ""
 	config_get reject_type65 $1 reject_type65 "0"
+}
+
+_sanitize_key() {
+	echo "$1" | tr -c 'A-Za-z0-9_' '_'
+}
+
+set_dns_group_tag() {
+	local key
+	key=$(_sanitize_key "$1")
+	eval "DNS_GROUP_TAG_${key}=\"$2\""
+}
+
+get_dns_group_tag() {
+	local key
+	key=$(_sanitize_key "$1")
+	eval "echo \${DNS_GROUP_TAG_${key}}"
+}
+
+set_default_dns_group() {
+	local target="$1"
+	local sec
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=dns_group$/{print $2}'); do
+		if [ "$sec" = "$target" ]; then
+			uci -q set mosdns.$sec.is_default='1'
+		else
+			uci -q set mosdns.$sec.is_default='0'
+		fi
+	done
+	uci -q commit mosdns
+}
+
+enforce_default_dns_group() {
+	local total=0
+	local first=""
+	local default=""
+	local sec
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=dns_group$/{print $2}'); do
+		total=$((total + 1))
+		[ -z "$first" ] && first="$sec"
+		[ "$(uci -q get mosdns.$sec.is_default)" = "1" ] && [ -z "$default" ] && default="$sec"
+	done
+
+	[ "$total" -eq 0 ] && return 0
+	if [ "$total" -eq 1 ]; then
+		set_default_dns_group "$first"
+		return 0
+	fi
+	[ -z "$default" ] && set_default_dns_group "$first"
+}
+
+normalize_rule_dns_group_refs() {
+	local default_group=""
+	local first_group=""
+	local cn_group=""
+	local global_group=""
+	local sec
+	local changed=0
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=dns_group$/{print $2}'); do
+		[ -z "$first_group" ] && first_group="$sec"
+		[ "$(uci -q get mosdns.$sec.is_default)" = "1" ] && [ -z "$default_group" ] && default_group="$sec"
+		[ "$(uci -q get mosdns.$sec.name)" = "国内" ] && [ -z "$cn_group" ] && cn_group="$sec"
+		[ "$(uci -q get mosdns.$sec.name)" = "国外" ] && [ -z "$global_group" ] && global_group="$sec"
+	done
+
+	[ -z "$default_group" ] && default_group="$first_group"
+	[ -z "$default_group" ] && return 0
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=rule$/{print $2}'); do
+		local mode bt
+		mode=$(uci -q get mosdns.$sec.mode)
+		bt=$(uci -q get mosdns.$sec.builtin_type)
+		if [ "$mode" != "custom" ] && ! { [ "$mode" = "builtin" ] && { [ "$bt" = "cn_domain" ] || [ "$bt" = "noncn_domain" ] || [ "$bt" = "apple_domain" ] || [ "$bt" = "stream_media" ]; }; }; then
+			continue
+		fi
+		local ref idx target rf
+		ref=$(uci -q get mosdns.$sec.dns_group)
+		target="$default_group"
+		if [ "$mode" = "builtin" ]; then
+			case "$bt" in
+				cn_domain|apple_domain)
+					[ -n "$cn_group" ] && target="$cn_group"
+				;;
+				noncn_domain|stream_media)
+					[ -n "$global_group" ] && target="$global_group"
+				;;
+			esac
+		elif [ "$mode" = "custom" ]; then
+			rf=$(uci -q get mosdns.$sec.rule_file)
+			case "$rf" in
+				*/whitelist.txt|*/ddnslist.txt)
+					[ -n "$cn_group" ] && target="$cn_group"
+				;;
+				*/greylist.txt)
+					[ -n "$global_group" ] && target="$global_group"
+				;;
+			esac
+		fi
+
+		[ -z "$ref" ] && {
+			uci -q set mosdns.$sec.dns_group="$target"
+			changed=1
+			continue
+		}
+		if echo "$ref" | grep -q '^@dns_group\[[0-9][0-9]*\]$'; then
+			idx=$(echo "$ref" | sed -n 's/^@dns_group\[\([0-9][0-9]*\)\]$/\1/p')
+			if [ -n "$idx" ]; then
+				target=$(uci -q show mosdns.@dns_group[$idx] | awk -F '[.=]' 'NR==1{print $2}')
+				[ -z "$target" ] && target="$default_group"
+				uci -q set mosdns.$sec.dns_group="$target"
+				changed=1
+			fi
+		else
+			uci -q show mosdns.$ref >/dev/null 2>&1 || {
+				uci -q set mosdns.$sec.dns_group="$target"
+				changed=1
+			}
+		fi
+	done
+
+	[ "$changed" -eq 1 ] && uci -q commit mosdns
+}
+
+cleanup_unreferenced_rule_files() {
+	local sec rf referenced mode bt adblock_used
+	referenced=" "
+	adblock_used=0
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=rule$/{print $2}'); do
+		rf=$(uci -q get mosdns.$sec.rule_file)
+		[ -n "$rf" ] && referenced="$referenced$rf "
+		mode=$(uci -q get mosdns.$sec.mode)
+		bt=$(uci -q get mosdns.$sec.builtin_type)
+		if [ "$mode" = "builtin" ] && [ "$bt" = "adblock" ] && [ "$(uci -q get mosdns.$sec.enabled)" = "1" ]; then
+			adblock_used=1
+		fi
+	done
+	[ "$(uci -q get mosdns.config.adblock)" = "1" ] && adblock_used=1
+
+	mkdir -p /etc/mosdns/rule
+	for rf in /etc/mosdns/rule/*.txt; do
+		[ -e "$rf" ] || continue
+		case "$rf" in
+			/etc/mosdns/rule/streaming.txt)
+				continue
+			;;
+			/etc/mosdns/rule/cloudflare-cidr.txt)
+				continue
+			;;
+		esac
+		echo "$referenced" | grep -F -q "$rf " || rm -f "$rf"
+	done
+
+	[ "$adblock_used" -eq 0 ] && rm -rf /etc/mosdns/rule/adlist /etc/mosdns/rule/.ad_source
+}
+
+sync_builtin_adblock_settings() {
+	local sec mode bt enabled
+	local found=0
+	local src
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=rule$/{print $2}'); do
+		mode=$(uci -q get mosdns.$sec.mode)
+		bt=$(uci -q get mosdns.$sec.builtin_type)
+		enabled=$(uci -q get mosdns.$sec.enabled)
+		[ "$mode" != "builtin" ] && continue
+		[ "$bt" != "adblock" ] && continue
+		[ "$enabled" != "1" ] && continue
+		found=1
+		uci -q set mosdns.config.adblock='1'
+		uci -q delete mosdns.config.ad_source
+		for src in $(uci -q get mosdns.$sec.ad_source); do
+			uci -q add_list mosdns.config.ad_source="$src"
+		done
+		break
+	done
+
+	if [ "$found" -eq 0 ]; then
+		uci -q set mosdns.config.adblock='0'
+		uci -q delete mosdns.config.ad_source
+		uci -q add_list mosdns.config.ad_source='geosite.dat'
+	fi
+
+	uci -q commit mosdns
+}
+
+migrate_legacy_config() {
+	local schema
+	schema=$(uci -q get mosdns.config.schema_version)
+	[ "$schema" = "2" ] && return 0
+	[ -n "$(uci -q show mosdns | grep '=dns_group')" ] && {
+		uci -q set mosdns.config.schema_version='2'
+		uci -q commit mosdns
+		return 0
+	}
+
+	local local_dns remote_dns
+	local old_remote old_adblock old_ad_source old_custom_stream old_apple_optimization
+	local cn_id global_id
+
+	local_dns=$(uci -q get mosdns.config.local_dns)
+	[ -z "$local_dns" ] && local_dns='119.29.29.29'
+
+	old_remote=$(uci -q get mosdns.config.remote_dns)
+	[ -z "$old_remote" ] && old_remote='tls://8.8.8.8'
+	old_adblock=$(uci -q get mosdns.config.adblock)
+	old_ad_source=$(uci -q get mosdns.config.ad_source)
+	old_custom_stream=$(uci -q get mosdns.config.custom_stream_media_dns)
+	old_apple_optimization=$(uci -q get mosdns.config.apple_optimization)
+
+	cn_id=$(uci -q add mosdns dns_group)
+	uci -q set mosdns.$cn_id.name='国内'
+	uci -q set mosdns.$cn_id.is_default='0'
+	uci -q set mosdns.$cn_id.use_default_dns='0'
+	for d in $local_dns; do uci -q add_list mosdns.$cn_id.dns="$d"; done
+
+	global_id=$(uci -q add mosdns dns_group)
+	uci -q set mosdns.$global_id.name='国外'
+	uci -q set mosdns.$global_id.is_default='1'
+	uci -q set mosdns.$global_id.use_default_dns='0'
+	for d in $old_remote; do uci -q add_list mosdns.$global_id.dns="$d"; done
+
+	local rid
+	rid=$(uci -q add mosdns rule)
+	[ "$old_adblock" = "1" ] && uci -q set mosdns.$rid.enabled='1' || uci -q set mosdns.$rid.enabled='0'
+	uci -q set mosdns.$rid.name='广告过滤'
+	uci -q set mosdns.$rid.mode='builtin'
+	uci -q set mosdns.$rid.builtin_type='adblock'
+	if [ -n "$old_ad_source" ]; then
+		for d in $old_ad_source; do uci -q add_list mosdns.$rid.ad_source="$d"; done
+	else
+		uci -q add_list mosdns.$rid.ad_source='geosite.dat'
+	fi
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='Hosts'
+	uci -q set mosdns.$rid.mode='hosts'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/hosts.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='重定向'
+	uci -q set mosdns.$rid.mode='redirect'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/redirect.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='PTR黑名单'
+	uci -q set mosdns.$rid.mode='blacklist'
+	uci -q set mosdns.$rid.blacklist_type='ptr'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/local-ptr.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='黑名单'
+	uci -q set mosdns.$rid.mode='blacklist'
+	uci -q set mosdns.$rid.blacklist_type='domain'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/blocklist.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='DDNS域名'
+	uci -q set mosdns.$rid.mode='custom'
+	uci -q set mosdns.$rid.dns_group="$cn_id"
+	uci -q set mosdns.$rid.ip_strategy='auto'
+	uci -q set mosdns.$rid.ttl='5'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/ddnslist.txt'
+
+	rid=$(uci -q add mosdns rule)
+	[ "$old_custom_stream" = "1" ] && uci -q set mosdns.$rid.enabled='1' || uci -q set mosdns.$rid.enabled='0'
+	uci -q set mosdns.$rid.name='流媒体'
+	uci -q set mosdns.$rid.mode='builtin'
+	uci -q set mosdns.$rid.builtin_type='stream_media'
+	uci -q set mosdns.$rid.dns_group="$global_id"
+	uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/streaming.txt'
+
+	rid=$(uci -q add mosdns rule)
+	[ "$old_apple_optimization" = "1" ] && uci -q set mosdns.$rid.enabled='1' || uci -q set mosdns.$rid.enabled='0'
+	uci -q set mosdns.$rid.name='Apple 域名优化'
+	uci -q set mosdns.$rid.mode='builtin'
+	uci -q set mosdns.$rid.builtin_type='apple_domain'
+	uci -q set mosdns.$rid.dns_group="$cn_id"
+	uci -q set mosdns.$rid.ip_strategy='auto'
+	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_apple.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='灰名单'
+	uci -q set mosdns.$rid.mode='custom'
+	uci -q set mosdns.$rid.dns_group="$global_id"
+	uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	uci -q set mosdns.$rid.ttl='0'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/greylist.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='白名单'
+	uci -q set mosdns.$rid.mode='custom'
+	uci -q set mosdns.$rid.dns_group="$cn_id"
+	uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+	uci -q set mosdns.$rid.ttl='0'
+	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/whitelist.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='国内域名'
+	uci -q set mosdns.$rid.mode='builtin'
+	uci -q set mosdns.$rid.builtin_type='cn_domain'
+	uci -q set mosdns.$rid.dns_group="$cn_id"
+	uci -q set mosdns.$rid.ip_strategy='auto'
+	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_cn.txt'
+
+	rid=$(uci -q add mosdns rule)
+	uci -q set mosdns.$rid.enabled='1'
+	uci -q set mosdns.$rid.name='国外域名'
+	uci -q set mosdns.$rid.mode='builtin'
+	uci -q set mosdns.$rid.builtin_type='noncn_domain'
+	uci -q set mosdns.$rid.dns_group="$global_id"
+	uci -q set mosdns.$rid.ip_strategy='ipv4'
+	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
+
+	uci -q set mosdns.config.schema_version='2'
+	uci -q commit mosdns
+}
+
+add_dns_group_plugin_v2() {
+	local section="$1"
+	local section_default group_name dns_list group_bootstrap group_concurrent use_default_dns tag addr enable_http3
+
+	config_get group_name "$section" name "$section"
+	config_get section_default "$section" is_default 0
+	config_get dns_list "$section" dns
+	config_get use_default_dns "$section" use_default_dns 0
+	[ "$use_default_dns" = "1" ] && dns_list=$($MOSDNS_SCRIPT default_dns)
+	[ -z "$dns_list" ] && return 0
+	config_get group_bootstrap "$section" bootstrap_dns "$bootstrap_dns"
+	config_get group_concurrent "$section" concurrent "$concurrent"
+
+	tag="dns_group_${section}"
+	set_dns_group_tag "$section" "$tag"
+	[ "$section_default" = "1" ] && default_dns_group_tag="$tag"
+
+	json_add_object
+	json_add_string "tag" "$tag"
+	json_add_string "type" "forward"
+	json_add_object "args"
+	json_add_int "concurrent" "$group_concurrent"
+	json_add_array "upstreams"
+	for addr in $dns_list; do
+		enable_http3=0
+		if echo "$addr" | grep -q '^h3://'; then
+			enable_http3=1
+			addr=$(echo "$addr" | sed 's#^h3://#https://#g')
+		fi
+		json_add_object
+		json_add_string "addr" "$addr"
+		json_add_string "bootstrap" "$group_bootstrap"
+		json_add_boolean "enable_pipeline" "$enable_pipeline"
+		json_add_boolean "insecure_skip_verify" "$insecure_skip_verify"
+		json_add_int "idle_timeout" "$idle_timeout"
+		[ "$enable_http3" -eq 1 ] && json_add_boolean "enable_http3" 1
+		json_close_object
+	done
+	json_close_array
+	json_close_object
+	json_close_object
+}
+
+add_rule_plugins_v2() {
+	local section="$1"
+	local section_enabled mode rule_file blacklist_type ip_map_target dns_group dns_group_tag ip_strategy ttl builtin_type builtin_file adlist_file builtin_ip_strategy
+	local set_tag exec_tag
+
+	config_get section_enabled "$section" enabled 1
+	[ "$section_enabled" != "1" ] && return 0
+	config_get mode "$section" mode "custom"
+	config_get rule_file "$section" rule_file "/etc/mosdns/rule/rule-${section}.txt"
+	if [ ! -f "$rule_file" ]; then
+		mkdir -p "$(dirname "$rule_file")" 2>/dev/null
+		: > "$rule_file" 2>/dev/null
+	fi
+
+	set_tag="rule_set_${section}"
+	exec_tag="rule_exec_${section}"
+
+	case "$mode" in
+		builtin)
+			config_get builtin_type "$section" builtin_type "adblock"
+			config_get builtin_ip_strategy "$section" ip_strategy ""
+			if [ -z "$builtin_ip_strategy" ]; then
+				case "$builtin_type" in
+					noncn_domain)
+						builtin_ip_strategy='ipv4'
+					;;
+					stream_media)
+						builtin_ip_strategy='ipv4_first'
+					;;
+					*)
+						builtin_ip_strategy='auto'
+					;;
+				esac
+			fi
+			case "$builtin_type" in
+				adblock)
+					set_tag="rule_adblock_set_${section}"
+					json_add_object
+					json_add_string "tag" "$set_tag"
+					json_add_string "type" "domain_set"
+					json_add_object "args"
+					json_add_array "files"
+					for adlist_file in $($MOSDNS_SCRIPT adlist); do
+						json_add_string "" "$adlist_file"
+					done
+					json_close_array
+					json_close_object
+					json_close_object
+
+					json_add_object
+					json_add_string "tag" "$exec_tag"
+					json_add_string "type" "sequence"
+					json_add_array "args"
+					json_add_object
+					json_add_string "matches" "qname \$${set_tag}"
+					json_add_string "exec" "reject 3"
+					json_close_object
+					json_close_array
+					json_close_object
+					RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+				;;
+				cn_domain|noncn_domain|apple_domain|stream_media)
+					config_get dns_group "$section" dns_group ""
+					dns_group_tag=$(get_dns_group_tag "$dns_group")
+					[ -z "$dns_group_tag" ] && dns_group_tag="$default_dns_group_tag"
+					[ -z "$dns_group_tag" ] && return 0
+
+					json_add_object
+					json_add_string "tag" "$set_tag"
+					json_add_string "type" "domain_set"
+					json_add_object "args"
+					json_add_array "files"
+					if [ "$builtin_type" = "cn_domain" ]; then
+						json_add_string "" '/var/mosdns/geosite_cn.txt'
+					elif [ "$builtin_type" = "noncn_domain" ]; then
+						json_add_string "" '/var/mosdns/geosite_geolocation-!cn.txt'
+					elif [ "$builtin_type" = "apple_domain" ]; then
+						json_add_string "" '/var/mosdns/geosite_apple.txt'
+					else
+						json_add_string "" '/var/mosdns/geosite_disney.txt'
+						json_add_string "" '/var/mosdns/geosite_netflix.txt'
+						json_add_string "" '/var/mosdns/geosite_hulu.txt'
+						json_add_string "" '/etc/mosdns/rule/streaming.txt'
+					fi
+					json_close_array
+					json_close_object
+					json_close_object
+
+					json_add_object
+					json_add_string "tag" "$exec_tag"
+					json_add_string "type" "sequence"
+					json_add_array "args"
+					json_add_object
+					json_add_string "matches" "!qname \$${set_tag}"
+					json_add_string "exec" "return"
+					json_close_object
+					case "$builtin_ip_strategy" in
+						ipv4)
+							json_add_object
+							json_add_string "matches" "qtype 28"
+							json_add_string "exec" "reject 3"
+							json_close_object
+							json_add_object
+							json_add_string "exec" "prefer_ipv4"
+							json_close_object
+						;;
+						ipv4_first)
+							json_add_object
+							json_add_string "exec" "prefer_ipv4"
+							json_close_object
+						;;
+						ipv6)
+							json_add_object
+							json_add_string "matches" "qtype 1"
+							json_add_string "exec" "reject 3"
+							json_close_object
+							json_add_object
+							json_add_string "exec" "prefer_ipv6"
+							json_close_object
+						;;
+						ipv6_first)
+							json_add_object
+							json_add_string "exec" "prefer_ipv6"
+							json_close_object
+						;;
+					esac
+					json_add_object
+					json_add_string "exec" "\$${dns_group_tag}"
+					json_close_object
+					json_close_array
+					json_close_object
+					RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+				;;
+			esac
+		;;
+		blacklist)
+			config_get blacklist_type "$section" blacklist_type "domain"
+			json_add_object
+			json_add_string "tag" "$set_tag"
+			json_add_string "type" "domain_set"
+			json_add_object "args"
+			json_add_array "files"
+			json_add_string "" "$rule_file"
+			json_close_array
+			json_close_object
+			json_close_object
+
+			json_add_object
+			json_add_string "tag" "$exec_tag"
+			json_add_string "type" "sequence"
+			json_add_array "args"
+			json_add_object
+			if [ "$blacklist_type" = "ptr" ]; then
+				json_add_array "matches"
+				json_add_string "" "qtype 12"
+				json_add_string "" "qname \$${set_tag}"
+				json_close_array
+			else
+				json_add_string "matches" "qname \$${set_tag}"
+			fi
+			json_add_string "exec" "reject 3"
+			json_close_object
+			json_close_array
+			json_close_object
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+		;;
+		ip_map)
+			config_get ip_map_target "$section" ip_map_target ""
+			[ -z "$ip_map_target" ] && ip_map_target="127.0.0.1"
+			json_add_object
+			json_add_string "tag" "$set_tag"
+			json_add_string "type" "ip_set"
+			json_add_object "args"
+			json_add_array "files"
+			json_add_string "" "$rule_file"
+			json_close_array
+			json_close_object
+			json_close_object
+
+			json_add_object
+			json_add_string "tag" "$exec_tag"
+			json_add_string "type" "sequence"
+			json_add_array "args"
+			json_add_object
+			json_add_string "matches" "resp_ip \$${set_tag}"
+			json_add_string "exec" "black_hole ${ip_map_target}"
+			json_close_object
+			json_close_array
+			json_close_object
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+		;;
+		hosts)
+			set_tag="rule_hosts_${section}"
+			json_add_object
+			json_add_string "tag" "$set_tag"
+			json_add_string "type" "hosts"
+			json_add_object "args"
+			json_add_array "files"
+			json_add_string "" "$rule_file"
+			json_close_array
+			json_close_object
+			json_close_object
+
+			json_add_object
+			json_add_string "tag" "$exec_tag"
+			json_add_string "type" "sequence"
+			json_add_array "args"
+			json_add_object
+			json_add_string "exec" "\$${set_tag}"
+			json_close_object
+			json_close_array
+			json_close_object
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+		;;
+		redirect)
+			set_tag="rule_redirect_${section}"
+			json_add_object
+			json_add_string "tag" "$set_tag"
+			json_add_string "type" "redirect"
+			json_add_object "args"
+			json_add_array "files"
+			json_add_string "" "$rule_file"
+			json_close_array
+			json_close_object
+			json_close_object
+
+			json_add_object
+			json_add_string "tag" "$exec_tag"
+			json_add_string "type" "sequence"
+			json_add_array "args"
+			json_add_object
+			json_add_string "exec" "\$${set_tag}"
+			json_close_object
+			json_close_array
+			json_close_object
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+		;;
+		custom|*)
+			config_get dns_group "$section" dns_group ""
+			dns_group_tag=$(get_dns_group_tag "$dns_group")
+			[ -z "$dns_group_tag" ] && dns_group_tag="$default_dns_group_tag"
+			[ -z "$dns_group_tag" ] && return 0
+			config_get ip_strategy "$section" ip_strategy "auto"
+			config_get ttl "$section" ttl "0"
+
+			json_add_object
+			json_add_string "tag" "$set_tag"
+			json_add_string "type" "domain_set"
+			json_add_object "args"
+			json_add_array "files"
+			json_add_string "" "$rule_file"
+			json_close_array
+			json_close_object
+			json_close_object
+
+			json_add_object
+			json_add_string "tag" "$exec_tag"
+			json_add_string "type" "sequence"
+			json_add_array "args"
+			json_add_object
+			json_add_string "matches" "!qname \$${set_tag}"
+			json_add_string "exec" "return"
+			json_close_object
+			case "$ip_strategy" in
+				ipv4)
+					json_add_object
+					json_add_string "matches" "qtype 28"
+					json_add_string "exec" "reject 3"
+					json_close_object
+					json_add_object
+					json_add_string "exec" "prefer_ipv4"
+					json_close_object
+				;;
+				ipv4_first)
+					json_add_object
+					json_add_string "exec" "prefer_ipv4"
+					json_close_object
+				;;
+				ipv6)
+					json_add_object
+					json_add_string "matches" "qtype 1"
+					json_add_string "exec" "reject 3"
+					json_close_object
+					json_add_object
+					json_add_string "exec" "prefer_ipv6"
+					json_close_object
+				;;
+				ipv6_first)
+					json_add_object
+					json_add_string "exec" "prefer_ipv6"
+					json_close_object
+				;;
+			esac
+			json_add_object
+			json_add_string "exec" "\$${dns_group_tag}"
+			json_close_object
+			if [ "$ttl" -gt 0 ] 2>/dev/null; then
+				json_add_object
+				json_add_string "exec" "ttl ${ttl}-${ttl}"
+				json_close_object
+			fi
+			json_close_array
+			json_close_object
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+		;;
+	esac
+}
+
+generate_config_v2() {
+	. /usr/share/libubox/jshn.sh
+	json_init
+
+	json_add_object 'log'
+	json_add_string 'level' "$log_level"
+	json_add_string 'file' "$log_file"
+	json_close_object
+
+	json_add_object 'api'
+	json_add_string 'http' "0.0.0.0:$listen_port_api"
+	json_close_object
+
+	json_add_array 'include'
+	json_close_array
+
+	json_add_array 'plugins'
+
+	if [ "$cache" -eq 1 ]; then
+		json_add_object
+		json_add_string 'tag' 'lazy_cache'
+		json_add_string 'type' 'cache'
+		json_add_object 'args'
+		json_add_int 'size' "$cache_size"
+		json_add_int 'lazy_cache_ttl' "$lazy_cache_ttl"
+		[ "$dump_file" -eq 1 ] && {
+			json_add_string 'dump_file' '/etc/mosdns/cache.dump'
+			json_add_int 'dump_interval' "$dump_interval"
+		}
+		json_close_object
+		json_close_object
+	fi
+
+	default_dns_group_tag=''
+	RULE_EXEC_TAGS=''
+	config_foreach add_dns_group_plugin_v2 dns_group
+
+	if [ -z "$default_dns_group_tag" ]; then
+		for sec in $(uci -q show mosdns | awk -F '[.=]' '/=dns_group$/{print $2}'); do
+			default_dns_group_tag=$(get_dns_group_tag "$sec")
+			[ -n "$default_dns_group_tag" ] && break
+		done
+	fi
+
+	config_foreach add_rule_plugins_v2 rule
+
+	json_add_object
+	json_add_string 'tag' 'has_resp_sequence'
+	json_add_string 'type' 'sequence'
+	json_add_array 'args'
+	json_add_object
+	json_add_string 'matches' 'has_resp'
+	json_add_string 'exec' 'accept'
+	json_close_object
+	json_close_array
+	json_close_object
+
+	json_add_object
+	json_add_string 'tag' 'main_sequence'
+	json_add_string 'type' 'sequence'
+	json_add_array 'args'
+
+	if [ "$cache" -eq 1 ]; then
+		json_add_object
+		json_add_string 'exec' '$lazy_cache'
+		json_close_object
+		json_add_object
+		json_add_string 'exec' 'jump has_resp_sequence'
+		json_close_object
+	fi
+
+	local t
+	for t in $RULE_EXEC_TAGS; do
+		json_add_object
+		json_add_string 'exec' "\$${t}"
+		json_close_object
+		json_add_object
+		json_add_string 'exec' 'jump has_resp_sequence'
+		json_close_object
+	done
+
+	if [ -n "$default_dns_group_tag" ]; then
+		json_add_object
+		json_add_string 'exec' "\$${default_dns_group_tag}"
+		json_close_object
+		json_add_object
+		json_add_string 'exec' 'jump has_resp_sequence'
+		json_close_object
+	fi
+
+	json_close_array
+	json_close_object
+
+	json_add_object
+	json_add_string 'tag' 'udp_server'
+	json_add_string 'type' 'udp_server'
+	json_add_object 'args'
+	json_add_string 'entry' 'main_sequence'
+	json_add_string 'listen' "$listen_address:$listen_port"
+	json_close_object
+	json_close_object
+
+	json_add_object
+	json_add_string 'tag' 'tcp_server'
+	json_add_string 'type' 'tcp_server'
+	json_add_object 'args'
+	json_add_string 'entry' 'main_sequence'
+	json_add_string 'listen' "$listen_address:$listen_port"
+	json_close_object
+	json_close_object
+
+	json_close_array
+	json_dump > /var/etc/mosdns.json
+
+	[ "$dump_file" -eq 1 ] && [ ! -f $DUMP_FILE ] && cp -a $DUMP_FILE_DEFAULT $DUMP_FILE
+	[ "$dump_file" -eq 0 ] && \cp -a $DUMP_FILE_DEFAULT $DUMP_FILE
 }
 
 generate_config() {
@@ -747,6 +1543,12 @@ v2dat_dump() {
 
 start_service() {
 	config_load "mosdns"
+	migrate_legacy_config
+	enforce_default_dns_group
+	normalize_rule_dns_group_refs
+	sync_builtin_adblock_settings
+	config_load "mosdns"
+	cleanup_unreferenced_rule_files
 	config_foreach get_config "mosdns"
 	[ $enabled -ne 1 ] && return 1
 	delcron ; setcron
@@ -756,7 +1558,13 @@ start_service() {
 	else
 		v2dat_dump >> $($MOSDNS_SCRIPT logfile) 2>&1
 	fi
-	[ "${CONF}" = "/var/etc/mosdns.json" ] && generate_config
+	if [ "${CONF}" = "/var/etc/mosdns.json" ]; then
+		if [ "$schema_version" = "2" ]; then
+			generate_config_v2
+		else
+			generate_config
+		fi
+	fi
 
 	procd_open_instance mosdns
 	procd_set_param env QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING=true
@@ -784,9 +1592,19 @@ start_service() {
 		if [ -f "/etc/mosdns/rule/.ad_source" ]; then
 			for url in $ad_source;
 			do
-				if [ "$url" = "geosite.dat" ] || [ $(echo "$url" | grep -c -E "^file://") -eq 1 ]; then
-					continue
-				fi
+				case "$url" in
+					geosite.dat)
+						continue
+					;;
+					https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt|\
+					https://raw.githubusercontent.com/Cats-Team/AdRules/main/mosdns_adrules.txt|\
+					https://raw.githubusercontent.com/neodevpro/neodevhost/master/domain)
+						:
+					;;
+					*)
+						continue
+					;;
+				esac
 				if [ $(grep -c "$url" "/etc/mosdns/rule/.ad_source") -eq 0 ]; then
 					update_list=1
 					break

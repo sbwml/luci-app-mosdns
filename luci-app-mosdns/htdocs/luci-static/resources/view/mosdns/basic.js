@@ -127,7 +127,6 @@ return view.extend({
 
 		s.tab('basic', _('Basic Options'));
 		s.tab("advanced", _("Advanced Options"));
-		s.tab("cloudflare", _("Cloudflare Options"));
 		s.tab("api", _("API Options"));
 		s.tab('geodata', _('GeoData Export'));
 
@@ -171,76 +170,6 @@ return view.extend({
 			o.depends('redirect', '1');
 		}
 
-		o = s.taboption('basic', form.Flag, 'prefer_ipv4_cn', _('China DNS prefer IPv4'),
-			_('IPv4 is preferred for China DNS resolution of dual-stack addresses, and is not affected when the destination is IPv6 only'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('basic', form.Flag, 'prefer_ipv4', _('Remote DNS prefer IPv4'),
-			_('IPv4 is preferred for Remote / Streaming Media DNS resolution of dual-stack addresses, and is not affected when the destination is IPv6 only'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('basic', form.Flag, 'whitelist_enable_ipv6', _('Whitelist enable IPv6'),
-			_('When enabled, whitelist domain rules ignore prefer IPv4 settings and allow IPv6 responses as normal.'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('basic', form.Flag, 'custom_local_dns', _('Custom China DNS'), _('Follow WAN interface DNS if not enabled'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('basic', form.Flag, 'apple_optimization', _('Apple domains optimization'),
-			_('For Apple domains equipped with Chinese mainland CDN, always responsive to Chinese CDN IP addresses'));
-		o.depends('custom_local_dns', '1');
-		o.default = false;
-
-		o = s.taboption('basic', form.DynamicList, 'local_dns', _('China DNS server'));
-		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-		o.value('119.28.28.28', _('Tencent Public DNS (119.28.28.28)'));
-		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-		o.value('223.6.6.6', _('Aliyun Public DNS (223.6.6.6)'));
-		o.value('180.184.1.1', _('TrafficRoute Public DNS (180.184.1.1)'));
-		o.value('180.184.2.2', _('TrafficRoute Public DNS (180.184.2.2)'));
-		o.value('114.114.114.114', _('Xinfeng Public DNS (114.114.114.114)'));
-		o.value('114.114.115.115', _('Xinfeng Public DNS (114.114.115.115)'));
-		o.value('180.76.76.76', _('Baidu Public DNS (180.76.76.76)'));
-		o.value('https://doh.pub/dns-query', _('Tencent Public DNS (DNS over HTTPS)'));
-		o.value('quic://dns.alidns.com', _('Aliyun Public DNS (DNS over QUIC)'));
-		o.value('https://dns.alidns.com/dns-query', _('Aliyun Public DNS (DNS over HTTPS)'));
-		o.value('h3://dns.alidns.com/dns-query', _('Aliyun Public DNS (DNS over HTTP/3)'));
-		o.value('https://doh.360.cn/dns-query', _('360 Public DNS (DNS over HTTPS)'));
-		o.default = '119.29.29.29';
-		o.depends('custom_local_dns', '1');
-
-		o = s.taboption('basic', form.DynamicList, 'remote_dns', _('Remote DNS server'));
-		o.value('tls://1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
-		o.value('tls://1.0.0.1', _('CloudFlare Public DNS (1.0.0.1)'));
-		o.value('tls://8.8.8.8', _('Google Public DNS (8.8.8.8)'));
-		o.value('tls://8.8.4.4', _('Google Public DNS (8.8.4.4)'));
-		o.value('tls://9.9.9.9', _('Quad9 Public DNS (9.9.9.9)'));
-		o.value('tls://149.112.112.112', _('Quad9 Public DNS (149.112.112.112)'));
-		o.value('tls://208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
-		o.value('tls://208.67.220.220', _('Cisco Public DNS (208.67.220.220)'));
-		o.default = 'tls://8.8.8.8';
-		o.depends('configfile', '/var/etc/mosdns.json');
-
-		o = s.taboption('basic', form.Flag, 'custom_stream_media_dns', _('Custom Stream Media DNS'),
-			_('Netflix, Disney+, Hulu and streaming media rules list will use this DNS'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('basic', form.DynamicList, 'stream_media_dns', _('Streaming Media DNS server'));
-		o.value('tls://1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
-		o.value('tls://1.0.0.1', _('CloudFlare Public DNS (1.0.0.1)'));
-		o.value('tls://8.8.8.8', _('Google Public DNS (8.8.8.8)'));
-		o.value('tls://8.8.4.4', _('Google Public DNS (8.8.4.4)'));
-		o.value('tls://9.9.9.9', _('Quad9 Public DNS (9.9.9.9)'));
-		o.value('tls://149.112.112.112', _('Quad9 Public DNS (149.112.112.112)'));
-		o.value('tls://208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
-		o.value('tls://208.67.220.220', _('Cisco Public DNS (208.67.220.220)'));
-		o.default = 'tls://8.8.8.8';
-		o.depends('custom_stream_media_dns', '1');
 
 		o = s.taboption('basic', form.Value, 'bootstrap_dns', _('Bootstrap DNS servers'),
 			_('Bootstrap DNS servers are used to resolve IP addresses of the DoH/DoT resolvers you specify as upstreams'));
@@ -343,53 +272,6 @@ return view.extend({
 			_('Block DNS RR Type 65 records (HTTPS/SVCB, used for HTTP/3, ECH, etc.), force using only A/AAAA records.'));
 		o.default = 0;
 		o.depends('configfile', '/var/etc/mosdns.json');
-
-		o = s.taboption('advanced', form.Flag, 'adblock', _('Enable DNS ADblock'));
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.default = false;
-
-		o = s.taboption('advanced', form.DynamicList, 'ad_source', _('ADblock Source'),
-			_('When using custom rule sources, please use rule types supported by MosDNS (domain lists).') +
-			'<br>' +
-			_('Support for local files, such as: file:///var/mosdns/example.txt'));
-		o.depends('adblock', '1');
-		o.default = 'geosite.dat';
-		o.value('geosite.dat', 'v2ray-geosite');
-		o.value('https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt', 'anti-AD')
-		o.value('https://raw.githubusercontent.com/Cats-Team/AdRules/main/mosdns_adrules.txt', 'Cats-Team/AdRules')
-		o.value('https://raw.githubusercontent.com/neodevpro/neodevhost/master/domain', 'NEO DEV HOST')
-
-		/* cloudflare */
-		o = s.taboption('cloudflare', form.Flag, 'cloudflare', _('Enabled'),
-			_('Match the parsing result with the Cloudflare IP ranges, and when there is a successful match, \
-				use the \'Custom IP\' as the parsing result (experimental feature)'));
-		o.rmempty = false;
-		o.default = false;
-		o.depends('configfile', '/var/etc/mosdns.json');
-
-		o = s.taboption('cloudflare', form.DynamicList, 'cloudflare_ip', _('Custom IP'));
-		o.datatype = 'ipaddr';
-		o.depends('configfile', '/var/etc/mosdns.json');
-
-		o = s.taboption('cloudflare', form.TextValue, '_cloudflare',
-			_('Cloudflare IP Ranges'),
-			_('IPv4 CIDR: <a href="https://www.cloudflare.com/ips-v4" target="_blank">https://www.cloudflare.com/ips-v4</a> <br /> IPv6 CIDR: <a href="https://www.cloudflare.com/ips-v6" target="_blank">https://www.cloudflare.com/ips-v6</a>'));
-		o.rows = 15;
-		o.depends('configfile', '/var/etc/mosdns.json');
-		o.cfgvalue = function (section_id) {
-			return fs.trimmed('/etc/mosdns/rule/cloudflare-cidr.txt');
-		};
-		o.write = function (section_id, formvalue) {
-			return this.cfgvalue(section_id).then(function (value) {
-				if (value == formvalue) {
-					return;
-				}
-				return fs.write('/etc/mosdns/rule/cloudflare-cidr.txt', formvalue.trim().replace(/\r\n/g, '\n') + '\n')
-					.then(function (i) {
-						return fs.exec('/etc/init.d/mosdns', ['restart']);
-					});
-			});
-		};
 
 		/* api */
 		o = s.taboption('api', form.Value, 'listen_port_api', _('API Listen port'));
