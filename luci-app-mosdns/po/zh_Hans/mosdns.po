@@ -679,3 +679,15 @@ msgstr "恢复默认规则（保留 DNS 分组）"
 
 msgid "This operation will clear current rule settings only and keep current DNS groups. Continue?"
 msgstr "此操作仅清空当前规则配置，并保留当前 DNS 分组。是否继续？"
+
+msgid "Fallback IP Strategy"
+msgstr "兜底 IP 策略"
+
+msgid "IP resolve strategy for fallback queries when no rule matches."
+msgstr "当没有规则命中时，兜底查询使用的 IP 解析策略。"
+
+msgid "Default DNS group cannot be deleted. Please set another group as default first."
+msgstr "默认 DNS 分组不可删除，请先将其他分组设为默认。"
+
+msgid "This DNS group is referenced by rules and cannot be deleted."
+msgstr "该 DNS 分组已被规则引用，无法删除。"
