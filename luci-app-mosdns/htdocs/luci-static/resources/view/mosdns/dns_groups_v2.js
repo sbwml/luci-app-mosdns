@@ -5,6 +5,40 @@
 'require ui';
 'require view';
 
+function ruleUsesDnsGroup(rule, targetGroup, groups) {
+	var mode = rule.mode || 'custom';
+	var bt = rule.builtin_type || '';
+
+	if (mode !== 'custom' && !(mode === 'builtin' &&
+		(bt === 'cn_domain' || bt === 'noncn_domain' || bt === 'apple_domain' || bt === 'stream_media')))
+		return false;
+
+	var ref = rule.dns_group;
+	if (!ref)
+		return false;
+	if (ref === targetGroup)
+		return true;
+
+	var m = /^@dns_group\[(\d+)\]$/.exec(ref);
+	if (!m)
+		return false;
+
+	var idx = +m[1];
+	return !!(groups[idx] && groups[idx]['.name'] === targetGroup);
+}
+
+function resolveGroupName(section_id, groups) {
+	if (!section_id)
+		return null;
+
+	var m = /^@dns_group\[(\d+)\]$/.exec(section_id);
+	if (!m)
+		return section_id;
+
+	var idx = +m[1];
+	return groups[idx] ? groups[idx]['.name'] : null;
+}
+
 return view.extend({
 	load: function () {
 		return uci.load('mosdns');
@@ -23,6 +57,29 @@ return view.extend({
 		s.nodescriptions = true;
 		s.modaltitle = _('DNS Group');
 		s.addbtntitle = _('Add DNS Group');
+		s.handleRemove = function (section_id, ev) {
+			var groups = uci.sections('mosdns', 'dns_group');
+			var resolved = resolveGroupName(section_id, groups);
+
+			if (!resolved)
+				return Promise.resolve();
+
+			if (uci.get('mosdns', resolved, 'is_default') === '1') {
+				ui.addNotification(null,
+					E('p', _('Default DNS group cannot be deleted. Please set another group as default first.')),
+					'error');
+				return Promise.resolve();
+			}
+
+			if (uci.sections('mosdns', 'rule').some(function (r) { return ruleUsesDnsGroup(r, resolved, groups); })) {
+				ui.addNotification(null,
+					E('p', _('This DNS group is referenced by rules and cannot be deleted.')),
+					'error');
+				return Promise.resolve();
+			}
+
+			return form.GridSection.prototype.handleRemove.apply(this, [ resolved, ev ]);
+		};
 
 		o = s.option(form.Value, 'name', _('Group Name'));
 		o.rmempty = false;

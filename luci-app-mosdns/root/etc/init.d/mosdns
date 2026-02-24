@@ -53,6 +53,7 @@ get_config() {
 	config_get cloudflare $1 cloudflare 0
 	config_get cloudflare_ip $1 cloudflare_ip ""
 	config_get reject_type65 $1 reject_type65 "0"
+	config_get fallback_ip_strategy $1 fallback_ip_strategy "auto"
 }
 
 _sanitize_key() {
@@ -825,6 +826,36 @@ generate_config_v2() {
 	done
 
 	if [ -n "$default_dns_group_tag" ]; then
+		case "$fallback_ip_strategy" in
+			ipv4)
+				json_add_object
+				json_add_string 'matches' 'qtype 28'
+				json_add_string 'exec' 'reject 0'
+				json_close_object
+				json_add_object
+				json_add_string 'exec' 'prefer_ipv4'
+				json_close_object
+			;;
+			ipv4_first)
+				json_add_object
+				json_add_string 'exec' 'prefer_ipv4'
+				json_close_object
+			;;
+			ipv6)
+				json_add_object
+				json_add_string 'matches' 'qtype 1'
+				json_add_string 'exec' 'reject 0'
+				json_close_object
+				json_add_object
+				json_add_string 'exec' 'prefer_ipv6'
+				json_close_object
+			;;
+			ipv6_first)
+				json_add_object
+				json_add_string 'exec' 'prefer_ipv6'
+				json_close_object
+			;;
+		esac
 		json_add_object
 		json_add_string 'exec' "\$${default_dns_group_tag}"
 		json_close_object

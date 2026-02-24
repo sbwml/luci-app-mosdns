@@ -26,6 +26,7 @@ config mosdns 'config'
 	option lazy_cache_ttl '86400'
 	option dump_file '0'
 	option reject_type65 '1'
+	option fallback_ip_strategy 'auto'
 	option adblock '0'
 	list ad_source 'geosite.dat'
 

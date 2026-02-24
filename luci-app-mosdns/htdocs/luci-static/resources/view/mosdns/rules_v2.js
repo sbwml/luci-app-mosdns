@@ -110,6 +110,16 @@ return view.extend({
 				});
 		};
 
+		o = a.option(form.ListValue, 'fallback_ip_strategy', _('Fallback IP Strategy'),
+			_('IP resolve strategy for fallback queries when no rule matches.'));
+		o.value('auto', _('Auto'));
+		o.value('ipv4', _('IPv4 Only'));
+		o.value('ipv6', _('IPv6 Only'));
+		o.value('ipv4_first', _('IPv4 First'));
+		o.value('ipv6_first', _('IPv6 First'));
+		o.default = 'auto';
+		o.rmempty = false;
+
 		s = m.section(form.GridSection, 'rule', _('Rule List'));
 		s.anonymous = true;
 		s.addremove = true;
