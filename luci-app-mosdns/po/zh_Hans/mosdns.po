@@ -754,3 +754,15 @@ msgstr "当多条规则同时命中时，后续规则会继续执行。"
 
 msgid "https://gh-proxy.com"
 msgstr "https://gh-proxy.com"
+
+msgid "Select rule type for the new rule. Type cannot be changed later."
+msgstr "请选择新规则的类型。创建后不可修改类型。"
+
+msgid "Failed to create rule."
+msgstr "创建规则失败。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Add"
+msgstr "添加"

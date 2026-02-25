@@ -230,13 +230,13 @@ restore_rule_defaults() {
     uci -q set mosdns.$cn_id.name='国内'
     uci -q set mosdns.$cn_id.is_default='0'
     uci -q set mosdns.$cn_id.use_default_dns='0'
-    uci -q add_list mosdns.$cn_id.dns='119.29.29.29'
+    uci -q add_list mosdns.$cn_id.dns='223.5.5.5'
 
     global_id=$(uci -q add mosdns dns_group)
     uci -q set mosdns.$global_id.name='国外'
     uci -q set mosdns.$global_id.is_default='1'
     uci -q set mosdns.$global_id.use_default_dns='0'
-    uci -q add_list mosdns.$global_id.dns='tls://8.8.8.8'
+    uci -q add_list mosdns.$global_id.dns='8.8.8.8'
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='0'
@@ -244,32 +244,6 @@ restore_rule_defaults() {
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='adblock'
     uci -q add_list mosdns.$rid.ad_source='geosite.dat'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='Hosts'
-    uci -q set mosdns.$rid.mode='hosts'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/hosts.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='重定向'
-    uci -q set mosdns.$rid.mode='redirect'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/redirect.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='PTR黑名单'
-    uci -q set mosdns.$rid.mode='blacklist'
-    uci -q set mosdns.$rid.blacklist_type='ptr'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/local-ptr.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='黑名单'
-    uci -q set mosdns.$rid.mode='blacklist'
-    uci -q set mosdns.$rid.blacklist_type='domain'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/blocklist.txt'
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='1'
@@ -291,24 +265,6 @@ restore_rule_defaults() {
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='灰名单'
-    uci -q set mosdns.$rid.mode='custom'
-    uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.ttl='0'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/greylist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='白名单'
-    uci -q set mosdns.$rid.mode='custom'
-    uci -q set mosdns.$rid.dns_group="$cn_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.ttl='0'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/whitelist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
     uci -q set mosdns.$rid.name='国内域名'
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='cn_domain'
@@ -322,7 +278,7 @@ restore_rule_defaults() {
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='noncn_domain'
     uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4'
+    uci -q set mosdns.$rid.ip_strategy='auto'
     uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
     uci -q commit mosdns
@@ -369,32 +325,6 @@ restore_rule_defaults_keep_groups() {
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='Hosts'
-    uci -q set mosdns.$rid.mode='hosts'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/hosts.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='重定向'
-    uci -q set mosdns.$rid.mode='redirect'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/redirect.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='PTR黑名单'
-    uci -q set mosdns.$rid.mode='blacklist'
-    uci -q set mosdns.$rid.blacklist_type='ptr'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/local-ptr.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='黑名单'
-    uci -q set mosdns.$rid.mode='blacklist'
-    uci -q set mosdns.$rid.blacklist_type='domain'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/blocklist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
     uci -q set mosdns.$rid.name='DDNS域名'
     uci -q set mosdns.$rid.mode='custom'
     uci -q set mosdns.$rid.dns_group="$cn_id"
@@ -413,24 +343,6 @@ restore_rule_defaults_keep_groups() {
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='灰名单'
-    uci -q set mosdns.$rid.mode='custom'
-    uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.ttl='0'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/greylist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
-    uci -q set mosdns.$rid.name='白名单'
-    uci -q set mosdns.$rid.mode='custom'
-    uci -q set mosdns.$rid.dns_group="$cn_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.ttl='0'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/whitelist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='1'
     uci -q set mosdns.$rid.name='国内域名'
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='cn_domain'
@@ -444,7 +356,7 @@ restore_rule_defaults_keep_groups() {
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='noncn_domain'
     uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4'
+    uci -q set mosdns.$rid.ip_strategy='auto'
     uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
     uci -q commit mosdns
