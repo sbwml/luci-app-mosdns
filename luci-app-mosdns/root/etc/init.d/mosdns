@@ -720,6 +720,7 @@ redirect_setting() {
 }
 
 reload_dnsmasq() {
+	[ -z "$(/etc/init.d/dnsmasq enabled 2>&1)" ] && return 0
 	/etc/init.d/dnsmasq reload
 }
 
