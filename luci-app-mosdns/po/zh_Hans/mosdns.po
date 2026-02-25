@@ -691,3 +691,66 @@ msgstr "默认 DNS 分组不可删除，请先将其他分组设为默认。"
 
 msgid "This DNS group is referenced by rules and cannot be deleted."
 msgstr "该 DNS 分组已被规则引用，无法删除。"
+
+msgid "Add IP Mapping Rule"
+msgstr "添加 IP 映射规则"
+
+msgid "Cloudflare legacy list is auto-migrated into IP mapping rules on service start."
+msgstr "Cloudflare 旧列表会在服务启动时自动迁移为 IP 映射规则。"
+
+msgid "Continue"
+msgstr "继续"
+
+msgid "Continue Matching"
+msgstr "继续匹配"
+
+msgid "Debug"
+msgstr "调试"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "IP Mapping List"
+msgstr "IP 映射列表"
+
+msgid "IP Mapping Rule"
+msgstr "IP 映射规则"
+
+msgid "IP/CIDR List"
+msgstr "IP/CIDR 列表"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Map response IPs by CIDR/IP lists. Rules are executed from top to bottom."
+msgstr "通过 CIDR/IP 列表映射响应 IP。规则按从上到下顺序执行。"
+
+msgid "Only preset ADblock sources are allowed."
+msgstr "仅允许使用预设的广告过滤规则来源。"
+
+msgid "Reset"
+msgstr "重置"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Save & Apply"
+msgstr "保存并应用"
+
+msgid "Stop after match"
+msgstr "命中后停止"
+
+msgid "Use preset AD rule sources only. Custom URLs or local files are not allowed."
+msgstr "仅允许使用预设广告规则来源，不允许自定义 URL 或本地文件。"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "When multiple rules match, later rules continue to run."
+msgstr "当多条规则同时命中时，后续规则会继续执行。"
+
+msgid "https://gh-proxy.com"
+msgstr "https://gh-proxy.com"

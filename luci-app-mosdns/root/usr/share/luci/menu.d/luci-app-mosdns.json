@@ -34,6 +34,14 @@
 			"path": "mosdns/rules_v2"
 		}
 	},
+	"admin/services/mosdns/ip_mapping": {
+		"title": "IP Mapping",
+		"order": 17,
+		"action": {
+			"type": "view",
+			"path": "mosdns/ip_mapping_v2"
+		}
+	},
 	"admin/services/mosdns/update": {
 		"title": "Geodata Update",
 		"order": 20,

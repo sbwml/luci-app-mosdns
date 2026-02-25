@@ -39,16 +39,59 @@ function resolveGroupName(section_id, groups) {
 	return groups[idx] ? groups[idx]['.name'] : null;
 }
 
+function flushAndRestartMosdns() {
+	return fs.exec('/usr/share/mosdns/mosdns.sh', ['flush'])
+		.catch(function () { return null; })
+		.then(function () {
+			return fs.exec('/etc/init.d/mosdns', ['restart']);
+		});
+}
+
 return view.extend({
 	load: function () {
 		return uci.load('mosdns');
 	},
 
-	render: function () {
+	handleSave: function () {
+		if (!this.map)
+			return Promise.resolve();
+
+		return this.map.save(null, false);
+	},
+
+	handleSaveApply: function (ev) {
+		return this.handleSave(ev).then(function () {
+			return flushAndRestartMosdns();
+		}).then(function () {
+			return ui.changes.apply(false);
+		});
+	},
+
+	addFooter: function () {
+		return E('div', { 'class': 'cbi-page-actions' }, [
+			E('button', {
+				'class': 'cbi-button cbi-button-apply important',
+				'click': L.bind(this.handleSaveApply, this)
+			}, [ _('Save & Apply') ]),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-save',
+				'click': L.bind(this.handleSave, this)
+			}, [ _('Save') ]),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-reset',
+				'click': L.bind(this.handleReset, this)
+			}, [ _('Reset') ])
+		]);
+	},
+
+		render: function () {
 		var m, s, o;
 
 		m = new form.Map('mosdns', _('DNS Groups'),
 			_('Manage upstream DNS groups. One group must be set as default fallback.'));
+		this.map = m;
 
 		s = m.section(form.GridSection, 'dns_group', _('DNS Group List'));
 		s.anonymous = true;

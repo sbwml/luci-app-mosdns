@@ -5,16 +5,8 @@
 			"file": {
 				"/etc/init.d/mosdns": [ "exec" ],
 				"/etc/mosdns/config_custom.yaml": [ "read" ],
+				"/etc/mosdns/rule/*.txt": [ "read" ],
 				"/etc/mosdns/rule/rule-*": [ "read" ],
-				"/etc/mosdns/rule/blocklist.txt": [ "read" ],
-				"/etc/mosdns/rule/cloudflare-cidr.txt": [ "read" ],
-				"/etc/mosdns/rule/ddnslist.txt": [ "read" ],
-				"/etc/mosdns/rule/greylist.txt": [ "read" ],
-				"/etc/mosdns/rule/hosts.txt": [ "read" ],
-				"/etc/mosdns/rule/local-ptr.txt": [ "read" ],
-				"/etc/mosdns/rule/redirect.txt": [ "read" ],
-				"/etc/mosdns/rule/streaming.txt": [ "read" ],
-				"/etc/mosdns/rule/whitelist.txt": [ "read" ],
 				"/usr/bin/mosdns": [ "exec" ],
 				"/usr/share/mosdns/mosdns.sh": [ "exec" ]
 			},
@@ -27,6 +19,7 @@
 		"write": {
 			"file": {
 				"/etc/mosdns/config_custom.yaml": [ "write" ],
+				"/etc/mosdns/rule/*.txt": [ "write" ],
 				"/etc/mosdns/rule/rule-*": [ "write" ]
 			},
 			"ubus": {

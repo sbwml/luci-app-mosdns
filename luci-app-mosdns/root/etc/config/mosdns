@@ -86,15 +86,6 @@ config rule
 
 config rule
 	option enabled '0'
-	option name '流媒体'
-	option mode 'builtin'
-	option builtin_type 'stream_media'
-	option dns_group 'dns_global'
-	option ip_strategy 'ipv4_first'
-	option rule_file '/etc/mosdns/rule/streaming.txt'
-
-config rule
-	option enabled '0'
 	option name 'Apple 域名优化'
 	option mode 'builtin'
 	option builtin_type 'apple_domain'

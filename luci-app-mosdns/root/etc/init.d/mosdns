@@ -192,15 +192,16 @@ cleanup_unreferenced_rule_files() {
 			adblock_used=1
 		fi
 	done
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=ip_map$/{print $2}'); do
+		rf=$(uci -q get mosdns.$sec.rule_file)
+		[ -n "$rf" ] && referenced="$referenced$rf "
+	done
 	[ "$(uci -q get mosdns.config.adblock)" = "1" ] && adblock_used=1
 
 	mkdir -p /etc/mosdns/rule
 	for rf in /etc/mosdns/rule/*.txt; do
 		[ -e "$rf" ] || continue
 		case "$rf" in
-			/etc/mosdns/rule/streaming.txt)
-				continue
-			;;
 			/etc/mosdns/rule/cloudflare-cidr.txt)
 				continue
 			;;
@@ -252,9 +253,10 @@ migrate_legacy_config() {
 	}
 
 	local local_dns remote_dns
-	local old_remote old_adblock old_ad_source old_custom_stream old_apple_optimization
+	local old_remote old_adblock old_ad_source old_custom_stream old_stream_media_dns old_streaming_list_has_rules old_apple_optimization
+	local old_cloudflare old_cloudflare_ip
 	local old_prefer_ipv4_cn old_prefer_ipv4
-	local cn_id global_id
+	local cn_id global_id stream_group_id
 
 	local_dns=$(uci -q get mosdns.config.local_dns)
 	[ -z "$local_dns" ] && local_dns='119.29.29.29'
@@ -264,6 +266,15 @@ migrate_legacy_config() {
 	old_adblock=$(uci -q get mosdns.config.adblock)
 	old_ad_source=$(uci -q get mosdns.config.ad_source)
 	old_custom_stream=$(uci -q get mosdns.config.custom_stream_media_dns)
+	old_stream_media_dns=$(uci -q get mosdns.config.stream_media_dns)
+	[ -z "$old_stream_media_dns" ] && old_stream_media_dns='tls://8.8.8.8'
+	if [ -s /etc/mosdns/rule/streaming.txt ] && grep -q '[^[:space:]#]' /etc/mosdns/rule/streaming.txt; then
+		old_streaming_list_has_rules=1
+	else
+		old_streaming_list_has_rules=0
+	fi
+	old_cloudflare=$(uci -q get mosdns.config.cloudflare)
+	old_cloudflare_ip=$(uci -q get mosdns.config.cloudflare_ip)
 	old_apple_optimization=$(uci -q get mosdns.config.apple_optimization)
 	old_prefer_ipv4_cn=$(uci -q get mosdns.config.prefer_ipv4_cn)
 	old_prefer_ipv4=$(uci -q get mosdns.config.prefer_ipv4)
@@ -327,14 +338,25 @@ migrate_legacy_config() {
 	uci -q set mosdns.$rid.ttl='5'
 	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/ddnslist.txt'
 
-	rid=$(uci -q add mosdns rule)
-	[ "$old_custom_stream" = "1" ] && uci -q set mosdns.$rid.enabled='1' || uci -q set mosdns.$rid.enabled='0'
-	uci -q set mosdns.$rid.name='流媒体'
-	uci -q set mosdns.$rid.mode='builtin'
-	uci -q set mosdns.$rid.builtin_type='stream_media'
-	uci -q set mosdns.$rid.dns_group="$global_id"
-	uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-	uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/streaming.txt'
+	if [ "$old_custom_stream" = "1" ] || [ "$old_streaming_list_has_rules" = "1" ]; then
+		stream_group_id="$global_id"
+		if [ -n "$old_stream_media_dns" ] && [ "$old_stream_media_dns" != "$old_remote" ]; then
+			stream_group_id=$(uci -q add mosdns dns_group)
+			uci -q set mosdns.$stream_group_id.name='流媒体'
+			uci -q set mosdns.$stream_group_id.is_default='0'
+			uci -q set mosdns.$stream_group_id.use_default_dns='0'
+			for d in $old_stream_media_dns; do uci -q add_list mosdns.$stream_group_id.dns="$d"; done
+		fi
+
+		rid=$(uci -q add mosdns rule)
+		uci -q set mosdns.$rid.enabled='1'
+		uci -q set mosdns.$rid.name='流媒体(迁移)'
+		uci -q set mosdns.$rid.mode='custom'
+		uci -q set mosdns.$rid.dns_group="$stream_group_id"
+		uci -q set mosdns.$rid.ip_strategy='ipv4_first'
+		uci -q set mosdns.$rid.ttl='0'
+		uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/streaming.txt'
+	fi
 
 	rid=$(uci -q add mosdns rule)
 	[ "$old_apple_optimization" = "1" ] && uci -q set mosdns.$rid.enabled='1' || uci -q set mosdns.$rid.enabled='0'
@@ -389,8 +411,126 @@ migrate_legacy_config() {
 	fi
 	uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
+	if [ "$old_cloudflare" = "1" ] && [ -n "$old_cloudflare_ip" ]; then
+		rid=$(uci -q add mosdns ip_map)
+		uci -q set mosdns.$rid.enabled='1'
+		uci -q set mosdns.$rid.name='Cloudflare 映射(迁移)'
+		uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/cloudflare-cidr.txt'
+		uci -q set mosdns.$rid.continue_match='1'
+		for d in $old_cloudflare_ip; do uci -q add_list mosdns.$rid.ip_map_target="$d"; done
+	fi
+
 	uci -q set mosdns.config.schema_version='2'
 	uci -q commit mosdns
+}
+
+migrate_response_ip_map_config() {
+	local map_enabled map_file map_target sec exists changed
+	changed=0
+
+	map_enabled=$(uci -q get mosdns.config.response_ip_map)
+	map_file=$(uci -q get mosdns.config.response_ip_map_file)
+	map_target=$(uci -q get mosdns.config.response_ip_map_target)
+	[ -z "$map_file" ] && map_file='/etc/mosdns/rule/cloudflare-cidr.txt'
+
+	if [ "$map_enabled" = "1" ] && [ -n "$map_target" ]; then
+		exists=0
+		for sec in $(uci -q show mosdns | awk -F '[.=]' '/=ip_map$/{print $2}'); do
+			if [ "$(uci -q get mosdns.$sec.rule_file)" = "$map_file" ] && [ "$(uci -q get mosdns.$sec.ip_map_target)" = "$map_target" ]; then
+				exists=1
+				break
+			fi
+		done
+
+		if [ "$exists" -eq 0 ]; then
+			sec=$(uci -q add mosdns ip_map)
+			uci -q set mosdns.$sec.enabled='1'
+			uci -q set mosdns.$sec.name='Cloudflare 映射(兼容)'
+			uci -q set mosdns.$sec.rule_file="$map_file"
+			uci -q set mosdns.$sec.continue_match='1'
+			for d in $map_target; do uci -q add_list mosdns.$sec.ip_map_target="$d"; done
+			changed=1
+		fi
+	fi
+
+	uci -q get mosdns.config.response_ip_map >/dev/null 2>&1 && {
+		uci -q delete mosdns.config.response_ip_map
+		changed=1
+	}
+	uci -q get mosdns.config.response_ip_map_file >/dev/null 2>&1 && {
+		uci -q delete mosdns.config.response_ip_map_file
+		changed=1
+	}
+	uci -q get mosdns.config.response_ip_map_target >/dev/null 2>&1 && {
+		uci -q delete mosdns.config.response_ip_map_target
+		changed=1
+	}
+
+	[ "$changed" -eq 1 ] && uci -q commit mosdns
+}
+
+migrate_cloudflare_cidr_file() {
+	local legacy_file sec target_sec target_file name rf changed
+	legacy_file='/etc/mosdns/rule/cloudflare-cidr.txt'
+	[ -f "$legacy_file" ] || return 0
+
+	if ! grep -q '[^[:space:]#]' "$legacy_file"; then
+		rm -f "$legacy_file"
+		return 0
+	fi
+
+	changed=0
+	target_sec=''
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=ip_map$/{print $2}'); do
+		name=$(uci -q get mosdns.$sec.name)
+		rf=$(uci -q get mosdns.$sec.rule_file)
+		if [ "$rf" = "$legacy_file" ] || echo "$name" | grep -q '^Cloudflare 映射'; then
+			target_sec="$sec"
+			break
+		fi
+	done
+
+	if [ -z "$target_sec" ]; then
+		target_sec=$(uci -q add mosdns ip_map)
+		uci -q set mosdns.$target_sec.enabled='0'
+		uci -q set mosdns.$target_sec.name='Cloudflare 映射(文件迁移)'
+		uci -q set mosdns.$target_sec.continue_match='1'
+		changed=1
+	fi
+
+	target_file="/etc/mosdns/rule/ip-map-${target_sec}.txt"
+	cp -f "$legacy_file" "$target_file"
+	uci -q set mosdns.$target_sec.rule_file="$target_file"
+	[ -z "$(uci -q get mosdns.$target_sec.continue_match)" ] && uci -q set mosdns.$target_sec.continue_match='1'
+	rm -f "$legacy_file"
+	changed=1
+
+	[ "$changed" -eq 1 ] && uci -q commit mosdns
+}
+
+migrate_builtin_stream_media_rules() {
+	local sec mode bt rf changed
+	changed=0
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=rule$/{print $2}'); do
+		mode=$(uci -q get mosdns.$sec.mode)
+		bt=$(uci -q get mosdns.$sec.builtin_type)
+		[ "$mode" = "builtin" ] || continue
+		[ "$bt" = "stream_media" ] || continue
+
+		rf=$(uci -q get mosdns.$sec.rule_file)
+		[ -z "$rf" ] && rf='/etc/mosdns/rule/streaming.txt'
+
+		uci -q set mosdns.$sec.mode='custom'
+		uci -q delete mosdns.$sec.builtin_type
+		uci -q set mosdns.$sec.rule_file="$rf"
+		[ -z "$(uci -q get mosdns.$sec.ip_strategy)" ] && uci -q set mosdns.$sec.ip_strategy='ipv4_first'
+		[ -z "$(uci -q get mosdns.$sec.ttl)" ] && uci -q set mosdns.$sec.ttl='0'
+		changed=1
+	done
+
+	[ "$changed" -eq 1 ] && uci -q commit mosdns
 }
 
 add_dns_group_plugin_v2() {
@@ -744,6 +884,55 @@ add_rule_plugins_v2() {
 	esac
 }
 
+add_ip_map_plugins_v2() {
+	local section="$1"
+	local section_enabled map_file map_target continue_match set_tag exec_tag
+
+	config_get section_enabled "$section" enabled 1
+	[ "$section_enabled" != "1" ] && return 0
+	config_get map_file "$section" rule_file "/etc/mosdns/rule/ip-map-${section}.txt"
+	config_get map_target "$section" ip_map_target ""
+	config_get continue_match "$section" continue_match 1
+	[ -z "$map_target" ] && return 0
+
+	if [ ! -f "$map_file" ]; then
+		mkdir -p "$(dirname "$map_file")" 2>/dev/null
+		: > "$map_file" 2>/dev/null
+	fi
+
+	set_tag="ip_map_set_${section}"
+	exec_tag="ip_map_exec_${section}"
+
+	json_add_object
+	json_add_string 'tag' "$set_tag"
+	json_add_string 'type' 'ip_set'
+	json_add_object 'args'
+	json_add_array 'files'
+	json_add_string '' "$map_file"
+	json_close_array
+	json_close_object
+	json_close_object
+
+	json_add_object
+	json_add_string 'tag' "$exec_tag"
+	json_add_string 'type' 'sequence'
+	json_add_array 'args'
+	json_add_object
+	json_add_string 'matches' "resp_ip \$${set_tag}"
+	json_add_string 'exec' "black_hole ${map_target}"
+	json_close_object
+	if [ "$continue_match" != "1" ]; then
+		json_add_object
+		json_add_string 'matches' "resp_ip \$${set_tag}"
+		json_add_string 'exec' 'accept'
+		json_close_object
+	fi
+	json_close_array
+	json_close_object
+
+	IP_MAP_EXEC_TAGS="$IP_MAP_EXEC_TAGS $exec_tag"
+}
+
 generate_config_v2() {
 	. /usr/share/libubox/jshn.sh
 	json_init
@@ -779,6 +968,7 @@ generate_config_v2() {
 
 	default_dns_group_tag=''
 	RULE_EXEC_TAGS=''
+	IP_MAP_EXEC_TAGS=''
 	config_foreach add_dns_group_plugin_v2 dns_group
 
 	if [ -z "$default_dns_group_tag" ]; then
@@ -789,11 +979,17 @@ generate_config_v2() {
 	fi
 
 	config_foreach add_rule_plugins_v2 rule
+	config_foreach add_ip_map_plugins_v2 ip_map
 
 	json_add_object
 	json_add_string 'tag' 'has_resp_sequence'
 	json_add_string 'type' 'sequence'
 	json_add_array 'args'
+	for t in $IP_MAP_EXEC_TAGS; do
+		json_add_object
+		json_add_string 'exec' "\$${t}"
+		json_close_object
+	done
 	json_add_object
 	json_add_string 'matches' 'has_resp'
 	json_add_string 'exec' 'accept'
@@ -1586,6 +1782,9 @@ v2dat_dump() {
 start_service() {
 	config_load "mosdns"
 	migrate_legacy_config
+	migrate_builtin_stream_media_rules
+	migrate_response_ip_map_config
+	migrate_cloudflare_cidr_file
 	enforce_default_dns_group
 	normalize_rule_dns_group_refs
 	sync_builtin_adblock_settings

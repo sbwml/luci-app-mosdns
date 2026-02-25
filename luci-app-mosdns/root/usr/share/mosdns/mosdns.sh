@@ -155,6 +155,14 @@ restart_service() {
     /etc/init.d/mosdns restart
 }
 
+ui_event_log() {
+    event="$2"
+    page="$3"
+    ts=$(date '+%Y-%m-%d %H:%M:%S')
+    logger -t luci-app-mosdns "ui_event:$event page:$page"
+    echo "$ts ui_event:$event page:$page" >> /tmp/mosdns-ui.log
+}
+
 set_default_dns_group() {
     target="$1"
     [ -z "$target" ] && exit 1
@@ -183,7 +191,7 @@ restore_default_rule_files() {
         cp -a /usr/share/mosdns/rule/. /etc/mosdns/rule/
     fi
 
-    for f in whitelist.txt blocklist.txt greylist.txt ddnslist.txt hosts.txt redirect.txt local-ptr.txt streaming.txt cloudflare-cidr.txt; do
+    for f in whitelist.txt blocklist.txt greylist.txt ddnslist.txt hosts.txt redirect.txt local-ptr.txt cloudflare-cidr.txt; do
         [ -f /etc/mosdns/rule/$f ] || : > /etc/mosdns/rule/$f
     done
 
@@ -206,12 +214,16 @@ restore_rule_defaults() {
         [ -z "$sec" ] && break
         uci -q delete mosdns.$sec
     done
+    while uci -q show mosdns | grep -q '=ip_map$'; do
+        sec=$(uci -q show mosdns | awk -F '[.=]' '/=ip_map$/{print $2; exit}')
+        [ -z "$sec" ] && break
+        uci -q delete mosdns.$sec
+    done
 
     uci -q set mosdns.config.schema_version='2'
     uci -q set mosdns.config.adblock='0'
     uci -q delete mosdns.config.ad_source
     uci -q add_list mosdns.config.ad_source='geosite.dat'
-
     restore_default_rule_files
 
     cn_id=$(uci -q add mosdns dns_group)
@@ -270,15 +282,6 @@ restore_rule_defaults() {
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='0'
-    uci -q set mosdns.$rid.name='流媒体'
-    uci -q set mosdns.$rid.mode='builtin'
-    uci -q set mosdns.$rid.builtin_type='stream_media'
-    uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/streaming.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='0'
     uci -q set mosdns.$rid.name='Apple 域名优化'
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='apple_domain'
@@ -333,6 +336,11 @@ restore_rule_defaults_keep_groups() {
         [ -z "$sec" ] && break
         uci -q delete mosdns.$sec
     done
+    while uci -q show mosdns | grep -q '=ip_map$'; do
+        sec=$(uci -q show mosdns | awk -F '[.=]' '/=ip_map$/{print $2; exit}')
+        [ -z "$sec" ] && break
+        uci -q delete mosdns.$sec
+    done
 
     for sec in $(uci -q show mosdns | awk -F '[.=]' '/=dns_group$/{print $2}'); do
         [ -z "$first_id" ] && first_id="$sec"
@@ -350,7 +358,6 @@ restore_rule_defaults_keep_groups() {
     uci -q set mosdns.config.adblock='0'
     uci -q delete mosdns.config.ad_source
     uci -q add_list mosdns.config.ad_source='geosite.dat'
-
     restore_default_rule_files
 
     rid=$(uci -q add mosdns rule)
@@ -394,15 +401,6 @@ restore_rule_defaults_keep_groups() {
     uci -q set mosdns.$rid.ip_strategy='auto'
     uci -q set mosdns.$rid.ttl='5'
     uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/ddnslist.txt'
-
-    rid=$(uci -q add mosdns rule)
-    uci -q set mosdns.$rid.enabled='0'
-    uci -q set mosdns.$rid.name='流媒体'
-    uci -q set mosdns.$rid.mode='builtin'
-    uci -q set mosdns.$rid.builtin_type='stream_media'
-    uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='ipv4_first'
-    uci -q set mosdns.$rid.rule_file='/etc/mosdns/rule/streaming.txt'
 
     rid=$(uci -q add mosdns rule)
     uci -q set mosdns.$rid.enabled='0'
@@ -524,6 +522,9 @@ case $script_action in
     ;;
     "version")
         mosdns version
+    ;;
+    "ui_event")
+        ui_event_log "$@"
     ;;
     *)
         exit 0

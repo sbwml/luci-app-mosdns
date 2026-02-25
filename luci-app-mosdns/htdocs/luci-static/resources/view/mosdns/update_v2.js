@@ -4,7 +4,49 @@
 'require ui';
 'require view';
 
+function flushAndRestartMosdns() {
+	return fs.exec('/usr/share/mosdns/mosdns.sh', ['flush'])
+		.catch(function () { return null; })
+		.then(function () {
+			return fs.exec('/etc/init.d/mosdns', ['restart']);
+		});
+}
+ 
 return view.extend({
+	handleSave: function () {
+		if (!this.map)
+			return Promise.resolve();
+
+		return this.map.save(null, false);
+	},
+
+	handleSaveApply: function (ev) {
+		return this.handleSave(ev).then(function () {
+			return flushAndRestartMosdns();
+		}).then(function () {
+			return ui.changes.apply(false);
+		});
+	},
+
+	addFooter: function () {
+		return E('div', { 'class': 'cbi-page-actions' }, [
+			E('button', {
+				'class': 'cbi-button cbi-button-apply important',
+				'click': L.bind(this.handleSaveApply, this)
+			}, [ _('Save & Apply') ]),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-save',
+				'click': L.bind(this.handleSave, this)
+			}, [ _('Save') ]),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-reset',
+				'click': L.bind(this.handleReset, this)
+			}, [ _('Reset') ])
+		]);
+	},
+
 	handleUpdate: function (m, section_id, ev) {
 		return fs.exec('/usr/share/mosdns/mosdns.sh', ['geodata'])
 			.then(function (i) {
@@ -18,11 +60,12 @@ return view.extend({
 			});
 	},
 
-	render: function () {
+		render: function () {
 		var m, s, o;
 
 		m = new form.Map('mosdns', _('Update GeoIP & GeoSite databases'),
 			_('Automatically update GeoIP and GeoSite databases as well as ad filtering rules through scheduled tasks.'));
+		this.map = m;
 
 		s = m.section(form.TypedSection, 'mosdns');
 		s.anonymous = true;
