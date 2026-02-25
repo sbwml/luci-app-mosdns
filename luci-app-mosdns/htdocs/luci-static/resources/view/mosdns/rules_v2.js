@@ -1,6 +1,7 @@
 'use strict';
 'require form';
 'require fs';
+'require rpc';
 'require uci';
 'require ui';
 'require view';
@@ -17,6 +18,52 @@ var PRESET_AD_SOURCE_MAP = PRESET_AD_SOURCES.reduce(function (m, v) {
 	return m;
 }, {});
 
+var RULE_TYPE_META = {
+	adblock: {
+		label: _('ADBlock Rule'),
+		desc: _('Filter advertisement domains using preset sources.')
+	},
+	apple_domain: {
+		label: _('Apple Domain Optimization'),
+		desc: _('Route Apple domains to the selected DNS group.')
+	},
+	cn_domain: {
+		label: _('China Domain'),
+		desc: _('Route China domains to the selected DNS group.')
+	},
+	noncn_domain: {
+		label: _('Global Domain'),
+		desc: _('Route non-China domains to the selected DNS group.')
+	},
+	hosts: {
+		label: _('HOSTS'),
+		desc: _('Resolve domains from HOSTS list with fixed IP mapping.')
+	},
+	redirect: {
+		label: _('Redirect'),
+		desc: _('Rewrite queried domains to another domain.')
+	},
+	blacklist_ptr: {
+		label: _('PTR Blacklist'),
+		desc: _('Block PTR reverse-lookup domains in list.')
+	},
+	blacklist_domain: {
+		label: _('Domain Blacklist'),
+		desc: _('Block domains in list.')
+	},
+	custom: {
+		label: _('Custom Rule'),
+		desc: _('Apply custom domain rules (plain/full/keyword/regexp). You can set TTL as needed.')
+	}
+};
+
+var callUciOrder = rpc.declare({
+	object: 'uci',
+	method: 'order',
+	params: [ 'config', 'sections' ],
+	expect: { '': 0 }
+});
+
 var RULE_CONTENT_SAMPLES = {
 	blacklist_domain: [
 		'# domain blacklist examples',
@@ -26,7 +73,90 @@ var RULE_CONTENT_SAMPLES = {
 	blacklist_ptr: [
 		'# ptr blacklist examples',
 		'10.in-addr.arpa',
+		'127.in-addr.arpa',
+		'16.172.in-addr.arpa',
+		'17.172.in-addr.arpa',
+		'18.172.in-addr.arpa',
+		'19.172.in-addr.arpa',
+		'20.172.in-addr.arpa',
+		'21.172.in-addr.arpa',
+		'22.172.in-addr.arpa',
+		'23.172.in-addr.arpa',
+		'24.172.in-addr.arpa',
+		'25.172.in-addr.arpa',
+		'26.172.in-addr.arpa',
+		'27.172.in-addr.arpa',
+		'28.172.in-addr.arpa',
+		'29.172.in-addr.arpa',
+		'30.172.in-addr.arpa',
+		'31.172.in-addr.arpa',
+		'64.100.in-addr.arpa',
+		'65.100.in-addr.arpa',
+		'66.100.in-addr.arpa',
+		'67.100.in-addr.arpa',
+		'68.100.in-addr.arpa',
+		'69.100.in-addr.arpa',
+		'70.100.in-addr.arpa',
+		'71.100.in-addr.arpa',
+		'72.100.in-addr.arpa',
+		'73.100.in-addr.arpa',
+		'74.100.in-addr.arpa',
+		'75.100.in-addr.arpa',
+		'76.100.in-addr.arpa',
+		'77.100.in-addr.arpa',
+		'78.100.in-addr.arpa',
+		'79.100.in-addr.arpa',
+		'80.100.in-addr.arpa',
+		'81.100.in-addr.arpa',
+		'82.100.in-addr.arpa',
+		'83.100.in-addr.arpa',
+		'84.100.in-addr.arpa',
+		'85.100.in-addr.arpa',
+		'86.100.in-addr.arpa',
+		'87.100.in-addr.arpa',
+		'88.100.in-addr.arpa',
+		'89.100.in-addr.arpa',
+		'90.100.in-addr.arpa',
+		'91.100.in-addr.arpa',
+		'92.100.in-addr.arpa',
+		'93.100.in-addr.arpa',
+		'94.100.in-addr.arpa',
+		'95.100.in-addr.arpa',
+		'96.100.in-addr.arpa',
+		'97.100.in-addr.arpa',
+		'98.100.in-addr.arpa',
+		'99.100.in-addr.arpa',
+		'100.100.in-addr.arpa',
+		'101.100.in-addr.arpa',
+		'102.100.in-addr.arpa',
+		'103.100.in-addr.arpa',
+		'104.100.in-addr.arpa',
+		'105.100.in-addr.arpa',
+		'106.100.in-addr.arpa',
+		'107.100.in-addr.arpa',
+		'108.100.in-addr.arpa',
+		'109.100.in-addr.arpa',
+		'110.100.in-addr.arpa',
+		'111.100.in-addr.arpa',
+		'112.100.in-addr.arpa',
+		'113.100.in-addr.arpa',
+		'114.100.in-addr.arpa',
+		'115.100.in-addr.arpa',
+		'116.100.in-addr.arpa',
+		'117.100.in-addr.arpa',
+		'118.100.in-addr.arpa',
+		'119.100.in-addr.arpa',
+		'120.100.in-addr.arpa',
+		'121.100.in-addr.arpa',
+		'122.100.in-addr.arpa',
+		'123.100.in-addr.arpa',
+		'124.100.in-addr.arpa',
+		'125.100.in-addr.arpa',
+		'126.100.in-addr.arpa',
+		'127.100.in-addr.arpa',
+		'2.0.192.in-addr.arpa',
 		'168.192.in-addr.arpa',
+		'255.255.255.255.in-addr.arpa',
 		'domain:ip6.arpa'
 	].join('\n'),
 	hosts: [
@@ -53,32 +183,32 @@ var RULE_CONTENT_SAMPLES = {
 	].join('\n')
 };
 
-function ruleTypeLabel(mode, blacklistType, builtinType) {
-	var base = {
-		blacklist: _('Blacklist'),
-		builtin: _('Built-in Rule'),
-		ip_map: _('IP Mapping'),
-		hosts: _('HOSTS'),
-		redirect: _('Redirect'),
-		custom: _('Custom Rule')
-	}[mode] || mode;
+function getRuleTypeId(section_id) {
+	var mode = uci.get('mosdns', section_id, 'mode') || 'custom';
+	var bt = uci.get('mosdns', section_id, 'builtin_type') || '';
+	var blt = uci.get('mosdns', section_id, 'blacklist_type') || 'domain';
 
-	if (mode === 'blacklist') {
-		var sub = blacklistType === 'ptr' ? _('PTR Blacklist') : _('Domain Blacklist');
-		return '%s (%s)'.format(base, sub);
-	}
+	if (mode === 'builtin')
+		return bt || 'custom';
 
-	if (mode === 'builtin') {
-		var sub2 = {
-			adblock: _('ADBlock Rule'),
-			cn_domain: _('China Domain'),
-			noncn_domain: _('Global Domain'),
-			apple_domain: _('Apple Domain Optimization')
-		}[builtinType] || builtinType;
-		return '%s (%s)'.format(base, sub2);
-	}
+	if (mode === 'blacklist')
+		return blt === 'ptr' ? 'blacklist_ptr' : 'blacklist_domain';
 
-	return base;
+	if (mode === 'hosts')
+		return 'hosts';
+
+	if (mode === 'redirect')
+		return 'redirect';
+
+	if (mode === 'ip_map')
+		return 'ip_map';
+
+	return 'custom';
+}
+
+function ruleTypeLabel(section_id) {
+	var t = getRuleTypeId(section_id);
+	return (RULE_TYPE_META[t] && RULE_TYPE_META[t].label) || _('Custom Rule');
 }
 
 function ensureRuleSample(section_id) {
@@ -108,12 +238,17 @@ function ensureRuleSample(section_id) {
 		if (old && old.trim().length)
 			return;
 		return fs.write(file, RULE_CONTENT_SAMPLES[key] + '\n');
+	}).catch(function () {
+		return;
 	});
 }
 
 function createRuleByType(typeId, defaultGroup, cnGroup, globalGroup) {
-	var sid = uci.add('mosdns', 'rule');
+	var sid = uci.add('mosdns', 'rule', 'rule_' + String(Date.now()));
 	var name = _('New Rule');
+
+	if (!sid)
+		return Promise.reject(new Error('failed to add uci rule section'));
 
 	uci.set('mosdns', sid, 'enabled', '1');
 	uci.set('mosdns', sid, 'ip_strategy', 'auto');
@@ -144,12 +279,6 @@ function createRuleByType(typeId, defaultGroup, cnGroup, globalGroup) {
 		uci.set('mosdns', sid, 'builtin_type', 'noncn_domain');
 		uci.set('mosdns', sid, 'dns_group', globalGroup || defaultGroup || '');
 		uci.set('mosdns', sid, 'rule_file', '/var/mosdns/geosite_geolocation-!cn.txt');
-	} else if (typeId === 'custom_ddns') {
-		uci.set('mosdns', sid, 'name', _('DDNS Lists'));
-		uci.set('mosdns', sid, 'mode', 'custom');
-		uci.set('mosdns', sid, 'dns_group', cnGroup || defaultGroup || '');
-		uci.set('mosdns', sid, 'ttl', '5');
-		uci.set('mosdns', sid, 'rule_file', '/etc/mosdns/rule/ddnslist.txt');
 	} else if (typeId === 'blacklist_domain') {
 		uci.set('mosdns', sid, 'name', _('Domain Blacklist'));
 		uci.set('mosdns', sid, 'mode', 'blacklist');
@@ -168,10 +297,6 @@ function createRuleByType(typeId, defaultGroup, cnGroup, globalGroup) {
 		uci.set('mosdns', sid, 'name', _('Redirect'));
 		uci.set('mosdns', sid, 'mode', 'redirect');
 		ensureRuleFile(sid);
-	} else if (typeId === 'ip_map') {
-		uci.set('mosdns', sid, 'name', _('IP Mapping'));
-		uci.set('mosdns', sid, 'mode', 'ip_map');
-		ensureRuleFile(sid);
 	} else {
 		uci.set('mosdns', sid, 'name', name);
 		uci.set('mosdns', sid, 'mode', 'custom');
@@ -180,6 +305,50 @@ function createRuleByType(typeId, defaultGroup, cnGroup, globalGroup) {
 	}
 
 	return ensureRuleSample(sid).then(function () { return sid; });
+}
+
+function moveRuleToTop(section_id) {
+	if (!section_id)
+		return Promise.resolve();
+
+	var order = [ section_id ];
+	uci.sections('mosdns', 'rule').forEach(function (sec) {
+		if (sec['.name'] !== section_id)
+			order.push(sec['.name']);
+	});
+
+	return callUciOrder('mosdns', order);
+}
+
+function bindNewRuleModalCancel(section, section_id) {
+	window.setTimeout(function () {
+		var modal = document.getElementById('modal_overlay');
+		if (!modal)
+			return;
+
+		var committed = false;
+		var buttons = modal.querySelectorAll('button, .btn');
+
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].addEventListener('click', function (ev) {
+				var cls = String((ev.currentTarget && ev.currentTarget.className) || '');
+				var txt = String((ev.currentTarget && (ev.currentTarget.textContent || ev.currentTarget.innerText)) || '').trim().toLowerCase();
+
+				if (cls.indexOf('cbi-button-save') >= 0 || cls.indexOf('cbi-button-apply') >= 0 || cls.indexOf('cbi-button-positive') >= 0 || txt === 'save' || txt === '保存')
+					committed = true;
+
+				if (cls.indexOf('cbi-button-reset') >= 0 || cls.indexOf('cbi-button-negative') >= 0 || txt === 'cancel' || txt === '取消' || txt === 'dismiss' || txt === 'close' || txt === '关闭') {
+					if (!committed) {
+						uci.remove('mosdns', section_id);
+						section.__newOrder = (section.__newOrder || []).filter(function (id) {
+							return id !== section_id;
+						});
+						window.setTimeout(function () { window.location.reload(); }, 0);
+					}
+				}
+			});
+		}
+	}, 120);
 }
 
 function isIpToken(s) {
@@ -367,39 +536,66 @@ return view.extend({
 		s.nodescriptions = true;
 		s.modaltitle = _('Rule');
 		s.addbtntitle = _('Add Rule');
+		s.__newOrder = [];
 		s.cfgsections = function () {
-			return uci.sections('mosdns', 'rule')
+			var ids = uci.sections('mosdns', 'rule')
 				.sort(function (a, b) {
 					return (a['.index'] || 0) - (b['.index'] || 0);
 				})
 				.map(function (sec) { return sec['.name']; });
+
+			(this.__newOrder || []).forEach(function (sid) {
+				if (ids.indexOf(sid) >= 0)
+					ids = [ sid ].concat(ids.filter(function (id) { return id !== sid; }));
+			});
+
+			return ids;
 		};
 		s.handleAdd = function (ev) {
 			if (ev)
 				ev.preventDefault();
 
 			return new Promise(function (resolve) {
-				var choices = [
-					{ id: 'builtin_adblock', label: _('ADBlock Rule') },
-					{ id: 'builtin_apple', label: _('Apple Domain Optimization') },
-					{ id: 'custom_ddns', label: _('DDNS Lists') },
-					{ id: 'builtin_cn', label: _('China Domain') },
-					{ id: 'builtin_global', label: _('Global Domain') },
-					{ id: 'hosts', label: _('HOSTS') },
-					{ id: 'redirect', label: _('Redirect') },
-					{ id: 'blacklist_ptr', label: _('PTR Blacklist') },
-					{ id: 'blacklist_domain', label: _('Domain Blacklist') },
-					{ id: 'ip_map', label: _('IP Mapping') },
-					{ id: 'custom', label: _('Custom Rule') }
+				var builtinChoices = [
+					{ id: 'builtin_adblock', key: 'adblock' },
+					{ id: 'builtin_apple', key: 'apple_domain' },
+					{ id: 'builtin_cn', key: 'cn_domain' },
+					{ id: 'builtin_global', key: 'noncn_domain' }
 				];
-				var selector = E('select', { 'class': 'cbi-input-select' }, choices.map(function (it) {
-					return E('option', { value: it.id }, [ it.label ]);
-				}));
+				var otherChoices = [
+					{ id: 'hosts', key: 'hosts' },
+					{ id: 'redirect', key: 'redirect' },
+					{ id: 'blacklist_ptr', key: 'blacklist_ptr' },
+					{ id: 'blacklist_domain', key: 'blacklist_domain' },
+					{ id: 'custom', key: 'custom' }
+				];
+				var choices = builtinChoices.concat(otherChoices);
+				var optionNodes = [];
+
+				builtinChoices.forEach(function (it) {
+					optionNodes.push(E('option', { value: it.id }, [ RULE_TYPE_META[it.key].label ]));
+				});
+				optionNodes.push(E('option', { value: '__sep__', disabled: 'disabled' }, [ '────────' ]));
+				otherChoices.forEach(function (it) {
+					optionNodes.push(E('option', { value: it.id }, [ RULE_TYPE_META[it.key].label ]));
+				});
+
+				var selector = E('select', { 'class': 'cbi-input-select' }, optionNodes);
+				var descBox = E('p', { 'style': 'margin-top:0.6em; opacity:.9' }, [ '' ]);
+
+				var updateDesc = function () {
+					var t = selector.value || 'custom';
+					var row = choices.filter(function (x) { return x.id === t; })[0] || choices[choices.length - 1];
+					descBox.textContent = RULE_TYPE_META[row.key].desc;
+				};
+				selector.addEventListener('change', updateDesc);
+				updateDesc();
 
 				ui.showModal(_('Add Rule'), [
 					E('div', { 'class': 'cbi-section' }, [
-						E('p', _('Select rule type for the new rule. Type cannot be changed later.')),
-						selector
+						E('p', _('Select a rule type to create. Type cannot be changed later.')),
+						selector,
+						descBox
 					]),
 					E('div', { 'class': 'right' }, [
 						E('button', {
@@ -415,13 +611,25 @@ return view.extend({
 							'class': 'btn cbi-button cbi-button-add important',
 							'click': function (e) {
 								e.preventDefault();
+								var createdSid = null;
 								var typeId = selector.value || 'custom';
-								createRuleByType(typeId, defaultGroup, cnGroup, globalGroup).then(function () {
+								if (typeId === '__sep__')
+									typeId = 'custom';
+								createRuleByType(typeId, defaultGroup, cnGroup, globalGroup).then(function (sid) {
+									createdSid = sid;
+									s.__newOrder = [ sid ].concat((s.__newOrder || []).filter(function (id) {
+										return id !== sid;
+									}));
+									return m.render();
+								}).then(function () {
 									ui.hideModal();
-									window.location.reload();
+									if (typeof s.renderMoreOptionsModal === 'function') {
+										s.renderMoreOptionsModal(createdSid);
+										bindNewRuleModalCancel(s, createdSid);
+									}
 									resolve();
-								}).catch(function () {
-									ui.addNotification(null, E('p', _('Failed to create rule.')), 'error');
+								}).catch(function (err) {
+									ui.addNotification(null, E('p', _('Failed to create rule.') + ' ' + (err && err.message ? err.message : '')), 'error');
 									resolve();
 								});
 							}
@@ -441,43 +649,43 @@ return view.extend({
 		o.placeholder = _('New Rule');
 		o.sortable = false;
 
-		o = s.option(form.ListValue, 'mode', _('Mode'));
-		o.value('blacklist', _('Blacklist'));
-		o.value('builtin', _('Built-in Rule'));
-		o.value('ip_map', _('IP Mapping'));
-		o.value('hosts', _('HOSTS'));
-		o.value('redirect', _('Redirect'));
-		o.value('custom', _('Custom Rule'));
-		o.default = 'custom';
-		o.rmempty = false;
-		o.readonly = true;
-		o.textvalue = function (section_id) {
-			var mode = uci.get('mosdns', section_id, 'mode') || 'custom';
-			var b = uci.get('mosdns', section_id, 'blacklist_type') || 'domain';
-			var t = uci.get('mosdns', section_id, 'builtin_type') || 'adblock';
-			return ruleTypeLabel(mode, b, t);
+		o = s.option(form.DummyValue, '_rule_type', _('Rule Type'));
+		o.cfgvalue = function (section_id) {
+			return ruleTypeLabel(section_id);
 		};
 		o.sortable = false;
 
-		o = s.option(form.ListValue, 'blacklist_type', _('Blacklist Type'));
-		o.value('domain', _('Domain Blacklist'));
-		o.value('ptr', _('PTR Blacklist'));
-		o.default = 'domain';
-		o.depends('mode', 'blacklist');
-		o.modalonly = true;
-		o.readonly = true;
+		o = s.option(form.DummyValue, '_dns_group_view', _('DNS Group'));
+		o.cfgvalue = function (section_id) {
+			var mode = uci.get('mosdns', section_id, 'mode');
+			var bt = uci.get('mosdns', section_id, 'builtin_type');
+			if (mode !== 'custom' && !(mode === 'builtin' && (bt === 'cn_domain' || bt === 'noncn_domain' || bt === 'apple_domain')))
+				return '-';
+
+			var v = uci.get('mosdns', section_id, 'dns_group');
+			if (!v)
+				return _('Default DNS Group');
+
+			var m = /^@dns_group\[(\d+)\]$/.exec(v || '');
+			if (m) {
+				var idx = +m[1];
+				return (groups[idx] && (groups[idx].name || groups[idx]['.name'])) || _('Default DNS Group');
+			}
+			return groupNameMap[v] || _('Default DNS Group');
+		};
 		o.sortable = false;
 
-		o = s.option(form.ListValue, 'builtin_type', _('Built-in Type'));
-		o.value('adblock', _('ADBlock Rule'));
-		o.value('cn_domain', _('China Domain'));
-		o.value('noncn_domain', _('Global Domain'));
-		o.value('apple_domain', _('Apple Domain Optimization'));
-		o.default = 'adblock';
-		o.depends('mode', 'builtin');
+		o = s.option(form.HiddenValue, 'mode');
+		o.rmempty = false;
 		o.modalonly = true;
-		o.readonly = true;
-		o.sortable = false;
+
+		o = s.option(form.HiddenValue, 'builtin_type');
+		o.rmempty = true;
+		o.modalonly = true;
+
+		o = s.option(form.HiddenValue, 'blacklist_type');
+		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.DynamicList, 'ad_source', _('ADblock Source'),
 			_('Use preset AD rule sources only. Custom URLs or local files are not allowed.'));
@@ -508,27 +716,11 @@ return view.extend({
 		});
 		if (defaultGroup)
 			o.default = defaultGroup;
-		o.textvalue = function (section_id) {
-			var mode = uci.get('mosdns', section_id, 'mode');
-			var bt = uci.get('mosdns', section_id, 'builtin_type');
-			if (mode !== 'custom' && !(mode === 'builtin' && (bt === 'cn_domain' || bt === 'noncn_domain' || bt === 'apple_domain')))
-				return '-';
-
-			var v = uci.get('mosdns', section_id, 'dns_group');
-			if (!v)
-				return _('Default DNS Group');
-
-			var m = /^@dns_group\[(\d+)\]$/.exec(v || '');
-			if (m) {
-				var idx = +m[1];
-				return (groups[idx] && (groups[idx].name || groups[idx]['.name'])) || _('Default DNS Group');
-			}
-			return groupNameMap[v] || _('Default DNS Group');
-		};
 		o.depends('mode', 'custom');
 		o.depends({ mode: 'builtin', builtin_type: 'cn_domain' });
 		o.depends({ mode: 'builtin', builtin_type: 'noncn_domain' });
 		o.depends({ mode: 'builtin', builtin_type: 'apple_domain' });
+		o.modalonly = true;
 		o.sortable = false;
 
 		o = s.option(form.ListValue, 'ip_strategy', _('IP Resolve Strategy'));

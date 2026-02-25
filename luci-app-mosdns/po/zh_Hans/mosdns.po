@@ -755,9 +755,6 @@ msgstr "当多条规则同时命中时，后续规则会继续执行。"
 msgid "https://gh-proxy.com"
 msgstr "https://gh-proxy.com"
 
-msgid "Select rule type for the new rule. Type cannot be changed later."
-msgstr "请选择新规则的类型。创建后不可修改类型。"
-
 msgid "Failed to create rule."
 msgstr "创建规则失败。"
 
@@ -766,3 +763,42 @@ msgstr "取消"
 
 msgid "Add"
 msgstr "添加"
+
+msgid "Rule Type"
+msgstr "规则类型"
+
+msgid "Select a rule type to create. Type cannot be changed later."
+msgstr "请选择要创建的规则类型。创建后不可修改类型。"
+
+msgid "Filter advertisement domains using preset sources."
+msgstr "使用预设来源过滤广告域名。"
+
+msgid "Route Apple domains to the selected DNS group."
+msgstr "将 Apple 域名分流到所选 DNS 分组。"
+
+msgid "Route China domains to the selected DNS group."
+msgstr "将中国大陆域名分流到所选 DNS 分组。"
+
+msgid "Route non-China domains to the selected DNS group."
+msgstr "将非中国大陆域名分流到所选 DNS 分组。"
+
+msgid "Resolve domains from HOSTS list with fixed IP mapping."
+msgstr "按 HOSTS 列表进行域名到固定 IP 的解析映射。"
+
+msgid "Rewrite queried domains to another domain."
+msgstr "将查询域名重写为另一个域名。"
+
+msgid "Block PTR reverse-lookup domains in list."
+msgstr "拦截列表中的 PTR 反向解析域名。"
+
+msgid "Block domains in list."
+msgstr "拦截列表中的域名。"
+
+msgid "Map response IPs by CIDR/IP lists."
+msgstr "按 CIDR/IP 列表映射响应 IP。"
+
+msgid "Apply custom domain rules (plain/full/keyword/regexp)."
+msgstr "应用自定义域名规则（plain/full/keyword/regexp）。"
+
+msgid "Apply custom domain rules (plain/full/keyword/regexp). You can set TTL as needed."
+msgstr "应用自定义域名规则（plain/full/keyword/regexp），并可按需设置 TTL。"

@@ -533,6 +533,40 @@ migrate_builtin_stream_media_rules() {
 	[ "$changed" -eq 1 ] && uci -q commit mosdns
 }
 
+normalize_ddns_custom_rule_ttl() {
+	local sec mode rf name ttl changed
+	changed=0
+
+	for sec in $(uci -q show mosdns | awk -F '[.=]' '/=rule$/{print $2}'); do
+		mode=$(uci -q get mosdns.$sec.mode)
+		[ "$mode" = "custom" ] || continue
+
+		rf=$(uci -q get mosdns.$sec.rule_file)
+		name=$(uci -q get mosdns.$sec.name)
+
+		case "$rf" in
+			*/ddnslist.txt)
+				ttl=$(uci -q get mosdns.$sec.ttl)
+				[ "$ttl" = "5" ] || {
+					uci -q set mosdns.$sec.ttl='5'
+					changed=1
+				}
+			;;
+			*)
+				if echo "$name" | grep -qi 'ddns'; then
+					ttl=$(uci -q get mosdns.$sec.ttl)
+					[ "$ttl" = "5" ] || {
+						uci -q set mosdns.$sec.ttl='5'
+						changed=1
+					}
+				fi
+			;;
+		esac
+	done
+
+	[ "$changed" -eq 1 ] && uci -q commit mosdns
+}
+
 add_dns_group_plugin_v2() {
 	local section="$1"
 	local section_default group_name dns_list group_bootstrap group_concurrent use_default_dns tag addr enable_http3
@@ -1783,6 +1817,7 @@ start_service() {
 	config_load "mosdns"
 	migrate_legacy_config
 	migrate_builtin_stream_media_rules
+	normalize_ddns_custom_rule_ttl
 	migrate_response_ip_map_config
 	migrate_cloudflare_cidr_file
 	enforce_default_dns_group
