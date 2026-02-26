@@ -82,5 +82,5 @@ config rule
 	option mode 'builtin'
 	option builtin_type 'noncn_domain'
 	option dns_group 'dns_global'
-	option ip_strategy 'auto'
+	option ip_strategy 'ipv4'
 	option rule_file '/var/mosdns/geosite_geolocation-!cn.txt'

@@ -278,7 +278,7 @@ restore_rule_defaults() {
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='noncn_domain'
     uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='auto'
+	uci -q set mosdns.$rid.ip_strategy='ipv4'
     uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
     uci -q commit mosdns
@@ -356,7 +356,7 @@ restore_rule_defaults_keep_groups() {
     uci -q set mosdns.$rid.mode='builtin'
     uci -q set mosdns.$rid.builtin_type='noncn_domain'
     uci -q set mosdns.$rid.dns_group="$global_id"
-    uci -q set mosdns.$rid.ip_strategy='auto'
+	uci -q set mosdns.$rid.ip_strategy='ipv4'
     uci -q set mosdns.$rid.rule_file='/var/mosdns/geosite_geolocation-!cn.txt'
 
     uci -q commit mosdns
