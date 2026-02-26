@@ -835,17 +835,7 @@ add_rule_plugins_v2() {
 			json_close_array
 			json_close_object
 			json_close_object
-
-			json_add_object
-			json_add_string "tag" "$exec_tag"
-			json_add_string "type" "sequence"
-			json_add_array "args"
-			json_add_object
-			json_add_string "exec" "\$${set_tag}"
-			json_close_object
-			json_close_array
-			json_close_object
-			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $exec_tag"
+			RULE_EXEC_TAGS="$RULE_EXEC_TAGS $set_tag"
 		;;
 		custom|*)
 			config_get dns_group "$section" dns_group ""
