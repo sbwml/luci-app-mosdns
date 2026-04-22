@@ -1,3 +1,5 @@
+// noinspection JSAnnotator
+
 'use strict';
 'require form';
 'require fs';
@@ -37,37 +39,21 @@ function renderStatus(isRunning) {
 }
 
 async function loadCodeMirrorResources() {
-	const styles = [
-		'/luci-static/resources/codemirror5/theme/dracula.min.css',
-		'/luci-static/resources/codemirror5/addon/lint/lint.min.css',
-		'/luci-static/resources/codemirror5/codemirror.min.css',
-	];
-	const scripts = [
-		'/luci-static/resources/codemirror5/libs/js-yaml.min.js',
-		'/luci-static/resources/codemirror5/codemirror.min.js',
-		'/luci-static/resources/codemirror5/addon/display/autorefresh.min.js',
-		'/luci-static/resources/codemirror5/mode/yaml/yaml.min.js',
-		'/luci-static/resources/codemirror5/addon/lint/lint.min.js',
-		'/luci-static/resources/codemirror5/addon/lint/yaml-lint.min.js',
-	];
-	const loadStyles = async () => {
-		for (const href of styles) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = href;
-			document.head.appendChild(link);
-		}
-	};
-	const loadScripts = async () => {
-		for (const src of scripts) {
-			const script = document.createElement('script');
-			script.src = src;
-			document.head.appendChild(script);
-			await new Promise(resolve => script.onload = resolve);
-		}
-	};
-	await loadStyles();
-	await loadScripts();
+    const bundlePath = '/luci-static/resources/view/mosdns/codemirror6/cm6-yaml-editor.js';
+
+    if (window.CM6) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = bundlePath;
+        script.onload = () => {
+            resolve();
+        };
+        script.onerror = () => reject(new Error("Failed to load CM6 bundle"));
+        document.head.appendChild(script);
+    });
 }
 
 var callMosdns = rpc.declare({
@@ -85,6 +71,7 @@ var callFlushCache = rpc.declare({
 return view.extend({
 	load: function () {
 		return Promise.all([
+            loadCodeMirrorResources(),
 			L.resolveDefault(callMosdns(), null),
 		]);
 	},
@@ -103,36 +90,27 @@ return view.extend({
 		var m, s, o, v;
 		v = '';
 
-		var version = (data[0] && data[0].version) ? data[0].version : null;
+		var version = (data[1] && data[1].version) ? data[1].version : null;
 		if (version) {
 			v = version;
 		}
 		m = new form.Map('mosdns', _('MosDNS') + '&#160;' + v,
 			_('MosDNS is a plugin-based DNS forwarder/traffic splitter.'));
 
+        this.map = m;
 		s = m.section(form.TypedSection);
 		s.anonymous = true;
-		s.render = function () {
-			setTimeout(function () {
-				poll.add(function () {
-					return L.resolveDefault(getServiceStatus()).then(function (res) {
-						var view = document.getElementById('service_status');
-						if (view) {
-							view.innerHTML = renderStatus(res);
-						} else {
-							console.error('Element #service_status not found.');
-						}
-					});
-				});
-			}, 100);
+        s.render = function () {
+            const el = E('p', { id: 'service_status' }, _('Collecting data...'))
 
-			/* dynamically loading Codemirror resources */
-			loadCodeMirrorResources();
+            poll.add(function () {
+                return L.resolveDefault(getServiceStatus()).then(function (res) {
+                    el.innerHTML = renderStatus(res);
+                });
+            });
 
-			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
-				E('p', { id: 'service_status' }, _('Collecting data...'))
-			]);
-		}
+            return E('div', { class: 'cbi-section', id: 'status_bar' }, [el]);
+        }
 
 		s = m.section(form.NamedSection, 'config', 'mosdns');
 
@@ -410,49 +388,54 @@ return view.extend({
 		o.depends('cache', '1');
 
 		/* configuration */
-		var configeditor = null;
-		setTimeout(function () {
-			var textarea = document.getElementById('widget.cbid.mosdns.config._custom');
-			if (textarea) {
-				configeditor = CodeMirror.fromTextArea(textarea, {
-					autoRefresh: true,
-					lineNumbers: true,
-					lineWrapping: true,
-					lint: true,
-					gutters: ['CodeMirror-lint-markers'],
-					matchBrackets: true,
-					mode: "text/yaml",
-					styleActiveLine: true,
-					theme: "dracula"
-				});
-			}
-		}, 600);
-		o = s.taboption('basic', form.TextValue, '_custom', _('Configuration Editor'),
-			_('This is the content of the file \'/etc/mosdns/config_custom.yaml\' from which your MosDNS configuration will be generated. \
-			Only accepts configuration content in yaml format.'));
-		o.rows = 25;
-		o.depends('configfile', '/etc/mosdns/config_custom.yaml');
-		o.cfgvalue = function (section_id) {
-			return fs.trimmed('/etc/mosdns/config_custom.yaml');
-		};
-		o.write = function (section_id, formvalue) {
-			if (configeditor) {
-				var editorContent = configeditor.getValue();
-				if (editorContent === formvalue) {
-					return;
-				}
-				return fs.write('/etc/mosdns/config_custom.yaml', editorContent.trim().replace(/\r\n/g, '\n') + '\n')
-					.then(function (i) {
-						return fs.exec('/etc/init.d/mosdns', ['restart']);
-					})
-					.then(function () {
-						return window.location.reload();
-					})
-					.catch(function (e) {
-						ui.addNotification(null, E('p', _('Unable to save contents: %s').format(e.message)));
-					});
-			}
-		};
+        let editor;
+        const configFile = "/etc/mosdns/config_custom.yaml"
+        o = s.taboption('basic', form.DummyValue, '_custom', _('Configuration Editor'));
+        o.rows = 30;
+        o.depends('configfile', configFile);
+
+        o.render = function (sid) {
+            const container = E('div', {'class': 'cm6-container'});
+            container.style.width = "40rem";
+            container.style.maxWidth = "40rem";
+            container.style.overflow = "hidden";
+            container.style.display = "block";
+            container.style.height = "28rem";
+
+            return fs.read(configFile).then(content => {
+                const initialValue = content || '';
+
+                try {
+                    jsyaml.load(initialValue);
+                } catch (e) {}
+
+                if (window.CM6) {
+                    editor = window.CM6.create(container, initialValue);
+
+                    const scroller = container.querySelector('.cm-scroller');
+                    if (scroller) {
+                        scroller.style.height = "28rem";
+                        scroller.style.overflow = "auto";
+                    }
+                    const contentEl = container.querySelector('.cm-content');
+                    if (contentEl) {
+                        contentEl.style.minWidth = "0";
+                        contentEl.style.overflowWrap = "break-word";
+                    }
+                }
+                return E('div', {'class': 'cbi-value'}, [
+                    E('label', {'class': 'cbi-value-title'}, _('Yaml Editor')),
+                    E('div', {'class': 'cbi-value-field'}, [
+                        container,
+                        E('div', {'class': 'cbi-value-description',
+                            'style': 'margin-top: 0.5rem; max-width: 40rem; white-space: normal;'
+                        }, [
+                            _('This is the content of the file \'/etc/mosdns/config_custom.yaml\' from which your MosDNS configuration will be generated. Only accepts configuration content in yaml format.')
+                        ])
+                    ])
+                ]);
+            });
+        };
 
 		o = s.taboption('geodata', form.DynamicList, 'geosite_tags', _('GeoSite Tags'),
 			_('Enter the GeoSite.dat category to be exported, Allow add multiple tags'),
@@ -464,6 +447,53 @@ return view.extend({
 			_('Export directory: /var/mosdns'));
 		o.depends('configfile', '/etc/mosdns/config_custom.yaml');
 
+        const originalParse = m.parse;
+        m.parse = function() {
+            if (editor && editor.state) {
+                const content = editor.state.doc.toString().trim() + '\n';
+
+                try {
+                    window.jsyaml.load(content);
+                } catch (e) {
+                    return Promise.reject(e);
+                }
+
+                return fs.write(configFile, content).then(() => {
+                    return originalParse.apply(m, arguments);
+                });
+            }
+            return originalParse.apply(m, arguments);
+        };
+
 		return m.render();
-	}
+	},
+
+    handleSaveApply: function (ev, mode) {
+        return this.map.save()
+            .then(() => uci.changes())
+            .then((changes) => {
+                if (changes && Object.keys(changes).length > 0) {
+                    return ui.changes.apply(mode === '0');
+                } else {
+                    ui.changes.displayStatus(
+                        'notice spinning',
+                        E('p', _('Starting configuration apply…'))
+                    );
+                    return fs.exec('/etc/init.d/mosdns', ['restart'])
+                        .then(() => {
+                            ui.changes.displayStatus(
+                                'notice',
+                                E('p', _('Configuration changes applied.'))
+                            );
+
+                            setTimeout(() => {
+                                ui.changes.displayStatus(false);
+                                window.location.reload();
+                            }, 1500);
+                        }).catch(e => {
+                            ui.changes.displayStatus(false);
+                        });
+                }
+            })
+    }
 });
