@@ -147,6 +147,7 @@ return view.extend({
 		o.value('/var/etc/mosdns.json', _('Default Config'));
 		o.value('/etc/mosdns/config_custom.yaml', _('Custom Config'));
 		o.default = '/var/etc/mosdns.json';
+		o.rmempty = false;
 
 		o = s.taboption('basic', form.Value, 'listen_port', _('Listen Port'));
 		o.default = '5335';
@@ -169,6 +170,7 @@ return view.extend({
 		o.placeholder = '/var/log/mosdns.log';
 		o.default = '/var/log/mosdns.log';
 		o.depends('configfile', '/var/etc/mosdns.json');
+		o.rmempty = false;
 
 		o = s.taboption('basic', form.Flag, 'redirect', _('DNS Forward'), _('Forward Dnsmasq Domain Name resolution requests to MosDNS'));
 		o.default = false;

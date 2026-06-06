@@ -193,7 +193,8 @@ function update_geodat() {
 	print(`Downloading ${geoip_url}.sha256sum\n`);
 	stdout.flush();
 	if (exec_sys(`curl --connect-timeout 5 -m 20 --ipv4 -kfSLo "${tmpdir}/geoip.dat.sha256sum" "${geoip_url}.sha256sum"`).code !== 0) {
-		exec_sys(`rm -rf "${tmpdir}"`); die("Failed to download geoip.dat.sha256sum");
+		exec_sys(`rm -rf "${tmpdir}"`);
+		die("Failed to download geoip.dat.sha256sum");
 	}
 
 	let geoip_sum_remote = split(exec_sys(`cat "${tmpdir}/geoip.dat.sha256sum"`).stdout, /[ \t\n]+/)[0];
@@ -209,12 +210,14 @@ function update_geodat() {
 		print(`Downloading ${geoip_url}\n`);
 		stdout.flush();
 		if (exec_sys(`curl --connect-timeout 5 -m 120 --ipv4 -kfSLo "${tmpdir}/geoip.dat" "${geoip_url}"`).code !== 0) {
-			exec_sys(`rm -rf "${tmpdir}"`); die("Failed to download geoip.dat");
+			exec_sys(`rm -rf "${tmpdir}"`);
+			die("Failed to download geoip.dat");
 		}
 
 		let sum_downloaded = split(exec_sys(`sha256sum "${tmpdir}/geoip.dat"`).stdout, /[ \t\n]+/)[0];
 		if (sum_downloaded !== geoip_sum_remote) {
-			exec_sys(`rm -rf "${tmpdir}"`); die("geoip.dat checksum error");
+			exec_sys(`rm -rf "${tmpdir}"`);
+			die("geoip.dat checksum error");
 		}
 		geoip_updated = true;
 	}
@@ -225,7 +228,8 @@ function update_geodat() {
 	print(`Downloading ${geosite_url}.sha256sum\n`);
 	stdout.flush();
 	if (exec_sys(`curl --connect-timeout 5 -m 20 --ipv4 -kfSLo "${tmpdir}/geosite.dat.sha256sum" "${geosite_url}.sha256sum"`).code !== 0) {
-		exec_sys(`rm -rf "${tmpdir}"`); die("Failed to download geosite.dat.sha256sum");
+		exec_sys(`rm -rf "${tmpdir}"`);
+		die("Failed to download geosite.dat.sha256sum");
 	}
 
 	let geosite_sum_remote = split(exec_sys(`cat "${tmpdir}/geosite.dat.sha256sum"`).stdout, /[ \t\n]+/)[0];
@@ -241,12 +245,14 @@ function update_geodat() {
 		print(`Downloading ${geosite_url}\n`);
 		stdout.flush();
 		if (exec_sys(`curl --connect-timeout 5 -m 120 --ipv4 -kfSLo "${tmpdir}/geosite.dat" "${geosite_url}"`).code !== 0) {
-			exec_sys(`rm -rf "${tmpdir}"`); die("Failed to download geosite.dat");
+			exec_sys(`rm -rf "${tmpdir}"`);
+			die("Failed to download geosite.dat");
 		}
 
 		let sum_downloaded = split(exec_sys(`sha256sum "${tmpdir}/geosite.dat"`).stdout, /[ \t\n]+/)[0];
 		if (sum_downloaded !== geosite_sum_remote) {
-			exec_sys(`rm -rf "${tmpdir}"`); die("geosite.dat checksum error");
+			exec_sys(`rm -rf "${tmpdir}"`);
+			die("geosite.dat checksum error");
 		}
 		geosite_updated = true;
 	}
