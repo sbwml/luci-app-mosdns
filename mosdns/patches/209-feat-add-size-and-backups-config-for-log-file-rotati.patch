@@ -1,0 +1,280 @@
+From e2a50186add36064f78015b163d725f1fe9821d0 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 2 Jul 2026 22:37:40 +0800
+Subject: [PATCH] feat: add size and backups config for log file rotation
+
+- `log.size`: limits active log file size, supports K/M/G/T (default 1M)
+- `log.backups`: limits max retained backup files (default 3)
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ mlog/logger.go  |  25 +++++-
+ mlog/rotator.go | 219 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 241 insertions(+), 3 deletions(-)
+ create mode 100644 mlog/rotator.go
+
+--- a/mlog/logger.go
++++ b/mlog/logger.go
+@@ -38,6 +38,14 @@ type LogConfig struct {
+ 
+ 	// Production enables json output.
+ 	Production bool `yaml:"production"`
++
++	// Size of log file limit. Default is 1M.
++	// Supported units: K, M, G, T. If no unit, defaults to M.
++	Size string `yaml:"size"`
++
++	// Max number of old log files to retain. Default is 3.
++	// Set to a negative number to retain all files.
++	Backups int `yaml:"backups"`
+ }
+ 
+ var (
+@@ -57,11 +65,22 @@ func NewLogger(lc LogConfig) (*zap.Logge
+ 
+ 	var out zapcore.WriteSyncer
+ 	if lf := lc.File; len(lf) > 0 {
+-		f, _, err := zap.Open(lf)
++		maxSize, err := ParseSize(lc.Size)
+ 		if err != nil {
+-			return nil, fmt.Errorf("open log file: %w", err)
++			return nil, fmt.Errorf("invalid log size limit: %w", err)
++		}
++
++		backups := lc.Backups
++		if backups == 0 {
++			backups = 3
++		}
++
++		rotator := &Rotator{
++			Filename:   lf,
++			MaxSize:    maxSize,
++			MaxBackups: backups,
+ 		}
+-		out = zapcore.Lock(f)
++		out = zapcore.AddSync(rotator)
+ 	} else {
+ 		out = stderr
+ 	}
+--- /dev/null
++++ b/mlog/rotator.go
+@@ -0,0 +1,219 @@
++/*
++ * Copyright (C) 2020-2022, IrineSistiana
++ *
++ * This file is part of mosdns.
++ *
++ * mosdns is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * mosdns is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
++ */
++
++package mlog
++
++import (
++	"fmt"
++	"os"
++	"path/filepath"
++	"sort"
++	"strconv"
++	"strings"
++	"sync"
++	"time"
++)
++
++type Rotator struct {
++	Filename   string
++	MaxSize    int64
++	MaxBackups int
++
++	size int64
++	f    *os.File
++	mu   sync.Mutex
++}
++
++func (r *Rotator) Write(p []byte) (n int, err error) {
++	r.mu.Lock()
++	defer r.mu.Unlock()
++
++	if r.f == nil {
++		if err := r.open(); err != nil {
++			return 0, err
++		}
++	}
++
++	writeLen := int64(len(p))
++	if r.MaxSize > 0 && r.size+writeLen > r.MaxSize {
++		if err := r.rotate(); err != nil {
++			return 0, err
++		}
++	}
++
++	n, err = r.f.Write(p)
++	r.size += int64(n)
++	return n, err
++}
++
++func (r *Rotator) open() error {
++	info, err := os.Stat(r.Filename)
++	if os.IsNotExist(err) {
++		return r.openNew()
++	}
++	if err != nil {
++		return err
++	}
++	r.size = info.Size()
++	f, err := os.OpenFile(r.Filename, os.O_APPEND|os.O_WRONLY, 0644)
++	if err != nil {
++		return r.openNew()
++	}
++	r.f = f
++	return nil
++}
++
++func (r *Rotator) openNew() error {
++	err := os.MkdirAll(filepath.Dir(r.Filename), 0755)
++	if err != nil {
++		return err
++	}
++	f, err := os.OpenFile(r.Filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
++	if err != nil {
++		return err
++	}
++	r.f = f
++	r.size = 0
++	return nil
++}
++
++func (r *Rotator) rotate() error {
++	if r.f != nil {
++		r.f.Close()
++		r.f = nil
++	}
++	_, err := os.Stat(r.Filename)
++	if err == nil {
++		ext := filepath.Ext(r.Filename)
++		name := strings.TrimSuffix(r.Filename, ext)
++		// Windows doesn't allow colons in filenames, so use dashes for time
++		newName := fmt.Sprintf("%s-%s%s", name, time.Now().Format("2006-01-02T15-04-05.000"), ext)
++		os.Rename(r.Filename, newName)
++	}
++	err = r.openNew()
++	if err == nil {
++		r.cleanupBackups()
++	}
++	return err
++}
++
++func (r *Rotator) cleanupBackups() {
++	if r.MaxBackups < 0 {
++		return // < 0 means keep all
++	}
++
++	dir := filepath.Dir(r.Filename)
++	ext := filepath.Ext(r.Filename)
++	name := strings.TrimSuffix(filepath.Base(r.Filename), ext)
++
++	entries, err := os.ReadDir(dir)
++	if err != nil {
++		return
++	}
++
++	var backups []string
++	prefix := name + "-"
++	for _, entry := range entries {
++		if entry.IsDir() {
++			continue
++		}
++		n := entry.Name()
++		if strings.HasPrefix(n, prefix) && strings.HasSuffix(n, ext) {
++			// Basic validation of the timestamp length
++			timestamp := n[len(prefix) : len(n)-len(ext)]
++			if len(timestamp) == 23 {
++				backups = append(backups, filepath.Join(dir, n))
++			}
++		}
++	}
++
++	if len(backups) <= r.MaxBackups {
++		return
++	}
++
++	// Sort alphabetically, which sorts by time since format is 2006-01-02T15-04-05.000
++	sort.Strings(backups)
++
++	toDelete := len(backups) - r.MaxBackups
++	for i := 0; i < toDelete; i++ {
++		os.Remove(backups[i])
++	}
++}
++
++func (r *Rotator) Sync() error {
++	r.mu.Lock()
++	defer r.mu.Unlock()
++	if r.f != nil {
++		return r.f.Sync()
++	}
++	return nil
++}
++
++func (r *Rotator) Close() error {
++	r.mu.Lock()
++	defer r.mu.Unlock()
++	if r.f != nil {
++		err := r.f.Close()
++		r.f = nil
++		return err
++	}
++	return nil
++}
++
++// ParseSize parses the size string and returns bytes.
++// Supports K, M, G, T units. If no unit, defaults to M.
++func ParseSize(s string) (int64, error) {
++	if s == "" {
++		return 1024 * 1024, nil // Default 1M
++	}
++	s = strings.ToUpper(strings.TrimSpace(s))
++
++	var unit string
++	var valStr string
++	for i, c := range s {
++		if c >= 'A' && c <= 'Z' {
++			valStr = s[:i]
++			unit = s[i:]
++			break
++		}
++	}
++	if unit == "" {
++		valStr = s
++		unit = "M" // default to M
++	}
++	valStr = strings.TrimSpace(valStr)
++
++	val, err := strconv.ParseInt(valStr, 10, 64)
++	if err != nil {
++		return 0, err
++	}
++
++	switch unit {
++	case "K", "KB":
++		return val * 1024, nil
++	case "M", "MB":
++		return val * 1024 * 1024, nil
++	case "G", "GB":
++		return val * 1024 * 1024 * 1024, nil
++	case "T", "TB":
++		return val * 1024 * 1024 * 1024 * 1024, nil
++	default:
++		return 0, fmt.Errorf("invalid size unit: %s", unit)
++	}
++}
