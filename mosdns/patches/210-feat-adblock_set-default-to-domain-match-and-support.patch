@@ -1,0 +1,48 @@
+From d72e16dc78d881c537b9216c46f8b3c1572c98d4 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sun, 16 Aug 2026 20:06:55 +0800
+Subject: [PATCH] feat(adblock_set): default to domain match and support prefix
+ '^' for full match
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/data_provider/adblock_set/adblock_set_test.go | 4 ++++
+ plugin/data_provider/adblock_set/parser.go           | 9 +++++----
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+--- a/plugin/data_provider/adblock_set/adblock_set_test.go
++++ b/plugin/data_provider/adblock_set/adblock_set_test.go
+@@ -40,6 +40,7 @@ func TestParseAndMatch(t *testing.T) {
+ *keyword*
+ @@*white-keyword*
+ blocked.com
++^full-blocked.com
+ domain:ntp.org
+ full:metrics.icloud.com
+ 0.0.0.0 singlehotmilf.online
+@@ -72,6 +73,9 @@ full:metrics.icloud.com
+ 		{"somekeywordhere", true},
+ 		{"some-white-keyword-here", false},
+ 		{"blocked.com", true},
++		{"sub.blocked.com", true}, // default is now domain:blocked.com
++		{"full-blocked.com", true},
++		{"sub.full-blocked.com", false}, // ^full-blocked.com is full match
+ 		{"other.com", false},
+ 		{"ntp.org", true},       // matched by domain:ntp.org
+ 		{"sub.ntp.org", true},   // matched by domain:ntp.org
+--- a/plugin/data_provider/adblock_set/parser.go
++++ b/plugin/data_provider/adblock_set/parser.go
+@@ -120,8 +120,9 @@ func parseAndAddRule(rule string, m *dom
+ 		return m.Add("keyword:"+rule[1:len(rule)-1], struct{}{})
+ 	}
+ 
+-	// 5. Default: treat as exact match if it looks like a domain
+-	// Many lists are just a list of domains.
+-	// AdGuard Home treats rules without || or ^ as exact matches.
+-	return m.Add("full:"+rule, struct{}{})
++	// 5. Default:
++	if strings.HasPrefix(rule, "^") {
++		return m.Add("full:"+strings.TrimPrefix(rule, "^"), struct{}{})
++	}
++	return m.Add("domain:"+rule, struct{}{})
+ }
