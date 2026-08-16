@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-mosdns
-PKG_VERSION:=1.7.4
+PKG_VERSION:=1.7.5
 PKG_RELEASE:=1
 
 LUCI_TITLE:=LuCI Support for mosdns
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+mosdns +curl +v2ray-geoip +v2ray-geosite +v2dat
+LUCI_DEPENDS:=+mosdns +curl +v2ray-geoip +v2ray-geosite +v2dat +ucode
 
 PKG_MAINTAINER:=sbwml <admin@cooluc.com>
 
