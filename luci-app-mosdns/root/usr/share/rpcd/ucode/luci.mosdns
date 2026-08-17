@@ -2,7 +2,7 @@
 
 'use strict';
 
-import { popen, writefile, stat, readfile } from 'fs';
+import { popen, stat, readfile, open } from 'fs';
 import { cursor } from 'uci';
 
 function to_array(val) {
@@ -99,8 +99,12 @@ const methods = {
 			try {
 				let path = get_logfile_path_internal();
 				if (path) {
-					writefile(path, '');
-					return { success: true };
+					let f = open(path, 'w');
+					if (f) {
+						f.close();
+						return { success: true };
+					}
+					return { error: 'Failed to open log file for writing.' };
 				} else {
 					return { error: 'Log file path could not be determined.' };
 				}
