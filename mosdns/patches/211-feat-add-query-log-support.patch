@@ -1,0 +1,661 @@
+From ebf6a87a410d60785894f9c2c7693de5921591bf Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Wed, 19 Aug 2026 12:44:54 +0800
+Subject: [PATCH 1/2] feat: add query log support
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ mlog/logger.go                         |  11 ++
+ pkg/query_context/context.go           | 146 ++++++++++++++++++++++++-
+ pkg/server/doq.go                      |   1 +
+ pkg/server/http_handler.go             |   1 +
+ pkg/server/iface.go                    |   1 +
+ pkg/server/tcp.go                      |   6 +-
+ pkg/server/udp.go                      |   2 +-
+ pkg/server_handler/entry_handler.go    |   5 +
+ plugin/executable/cache/cache.go       |  12 ++
+ plugin/executable/forward/forward.go   |  34 +++++-
+ plugin/executable/sequence/built_in.go |  12 +-
+ plugin/executable/sequence/chain.go    |  98 ++++++++++++++++-
+ plugin/executable/sequence/sequence.go |   8 +-
+ 13 files changed, 316 insertions(+), 21 deletions(-)
+
+--- a/mlog/logger.go
++++ b/mlog/logger.go
+@@ -55,13 +55,24 @@ var (
+ 	s      = l.Sugar()
+ 
+ 	nop = zap.NewNop()
++
++	isDebug bool
+ )
+ 
++func IsDebug() bool {
++	return isDebug
++}
++
+ func NewLogger(lc LogConfig) (*zap.Logger, error) {
+ 	lvl, err := zapcore.ParseLevel(lc.Level)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("invalid log level: %w", err)
+ 	}
++	if lvl <= zapcore.DebugLevel {
++		isDebug = true
++	} else {
++		isDebug = false
++	}
+ 
+ 	var out zapcore.WriteSyncer
+ 	if lf := lc.File; len(lf) > 0 {
+--- a/pkg/query_context/context.go
++++ b/pkg/query_context/context.go
+@@ -20,9 +20,11 @@
+ package query_context
+ 
+ import (
++	"fmt"
+ 	"sync/atomic"
+ 	"time"
+ 
++	"github.com/IrineSistiana/mosdns/v5/mlog"
+ 	"github.com/IrineSistiana/mosdns/v5/pkg/server"
+ 	"github.com/miekg/dns"
+ 	"go.uber.org/zap"
+@@ -33,6 +35,26 @@ const (
+ 	edns0Size = 1200
+ )
+ 
++type UpstreamLog struct {
++	Addr     string
++	Protocol string
++	Tag      string
++	Plugin   string
++}
++
++type RuleHit struct {
++	Sequence string
++	Matches  []string
++	Exec     string
++}
++
++type CacheLog struct {
++	Hit          bool
++	LazyHit      bool
++	TTL          int
++	RemainingTTL int
++}
++
+ // Context is a query context that pass through plugins.
+ // All Context funcs are not safe for concurrent use.
+ type Context struct {
+@@ -49,11 +71,42 @@ type Context struct {
+ 	respOpt     *dns.OPT // nil if clientOpt == nil
+ 	upstreamOpt *dns.OPT // may be nil
+ 
++	// Log details
++	UpstreamSelected *UpstreamLog
++	RuleHits         []RuleHit
++	CacheState       CacheLog
++
+ 	// lazy init.
+ 	kv    map[uint32]any
+ 	marks map[uint32]struct{}
+ }
+ 
++func (ctx *Context) AddRuleHit(seq string, matches []string, exec string) {
++	ctx.RuleHits = append(ctx.RuleHits, RuleHit{
++		Sequence: seq,
++		Matches:  matches,
++		Exec:     exec,
++	})
++}
++
++func (ctx *Context) SetUpstreamSelected(addr, protocol, tag, plugin string) {
++	ctx.UpstreamSelected = &UpstreamLog{
++		Addr:     addr,
++		Protocol: protocol,
++		Tag:      tag,
++		Plugin:   plugin,
++	}
++}
++
++func (ctx *Context) SetCacheState(hit, lazyHit bool, ttl, remainingTTL int) {
++	ctx.CacheState = CacheLog{
++		Hit:          hit,
++		LazyHit:      lazyHit,
++		TTL:          ttl,
++		RemainingTTL: remainingTTL,
++	}
++}
++
+ var contextUid atomic.Uint32
+ 
+ type ServerMeta = server.QueryMeta
+@@ -237,17 +290,106 @@ func (ctx *Context) MarshalLogObject(enc
+ 	encoder.AddUint32("uqid", ctx.id)
+ 
+ 	if clientAddr := ctx.ServerMeta.ClientAddr; clientAddr.IsValid() {
+-		zap.Stringer("client", clientAddr).AddTo(encoder)
++		encoder.AddString("client", clientAddr.String())
+ 	}
+ 
+ 	question := ctx.query.Question[0]
+ 	encoder.AddString("qname", question.Name)
+-	encoder.AddUint16("qtype", question.Qtype)
++
++	qTypeStr := dns.TypeToString[question.Qtype]
++	if qTypeStr == "" {
++		qTypeStr = fmt.Sprintf("TYPE%d", question.Qtype)
++	}
++	encoder.AddString("qtype", qTypeStr)
+ 	encoder.AddUint16("qclass", question.Qclass)
+ 
++	proto := ctx.ServerMeta.Protocol
++	if proto == "" {
++		if ctx.ServerMeta.FromUDP {
++			proto = "UDP"
++		} else {
++			proto = "TCP"
++		}
++	}
++	encoder.AddString("protocol", proto)
++
++	if mlog.IsDebug() && len(ctx.RuleHits) > 0 {
++		encoder.AddArray("rule_hits", zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
++			for _, hit := range ctx.RuleHits {
++				arr.AppendObject(zapcore.ObjectMarshalerFunc(func(enc zapcore.ObjectEncoder) error {
++					enc.AddString("sequence", hit.Sequence)
++					enc.AddArray("matches", zapcore.ArrayMarshalerFunc(func(ae zapcore.ArrayEncoder) error {
++						for _, m := range hit.Matches {
++							ae.AppendString(m)
++						}
++						return nil
++					}))
++					enc.AddString("exec", hit.Exec)
++					return nil
++				}))
++			}
++			return nil
++		}))
++	}
++
++	if ctx.UpstreamSelected != nil {
++		encoder.AddObject("upstream", zapcore.ObjectMarshalerFunc(func(enc zapcore.ObjectEncoder) error {
++			enc.AddString("addr", ctx.UpstreamSelected.Addr)
++			enc.AddString("protocol", ctx.UpstreamSelected.Protocol)
++			enc.AddString("tag", ctx.UpstreamSelected.Tag)
++			enc.AddString("plugin", ctx.UpstreamSelected.Plugin)
++			return nil
++		}))
++	}
++
++	encoder.AddObject("cache", zapcore.ObjectMarshalerFunc(func(enc zapcore.ObjectEncoder) error {
++		enc.AddBool("hit", ctx.CacheState.Hit)
++		enc.AddBool("lazy_hit", ctx.CacheState.LazyHit)
++		enc.AddInt("ttl", ctx.CacheState.TTL)
++		enc.AddInt("remaining_ttl", ctx.CacheState.RemainingTTL)
++		return nil
++	}))
++
+ 	if r := ctx.resp; r != nil {
+ 		encoder.AddInt("rcode", r.Rcode)
++		encoder.AddInt("resp_size", r.Len())
++
++		var ips []string
++		var cnames []string
++		var ttl uint32
++		for _, rr := range r.Answer {
++			ttl = rr.Header().Ttl
++			switch record := rr.(type) {
++			case *dns.A:
++				ips = append(ips, record.A.String())
++			case *dns.AAAA:
++				ips = append(ips, record.AAAA.String())
++			case *dns.CNAME:
++				cnames = append(cnames, record.Target)
++			}
++		}
++
++		if len(ips) > 0 {
++			encoder.AddArray("ips", zapcore.ArrayMarshalerFunc(func(ae zapcore.ArrayEncoder) error {
++				for _, ip := range ips {
++					ae.AppendString(ip)
++				}
++				return nil
++			}))
++		}
++		if len(cnames) > 0 {
++			encoder.AddArray("cnames", zapcore.ArrayMarshalerFunc(func(ae zapcore.ArrayEncoder) error {
++				for _, c := range cnames {
++					ae.AppendString(c)
++				}
++				return nil
++			}))
++		}
++		if len(r.Answer) > 0 {
++			encoder.AddUint32("original_ttl", ttl)
++		}
+ 	}
++
+ 	encoder.AddDuration("elapsed", time.Since(ctx.startTime))
+ 	return nil
+ }
+--- a/pkg/server/doq.go
++++ b/pkg/server/doq.go
+@@ -107,6 +107,7 @@ func ServeDoQ(l *quic.Listener, h Handle
+ 					queryMeta := QueryMeta{
+ 						ClientAddr: clientAddr,
+ 						ServerName: c.ConnectionState().TLS.ServerName,
++						Protocol:   "DoQ",
+ 					}
+ 
+ 					resp := h.Handle(connCtx, req, queryMeta, pool.PackTCPBuffer)
+--- a/pkg/server/http_handler.go
++++ b/pkg/server/http_handler.go
+@@ -97,6 +97,7 @@ func (h *HttpHandler) ServeHTTP(w http.R
+ 
+ 	queryMeta := QueryMeta{
+ 		ClientAddr: clientAddr,
++		Protocol:   "DoH",
+ 	}
+ 	if u := req.URL; u != nil {
+ 		queryMeta.UrlPath = u.Path
+--- a/pkg/server/iface.go
++++ b/pkg/server/iface.go
+@@ -26,4 +26,5 @@ type QueryMeta struct {
+ 	ClientAddr netip.Addr
+ 	ServerName string
+ 	UrlPath    string
++	Protocol   string
+ }
+--- a/pkg/server/tcp.go
++++ b/pkg/server/tcp.go
+@@ -101,7 +101,11 @@ func ServeTCP(l net.Listener, h Handler,
+ 					if ok {
+ 						clientAddr = ta.AddrPort().Addr()
+ 					}
+-					r := h.Handle(tcpConnCtx, req, QueryMeta{ClientAddr: clientAddr, ServerName: serverName}, pool.PackTCPBuffer)
++					proto := "TCP"
++					if serverName != "" {
++						proto = "DoT"
++					}
++					r := h.Handle(tcpConnCtx, req, QueryMeta{ClientAddr: clientAddr, ServerName: serverName, Protocol: proto}, pool.PackTCPBuffer)
+ 					if r == nil {
+ 						c.Close() // abort the connection
+ 						return
+--- a/pkg/server/udp.go
++++ b/pkg/server/udp.go
+@@ -88,7 +88,7 @@ func ServeUDP(c *net.UDPConn, h Handler,
+ 
+ 		// handle query
+ 		go func() {
+-			payload := h.Handle(listenerCtx, q, QueryMeta{ClientAddr: remoteAddr.Addr(), FromUDP: true}, pool.PackBuffer)
++			payload := h.Handle(listenerCtx, q, QueryMeta{ClientAddr: remoteAddr.Addr(), FromUDP: true, Protocol: "UDP"}, pool.PackBuffer)
+ 			if payload == nil {
+ 				return
+ 			}
+--- a/pkg/server_handler/entry_handler.go
++++ b/pkg/server_handler/entry_handler.go
+@@ -131,6 +131,11 @@ func (h *EntryHandler) Handle(ctx contex
+ 		h.opts.Logger.Error("internal err: failed to pack resp msg", qCtx.InfoField(), zap.Error(err))
+ 		return nil
+ 	}
++	if mlog.IsDebug() {
++		h.opts.Logger.Debug("query log", zap.Inline(qCtx))
++	} else {
++		h.opts.Logger.Info("query log", zap.Inline(qCtx))
++	}
+ 	return payload
+ }
+ 
+--- a/plugin/executable/cache/cache.go
++++ b/plugin/executable/cache/cache.go
+@@ -204,6 +204,18 @@ func (c *Cache) Exec(ctx context.Context
+ 		c.hitTotal.Inc()
+ 		cachedResp.Id = q.Id // change msg id
+ 		qCtx.SetResponse(cachedResp)
++		if v, _, ok := c.backend.Get(key(msgKey)); ok && v != nil {
++			ttl := int(v.expirationTime.Sub(v.storedTime).Seconds())
++			remainingTtl := int(v.expirationTime.Sub(time.Now()).Seconds())
++			if remainingTtl < 0 {
++				remainingTtl = 0
++			}
++			qCtx.SetCacheState(true, lazyHit, ttl, remainingTtl)
++		} else {
++			qCtx.SetCacheState(true, lazyHit, 0, 0)
++		}
++	} else {
++		qCtx.SetCacheState(false, false, 0, 0)
+ 	}
+ 
+ 	err := next.ExecNext(ctx, qCtx)
+--- a/plugin/executable/forward/forward.go
++++ b/plugin/executable/forward/forward.go
+@@ -104,6 +104,7 @@ type Forward struct {
+ 	logger       *zap.Logger
+ 	us           []*upstreamWrapper
+ 	tag2Upstream map[string]*upstreamWrapper // for fast tag lookup only.
++	pluginTag    string
+ }
+ 
+ type Opts struct {
+@@ -125,6 +126,7 @@ func NewForward(args *Args, opt Opts) (*
+ 		args:         args,
+ 		logger:       opt.Logger,
+ 		tag2Upstream: make(map[string]*upstreamWrapper),
++		pluginTag:    opt.MetricsTag,
+ 	}
+ 
+ 	applyGlobal := func(c *UpstreamConfig) {
+@@ -256,6 +258,7 @@ func (f *Forward) exchange(ctx context.C
+ 	type res struct {
+ 		r   *dns.Msg
+ 		err error
++		u   *upstreamWrapper
+ 	}
+ 
+ 	resChan := make(chan res)
+@@ -266,14 +269,14 @@ func (f *Forward) exchange(ctx context.C
+ 	for i := 0; i < concurrent; i++ {
+ 		u := us[(r+i)%len(us)]
+ 		qc := copyPayload(queryPayload)
+-		go func(uqid uint32, question dns.Question) {
++		go func(uqid uint32, question dns.Question, chosenUpstream *upstreamWrapper) {
+ 			defer pool.ReleaseBuf(qc)
+ 			// Give each upstream a fixed timeout to finish the query.
+ 			upstreamCtx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+ 			defer cancel()
+ 
+ 			var r *dns.Msg
+-			respPayload, err := u.ExchangeContext(upstreamCtx, *qc)
++			respPayload, err := chosenUpstream.ExchangeContext(upstreamCtx, *qc)
+ 			if err != nil {
+ 				f.logger.Warn(
+ 					"upstream error",
+@@ -281,7 +284,7 @@ func (f *Forward) exchange(ctx context.C
+ 					zap.String("qname", question.Name),
+ 					zap.Uint16("qclass", question.Qclass),
+ 					zap.Uint16("qtype", question.Qtype),
+-					zap.String("upstream", u.name()),
++					zap.String("upstream", chosenUpstream.name()),
+ 					zap.Error(err),
+ 				)
+ 			} else {
+@@ -293,16 +296,16 @@ func (f *Forward) exchange(ctx context.C
+ 				}
+ 			}
+ 			select {
+-			case resChan <- res{r: r, err: err}:
++			case resChan <- res{r: r, err: err, u: chosenUpstream}:
+ 			case <-done:
+ 			}
+-		}(qCtx.Id(), qCtx.QQuestion())
++		}(qCtx.Id(), qCtx.QQuestion(), u)
+ 	}
+ 
+ 	for i := 0; i < concurrent; i++ {
+ 		select {
+ 		case res := <-resChan:
+-			r, err := res.r, res.err
++			r, err, chosenUpstream := res.r, res.err, res.u
+ 			if err != nil {
+ 				continue
+ 			}
+@@ -311,6 +314,25 @@ func (f *Forward) exchange(ctx context.C
+ 			if i < concurrent-1 && r.Rcode != dns.RcodeSuccess && r.Rcode != dns.RcodeNameError {
+ 				continue
+ 			}
++
++			if chosenUpstream != nil {
++				addr := chosenUpstream.cfg.Addr
++				proto := "UDP"
++				if strings.Contains(addr, "://") {
++					parts := strings.SplitN(addr, "://", 2)
++					proto = strings.ToUpper(parts[0])
++					addr = parts[1]
++				}
++				if proto == "TLS" {
++					proto = "DoT"
++				} else if proto == "HTTPS" {
++					proto = "DoH"
++				} else if proto == "QUIC" || proto == "DOQ" {
++					proto = "DoQ"
++				}
++				qCtx.SetUpstreamSelected(addr, proto, chosenUpstream.cfg.Tag, f.pluginTag)
++			}
++
+ 			return r, nil
+ 		case <-ctx.Done():
+ 			return nil, context.Cause(ctx)
+--- a/plugin/executable/sequence/built_in.go
++++ b/plugin/executable/sequence/built_in.go
+@@ -83,11 +83,13 @@ func setupReturn(_ BQ, _ string) (any, e
+ var _ RecursiveExecutable = (*ActionJump)(nil)
+ 
+ type ActionJump struct {
+-	To []*ChainNode
++	To  []*ChainNode
++	tag string
+ }
+ 
+ func (a *ActionJump) Exec(ctx context.Context, qCtx *query_context.Context, next ChainWalker) error {
+ 	w := NewChainWalker(a.To, &next)
++	w.sequenceTag = a.tag
+ 	return w.ExecNext(ctx, qCtx)
+ }
+ 
+@@ -96,17 +98,19 @@ func setupJump(bq BQ, s string) (any, er
+ 	if target == nil {
+ 		return nil, fmt.Errorf("can not find jump target %s", s)
+ 	}
+-	return &ActionJump{To: target.chain}, nil
++	return &ActionJump{To: target.chain, tag: s}, nil
+ }
+ 
+ var _ RecursiveExecutable = (*ActionGoto)(nil)
+ 
+ type ActionGoto struct {
+-	To []*ChainNode
++	To  []*ChainNode
++	tag string
+ }
+ 
+ func (a ActionGoto) Exec(ctx context.Context, qCtx *query_context.Context, _ ChainWalker) error {
+ 	w := NewChainWalker(a.To, nil)
++	w.sequenceTag = a.tag
+ 	return w.ExecNext(ctx, qCtx)
+ }
+ 
+@@ -115,7 +119,7 @@ func setupGoto(bq BQ, s string) (any, er
+ 	if gt == nil {
+ 		return nil, fmt.Errorf("can not find goto target %s", s)
+ 	}
+-	return &ActionGoto{To: gt.chain}, nil
++	return &ActionGoto{To: gt.chain, tag: s}, nil
+ }
+ 
+ var _ Matcher = (*MatchAlwaysTrue)(nil)
+--- a/plugin/executable/sequence/chain.go
++++ b/plugin/executable/sequence/chain.go
+@@ -25,6 +25,8 @@ import (
+ 	"fmt"
+ 	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
+ 	"io"
++	"reflect"
++	"strings"
+ )
+ 
+ type ChainNode struct {
+@@ -34,12 +36,17 @@ type ChainNode struct {
+ 	// In case both are set. E is preferred.
+ 	E  Executable
+ 	RE RecursiveExecutable
++
++	RuleMatches         []string
++	RuleExec            string
++	IsControlOrSequence bool
+ }
+ 
+ type ChainWalker struct {
+-	p        int
+-	chain    []*ChainNode
+-	jumpBack *ChainWalker
++	p           int
++	chain       []*ChainNode
++	jumpBack    *ChainWalker
++	sequenceTag string
+ }
+ 
+ func NewChainWalker(chain []*ChainNode, jumpBack *ChainWalker) ChainWalker {
+@@ -49,6 +56,49 @@ func NewChainWalker(chain []*ChainNode,
+ 	}
+ }
+ 
++func formatMatchConfig(mc MatchConfig) string {
++	var s string
++	if mc.Tag != "" {
++		s = "$" + mc.Tag
++	} else {
++		s = mc.Type
++		if mc.Args != "" {
++			s += " " + mc.Args
++		}
++	}
++	if mc.Reverse {
++		s = "!" + s
++	}
++	return s
++}
++
++func formatRuleExec(rc RuleConfig) string {
++	if rc.Tag != "" {
++		return "$" + rc.Tag
++	}
++	s := rc.Type
++	if rc.Args != "" {
++		s += " " + rc.Args
++	}
++	return s
++}
++
++func shouldLogRule(n *ChainNode, hasRespBefore, hasRespAfter bool) bool {
++	for _, m := range n.RuleMatches {
++		if !strings.HasPrefix(m, "!") {
++			return true
++		}
++	}
++	if !hasRespBefore && hasRespAfter {
++		return true
++	}
++	exec := n.RuleExec
++	if exec == "accept" || exec == "reject" || strings.HasPrefix(exec, "reject ") || exec == "drop_resp" || exec == "black_hole" {
++		return true
++	}
++	return false
++}
++
+ func (w *ChainWalker) ExecNext(ctx context.Context, qCtx *query_context.Context) error {
+ 	p := w.p
+ 	// Evaluate rules' matchers in loop.
+@@ -71,16 +121,26 @@ checkMatchesLoop:
+ 		// Exec rules' executables in loop, or in stack if it is a recursive executable.
+ 		switch {
+ 		case n.E != nil:
++			hasRespBefore := qCtx.R() != nil
+ 			if err := n.E.Exec(ctx, qCtx); err != nil {
+ 				return err
+ 			}
++			hasRespAfter := qCtx.R() != nil
++			if shouldLogRule(n, hasRespBefore, hasRespAfter) {
++				qCtx.AddRuleHit(w.sequenceTag, n.RuleMatches, n.RuleExec)
++			}
+ 			p++
+ 			continue
+ 		case n.RE != nil:
++			hasRespBefore := qCtx.R() != nil
++			if shouldLogRule(n, hasRespBefore, false) {
++				qCtx.AddRuleHit(w.sequenceTag, n.RuleMatches, n.RuleExec)
++			}
+ 			next := ChainWalker{
+-				p:        p + 1,
+-				chain:    w.chain,
+-				jumpBack: w.jumpBack,
++				p:           p + 1,
++				chain:       w.chain,
++				jumpBack:    w.jumpBack,
++				sequenceTag: w.sequenceTag,
+ 			}
+ 			return n.RE.Exec(ctx, qCtx, next)
+ 		default:
+@@ -113,8 +173,33 @@ func (s *Sequence) buildChain(bq BQ, rs
+ 	return nil
+ }
+ 
++func isControlOrSequence(bq BQ, rc RuleConfig) bool {
++	exec := formatRuleExec(rc)
++	if exec == "accept" || exec == "reject" || exec == "return" {
++		return false
++	}
++	if strings.HasPrefix(exec, "jump") || strings.HasPrefix(exec, "goto") || strings.HasPrefix(exec, "return") {
++		return true
++	}
++	if rc.Tag != "" {
++		p := bq.M().GetPlugin(rc.Tag)
++		if p != nil {
++			t := reflect.TypeOf(p)
++			if t != nil {
++				name := t.String()
++				if strings.Contains(name, "Sequence") || strings.Contains(name, "Fallback") {
++					return true
++				}
++			}
++		}
++	}
++	return false
++}
++
+ func (s *Sequence) newNode(bq BQ, r RuleConfig, ri int) (*ChainNode, error) {
+ 	n := new(ChainNode)
++	n.RuleExec = formatRuleExec(r)
++	n.IsControlOrSequence = (len(r.Matches) == 0) && isControlOrSequence(bq, r)
+ 
+ 	// init matches
+ 	for mi, mc := range r.Matches {
+@@ -123,6 +208,7 @@ func (s *Sequence) newNode(bq BQ, r Rule
+ 			return nil, fmt.Errorf("failed to init matcher #%d, %w", mi, err)
+ 		}
+ 		n.Matches = append(n.Matches, m)
++		n.RuleMatches = append(n.RuleMatches, formatMatchConfig(mc))
+ 	}
+ 
+ 	// init exec
+--- a/plugin/executable/sequence/sequence.go
++++ b/plugin/executable/sequence/sequence.go
+@@ -40,6 +40,7 @@ func init() {
+ }
+ 
+ type Sequence struct {
++	tag              string
+ 	chain            []*ChainNode
+ 	anonymousPlugins []any
+ }
+@@ -58,7 +59,11 @@ func Init(bp *coremain.BP, args any) (an
+ }
+ 
+ func NewSequence(bq BQ, ra []RuleArgs) (*Sequence, error) {
+-	s := &Sequence{}
++	var tag string
++	if t, ok := bq.(interface{ Tag() string }); ok {
++		tag = t.Tag()
++	}
++	s := &Sequence{tag: tag}
+ 
+ 	var rc []RuleConfig
+ 	for _, ra := range ra {
+@@ -73,5 +78,6 @@ func NewSequence(bq BQ, ra []RuleArgs) (
+ 
+ func (s *Sequence) Exec(ctx context.Context, qCtx *query_context.Context) error {
+ 	walker := NewChainWalker(s.chain, nil)
++	walker.sequenceTag = s.tag
+ 	return walker.ExecNext(ctx, qCtx)
+ }
