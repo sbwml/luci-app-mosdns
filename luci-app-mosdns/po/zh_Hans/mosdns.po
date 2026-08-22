@@ -15,11 +15,11 @@ msgstr ""
 msgid "360 Public DNS (DNS over HTTPS)"
 msgstr "360 安全 DNS（DNS over HTTPS）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:356
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:380
 msgid "ADblock Source"
 msgstr "广告过滤规则来源"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:395
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:419
 msgid "API Listen port"
 msgstr "API 监听端口"
 
@@ -97,7 +97,7 @@ msgstr "另一个更新正在进行中。"
 msgid "Apple domains optimization"
 msgstr "Apple 域名解析优化"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:330
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:354
 msgid "Auto Save Cache Interval"
 msgstr "自动保存缓存间隔（秒）"
 
@@ -120,7 +120,7 @@ msgstr "基本选项"
 msgid "Basic Setting"
 msgstr "基本设置"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:348
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:372
 msgid ""
 "Block DNS RR Type 65 records (HTTPS/SVCB, used for HTTP/3, ECH, etc.), force "
 "using only A/AAAA records."
@@ -146,9 +146,13 @@ msgid ""
 "resolvers you specify as upstreams"
 msgstr "Bootstrap DNS 服务器用于解析您指定为上游的 DoH / DoT 解析器的 IP 地址"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:323
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:347
 msgid "Cache Dump"
 msgstr "自动保存缓存"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:323
+msgid "Cache Prefetching"
+msgstr "缓存预读"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:150
 msgid "Check And Update"
@@ -195,7 +199,7 @@ msgstr "CloudFlare 公共 DNS（1.0.0.1）"
 msgid "CloudFlare Public DNS (1.1.1.1)"
 msgstr "CloudFlare 公共 DNS（1.1.1.1）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:380
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:404
 msgid "Cloudflare IP Ranges"
 msgstr "Cloudflare IP 范围"
 
@@ -215,7 +219,7 @@ msgstr "DNS 服务器并发数（默认 2）"
 msgid "Config File"
 msgstr "配置文件"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:426
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:450
 msgid "Configuration Editor"
 msgstr "配置编辑器"
 
@@ -234,7 +238,7 @@ msgid ""
 msgstr ""
 "自定义 Hosts 重写，如：baidu.com 10.0.0.1（每个规则一行，支持域名匹配规则）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:375
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:399
 msgid "Custom IP"
 msgstr "自选 IP"
 
@@ -276,7 +280,7 @@ msgstr "调试"
 msgid "Default Config"
 msgstr "内置预设"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:347
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:371
 msgid "Disable RR Type 65 (HTTPS/SVCB)"
 msgstr "禁用 RR Type 65 (HTTPS/SVCB)"
 
@@ -299,7 +303,7 @@ msgstr "DoH/TCP/DoT 连接复用空闲保持时间（默认 30 秒）"
 msgid "Enable Auto Database Update"
 msgstr "启用自动更新"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:352
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:376
 msgid "Enable DNS ADblock"
 msgstr "启用 DNS 广告过滤"
 
@@ -321,15 +325,15 @@ msgid "Enable this option fallback policy forces forwarding to remote DNS"
 msgstr "启用此选项 fallback 策略会强制转发到远程 DNS"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:142
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:368
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:392
 msgid "Enabled"
 msgstr "启用"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:453
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:477
 msgid "Enter the GeoIP.dat category to be exported, Allow add multiple tags"
 msgstr "输入需要导出的 GeoIP.dat 类别条目，允许添加多个标签"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:448
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:472
 msgid "Enter the GeoSite.dat category to be exported, Allow add multiple tags"
 msgstr "填写需要导出的 GeoSite.dat 类别条目，允许添加多个标签"
 
@@ -369,8 +373,8 @@ msgstr "每周二"
 msgid "Every Wednesday"
 msgstr "每周三"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:449
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:454
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:473
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:478
 msgid "Export directory: /var/mosdns"
 msgstr "导出目录：/var/mosdns"
 
@@ -382,7 +386,7 @@ msgstr "清理日志失败：%s"
 msgid "Failed to start update."
 msgstr "启动更新失败"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:403
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:427
 msgid "Flush DNS Cache"
 msgstr "刷新 DNS 缓存"
 
@@ -394,7 +398,7 @@ msgstr "刷新 DNS 缓存失败，请检查 MosDNS 状态是否在运行中。"
 msgid "Flushing DNS Cache Success."
 msgstr "刷新 DNS 缓存成功"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:401
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:425
 msgid ""
 "Flushing DNS Cache will clear any IP addresses or DNS records from MosDNS "
 "cache."
@@ -430,7 +434,7 @@ msgstr "全量：包含所有国家和私有 IP 地址。"
 msgid "GeoData Export"
 msgstr "GeoData 导出"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:452
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:476
 msgid "GeoIP Tags"
 msgstr "GeoIP 标签"
 
@@ -438,7 +442,7 @@ msgstr "GeoIP 标签"
 msgid "GeoIP Type"
 msgstr "GeoIP 类型"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:447
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:471
 msgid "GeoSite Tags"
 msgstr "GeoSite 标签"
 
@@ -477,7 +481,7 @@ msgstr ""
 msgid "IP Address"
 msgstr "IP 地址"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:381
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:405
 msgid ""
 "IPv4 CIDR: <a href=\"https://www.cloudflare.com/ips-v4\" target=\"_blank"
 "\">https://www.cloudflare.com/ips-v4</a> <br /> IPv6 CIDR: <a href=\"https://"
@@ -504,6 +508,12 @@ msgstr "空闲超时"
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:163
 msgid "Info"
 msgstr "信息"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:342
+msgid ""
+"Interval for the background thread to scan the cache for prefetching (in "
+"seconds)."
+msgstr "后台线程扫描缓存以进行预取的时间间隔（单位：秒）"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:317
 msgid "Lazy Cache TTL"
@@ -546,7 +556,7 @@ msgstr "日志等级"
 msgid "Logs"
 msgstr "日志"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:369
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:393
 #, fuzzy
 msgid ""
 "Match the parsing result with the Cloudflare IP ranges, and when there is a "
@@ -556,21 +566,26 @@ msgstr ""
 "将解析结果与 Cloudflare IP 范围进行匹配，当匹配成功时，使用 “自选 IP” 作为解"
 "析结果（实验性功能）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:341
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:365
 msgid "Maximum TTL"
 msgstr "覆盖最大 TTL 值（默认 0）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:335
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:359
 msgid "Minimum TTL"
 msgstr "覆盖最小 TTL 值（默认 0）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:342
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:336
+msgid ""
+"Minimum cache hits required since the last refresh to trigger a prefetch."
+msgstr "触发预读所需的最小缓存命中次数（自上次刷新起）"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:366
 msgid ""
 "Modify the Maximum TTL value (seconds) for DNS answer results, 0 indicating "
 "no modification"
 msgstr "修改 DNS 应答结果的最大 TTL 值（秒），0 表示不修改"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:336
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:360
 msgid ""
 "Modify the Minimum TTL value (seconds) for DNS answer results, 0 indicating "
 "no modification"
@@ -613,9 +628,30 @@ msgstr ""
 msgid "Please wait, this may take a few moments..."
 msgstr "请稍候，这可能需要一点时间..."
 
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:329
+msgid "Prefetch Before Expire"
+msgstr "预读触发阈值"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:335
+msgid "Prefetch Min Hits"
+msgstr "预读最小命中次数"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:341
+msgid "Prefetch Scan Interval"
+msgstr "预读扫描周期"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:330
+msgid "Prefetch when the remaining TTL is less than this value (in seconds)."
+msgstr "当剩余 TTL 小于此值（秒）时触发预读"
+
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:301
 msgid "Prevent DNS Leaks"
 msgstr "防止 DNS 泄漏"
+
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:324
+msgid ""
+"Proactively refresh hot cache entries in the background before they expire."
+msgstr "在缓存到期前，后台主动预读并刷新高频访问的 DNS 记录"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:227
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:244
@@ -663,7 +699,7 @@ msgstr "自定义规则列表"
 msgid "Rules"
 msgstr "规则列表"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:324
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:348
 msgid "Save the cache locally and reload the cache dump on the next startup"
 msgstr "保存缓存到本地文件，以供下次启动时重新载入使用"
 
@@ -679,7 +715,7 @@ msgstr "流媒体"
 msgid "Streaming Media DNS server"
 msgstr "流媒体 DNS 服务器"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:359
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:383
 msgid "Support for local files, such as: file:///var/mosdns/example.txt"
 msgstr "支持本地文件，例如：file:///var/mosdns/example.txt"
 
@@ -714,7 +750,7 @@ msgstr ""
 "此功能通常在使用自建 DNS 服务器作为 远程 / 流媒体 DNS 上游时使用（需要上游服"
 "务器的支持）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:427
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:451
 msgid ""
 "This is the content of the file '/etc/mosdns/config_custom.yaml' from which "
 "your MosDNS configuration will be generated. Only accepts configuration "
@@ -731,7 +767,7 @@ msgstr "火山引擎公共 DNS（180.184.1.1）"
 msgid "TrafficRoute Public DNS (180.184.2.2)"
 msgstr "火山引擎公共 DNS（180.184.2.2）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:442
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:466
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:43
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:48
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:67
@@ -797,7 +833,7 @@ msgstr ""
 "启用 “自定义流媒体 DNS” 时，加入的域名始终使用 “流媒体 DNS 服务器” 进行解析"
 "（每个域名一行，支持域名匹配规则）"
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:357
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:381
 msgid ""
 "When using custom rule sources, please use rule types supported by MosDNS "
 "(domain list or AdGuardHome rules)."
