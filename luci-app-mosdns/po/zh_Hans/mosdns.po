@@ -152,7 +152,7 @@ msgstr "自动保存缓存"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:323
 msgid "Cache Prefetching"
-msgstr "缓存预读"
+msgstr "缓存预取"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:150
 msgid "Check And Update"
@@ -577,7 +577,7 @@ msgstr "覆盖最小 TTL 值（默认 0）"
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:336
 msgid ""
 "Minimum cache hits required since the last refresh to trigger a prefetch."
-msgstr "触发预读所需的最小缓存命中次数（自上次刷新起）"
+msgstr "触发预取所需的最小缓存命中次数（自上次刷新起）"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:366
 msgid ""
@@ -630,19 +630,19 @@ msgstr "请稍候，这可能需要一点时间..."
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:329
 msgid "Prefetch Before Expire"
-msgstr "预读触发阈值"
+msgstr "预取触发阈值"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:335
 msgid "Prefetch Min Hits"
-msgstr "预读最小命中次数"
+msgstr "预取最小命中次数"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:341
 msgid "Prefetch Scan Interval"
-msgstr "预读扫描周期"
+msgstr "预取扫描周期"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:330
 msgid "Prefetch when the remaining TTL is less than this value (in seconds)."
-msgstr "当剩余 TTL 小于此值（秒）时触发预读"
+msgstr "当剩余 TTL 小于此值（秒）时触发预取"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:301
 msgid "Prevent DNS Leaks"
@@ -651,7 +651,7 @@ msgstr "防止 DNS 泄漏"
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:324
 msgid ""
 "Proactively refresh hot cache entries in the background before they expire."
-msgstr "在缓存到期前，后台主动预读并刷新高频访问的 DNS 记录"
+msgstr "在缓存到期前，后台主动预取并刷新高频访问的 DNS 记录"
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:227
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:244
