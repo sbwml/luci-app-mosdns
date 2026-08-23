@@ -1,0 +1,154 @@
+From 0ded523d12ce7e12daf0e00e677adea3ae883175 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sun, 23 Aug 2026 09:21:13 +0800
+Subject: [PATCH] fix(cache): harden prefetch logic and fix potential data race
+
+Fix potential slice out-of-bounds panic on empty questions, resolve
+capturedNext race condition, and separate prefetch singleflight namespace.
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/cache/cache.go | 55 +++++++++++++++++---------------
+ 1 file changed, 29 insertions(+), 26 deletions(-)
+
+--- a/plugin/executable/cache/cache.go
++++ b/plugin/executable/cache/cache.go
+@@ -27,7 +27,6 @@ import (
+ 	"io"
+ 	"net/http"
+ 	"os"
+-	"reflect"
+ 	"strconv"
+ 	"sync"
+ 	"sync/atomic"
+@@ -105,7 +104,7 @@ type Cache struct {
+ 
+ 	prefetchTotal     prometheus.Counter
+ 	prefetchFailTotal prometheus.Counter
+-	capturedNext      *sequence.ChainWalker
++	capturedNext      atomic.Pointer[sequence.ChainWalker]
+ 	captureOnce       sync.Once
+ }
+ 
+@@ -214,13 +213,9 @@ func (c *Cache) RegMetricsTo(r prometheu
+ 
+ func (c *Cache) Exec(ctx context.Context, qCtx *query_context.Context, next sequence.ChainWalker) error {
+ 	c.captureOnce.Do(func() {
+-		// This implementation assumes the cache plugin is invoked from a single fixed position in the sequence.
+ 		nextCopy := next
+-		c.capturedNext = &nextCopy
++		c.capturedNext.Store(&nextCopy)
+ 	})
+-	if c.capturedNext != nil && !reflect.DeepEqual(next, *c.capturedNext) {
+-		c.logger.Warn("cache plugin Exec called with a different next chain than first time")
+-	}
+ 
+ 	c.queryTotal.Inc()
+ 	q := qCtx.Q()
+@@ -268,27 +263,24 @@ func (c *Cache) Exec(ctx context.Context
+ func (c *Cache) doLazyUpdate(msgKey string, qCtx *query_context.Context, next sequence.ChainWalker) {
+ 	qCtxCopy := qCtx.Copy()
+ 	lazyUpdateFunc := func() (any, error) {
+-		defer c.lazyUpdateSF.Forget(msgKey)
+-		qCtx := qCtxCopy
+-
+-		c.logger.Debug("start lazy cache update", qCtx.InfoField())
++		c.logger.Debug("start lazy cache update", qCtxCopy.InfoField())
+ 		ctx, cancel := context.WithTimeout(context.Background(), defaultLazyUpdateTimeout)
+ 		defer cancel()
+ 
+-		err := next.ExecNext(ctx, qCtx)
++		err := next.ExecNext(ctx, qCtxCopy)
+ 		if err != nil {
+-			c.logger.Warn("failed to update lazy cache", qCtx.InfoField(), zap.Error(err))
++			c.logger.Warn("failed to update lazy cache", qCtxCopy.InfoField(), zap.Error(err))
+ 		}
+ 
+-		r := qCtx.R()
++		r := qCtxCopy.R()
+ 		if r != nil {
+ 			saveRespToCache(msgKey, r, c.backend, c.args.LazyCacheTTL)
+ 			c.updatedKey.Add(1)
+ 		}
+-		c.logger.Debug("lazy cache updated", qCtx.InfoField())
++		c.logger.Debug("lazy cache updated", qCtxCopy.InfoField())
+ 		return nil, nil
+ 	}
+-	c.lazyUpdateSF.DoChan(msgKey, lazyUpdateFunc) // DoChan won't block this goroutine
++	c.lazyUpdateSF.DoChan("lazy:"+msgKey, lazyUpdateFunc) // DoChan won't block this goroutine
+ }
+ 
+ func (c *Cache) startPrefetchLoop() {
+@@ -298,14 +290,19 @@ func (c *Cache) startPrefetchLoop() {
+ 		for {
+ 			select {
+ 			case <-ticker.C:
+-				if c.capturedNext == nil {
++				captured := c.capturedNext.Load()
++				if captured == nil {
+ 					continue
+ 				}
++
+ 				now := time.Now()
+ 				_ = c.backend.Range(func(k key, v *item, cacheExpirationTime time.Time) error {
++					if v == nil || v.resp == nil || len(v.resp.Question) == 0 {
++						return nil
++					}
+ 					remainingTTL := int(v.expirationTime.Sub(now).Seconds())
+ 					if remainingTTL >= 0 && remainingTTL < c.args.PrefetchBeforeExpire && v.hitCount.Load() >= uint32(c.args.PrefetchMinHits) {
+-						c.doPrefetch(string(k), v, remainingTTL)
++						c.doPrefetch(string(k), v, remainingTTL, captured)
+ 					}
+ 					return nil
+ 				})
+@@ -316,28 +313,33 @@ func (c *Cache) startPrefetchLoop() {
+ 	}()
+ }
+ 
+-func (c *Cache) doPrefetch(msgKey string, v *item, remainingTTL int) {
++func (c *Cache) doPrefetch(msgKey string, v *item, remainingTTL int, capturedNext *sequence.ChainWalker) {
++	prefetchSFKey := "prefetch:" + msgKey
+ 	prefetchFunc := func() (any, error) {
+-		defer c.lazyUpdateSF.Forget(msgKey)
++		if v.resp == nil || len(v.resp.Question) == 0 {
++			return nil, errors.New("invalid cached response: empty question")
++		}
++
++		qname := v.resp.Question[0].Name
++		qtype := v.resp.Question[0].Qtype
++		hitCount := v.hitCount.Load()
+ 
+ 		req := new(dns.Msg)
+-		req.SetQuestion(v.resp.Question[0].Name, v.resp.Question[0].Qtype)
++		req.SetQuestion(qname, qtype)
+ 		req.Id = dns.Id()
+ 		req.RecursionDesired = true
+ 		newQCtx := query_context.NewContext(req)
+ 
+-		qname := v.resp.Question[0].Name
+-		hitCount := v.hitCount.Load()
+-
+ 		c.logger.Debug("start proactive prefetch",
+ 			zap.String("qname", qname),
++			zap.Uint16("qtype", qtype),
+ 			zap.Uint32("hit_count", hitCount),
+ 			zap.Int("remaining_ttl", remainingTTL),
+ 		)
+ 		ctx, cancel := context.WithTimeout(context.Background(), defaultLazyUpdateTimeout)
+ 		defer cancel()
+ 
+-		err := c.capturedNext.ExecNext(ctx, newQCtx)
++		err := capturedNext.ExecNext(ctx, newQCtx)
+ 		if err != nil {
+ 			c.logger.Warn("failed to proactive prefetch", zap.String("qname", qname), zap.Error(err))
+ 			c.prefetchFailTotal.Inc()
+@@ -355,7 +357,8 @@ func (c *Cache) doPrefetch(msgKey string
+ 		c.logger.Debug("proactive prefetch updated", zap.String("qname", qname), newQCtx.InfoField())
+ 		return nil, nil
+ 	}
+-	c.lazyUpdateSF.DoChan(msgKey, prefetchFunc)
++
++	c.lazyUpdateSF.DoChan(prefetchSFKey, prefetchFunc)
+ }
+ 
+ func (c *Cache) Close() error {
