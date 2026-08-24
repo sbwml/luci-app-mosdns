@@ -281,34 +281,34 @@ function v2dat_dump() {
 	exec_sys('rm -f /var/mosdns/geo*.txt');
 
 	if (configfile === "/var/etc/mosdns.json") {
-		exec_sys(`v2dat unpack geoip -o /var/mosdns -f cn ${v2dat_dir}/geoip.dat`);
-		exec_sys(`v2dat unpack geosite -o /var/mosdns -f cn -f apple -f 'geolocation-!cn' ${v2dat_dir}/geosite.dat`);
+		exec_sys(`geo2txt geoip -f ${v2dat_dir}/geoip.dat -e cn -o /var/mosdns`);
+		exec_sys(`geo2txt geosite -f ${v2dat_dir}/geosite.dat -e cn -e apple -e 'geolocation-!cn' -o /var/mosdns`);
 
 		if (adblock === '1' && index(ad_source, 'geosite.dat') !== -1) {
-			exec_sys(`v2dat unpack geosite -o /var/mosdns -f category-ads-all ${v2dat_dir}/geosite.dat`);
+			exec_sys(`geo2txt geosite -f ${v2dat_dir}/geosite.dat -e category-ads-all -o /var/mosdns`);
 		}
 
 		if (streaming_media === '1') {
-			exec_sys(`v2dat unpack geosite -o /var/mosdns -f netflix -f disney -f hulu ${v2dat_dir}/geosite.dat`);
+			exec_sys(`geo2txt geosite -f ${v2dat_dir}/geosite.dat -e netflix -e disney -e hulu -o /var/mosdns`);
 		} else {
 			writefile('/var/mosdns/geosite_disney.txt', '');
 			writefile('/var/mosdns/geosite_netflix.txt', '');
 			writefile('/var/mosdns/geosite_hulu.txt', '');
 		}
 	} else {
-		exec_sys(`v2dat unpack geoip -o /var/mosdns -f cn ${v2dat_dir}/geoip.dat`);
-		exec_sys(`v2dat unpack geosite -o /var/mosdns -f cn -f 'geolocation-!cn' ${v2dat_dir}/geosite.dat`);
+		exec_sys(`geo2txt geoip -f ${v2dat_dir}/geoip.dat -e cn -o /var/mosdns`);
+		exec_sys(`geo2txt geosite -f ${v2dat_dir}/geosite.dat -e cn -e 'geolocation-!cn' -o /var/mosdns`);
 
 		let geoip_tags = to_array(uci_cursor.get('mosdns', 'config', 'geoip_tags'));
 		if (length(geoip_tags) > 0) {
-			let tags_str = "-f '" + join("' -f '", geoip_tags) + "'";
-			exec_sys(`v2dat unpack geoip -o /var/mosdns ${tags_str} ${v2dat_dir}/geoip.dat`);
+			let tags_str = "-e '" + join("' -e '", geoip_tags) + "'";
+			exec_sys(`geo2txt geoip -f ${v2dat_dir}/geoip.dat ${tags_str} -o /var/mosdns`);
 		}
 
 		let geosite_tags = to_array(uci_cursor.get('mosdns', 'config', 'geosite_tags'));
 		if (length(geosite_tags) > 0) {
-			let tags_str = "-f '" + join("' -f '", geosite_tags) + "'";
-			exec_sys(`v2dat unpack geosite -o /var/mosdns ${tags_str} ${v2dat_dir}/geosite.dat`);
+			let tags_str = "-e '" + join("' -e '", geosite_tags) + "'";
+			exec_sys(`geo2txt geosite -f ${v2dat_dir}/geosite.dat ${tags_str} -o /var/mosdns`);
 		}
 	}
 }
