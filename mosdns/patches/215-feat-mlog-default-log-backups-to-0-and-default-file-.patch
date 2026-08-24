@@ -1,0 +1,88 @@
+From 1afb8c2ae54495992ac20eaa192478d368a0f81a Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Mon, 24 Aug 2026 19:55:55 +0800
+Subject: [PATCH] feat(mlog): default log backups to 0 and default file size to
+ 5M
+
+---
+ mlog/logger.go       |  7 ++-----
+ mlog/rotator.go      |  2 +-
+ mlog/rotator_test.go | 35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 6 deletions(-)
+ create mode 100644 mlog/rotator_test.go
+
+--- a/mlog/logger.go
++++ b/mlog/logger.go
+@@ -39,11 +39,11 @@ type LogConfig struct {
+ 	// Production enables json output.
+ 	Production bool `yaml:"production"`
+ 
+-	// Size of log file limit. Default is 1M.
++	// Size of log file limit. Default is 5M.
+ 	// Supported units: K, M, G, T. If no unit, defaults to M.
+ 	Size string `yaml:"size"`
+ 
+-	// Max number of old log files to retain. Default is 3.
++	// Max number of old log files to retain. Default is 0.
+ 	// Set to a negative number to retain all files.
+ 	Backups int `yaml:"backups"`
+ }
+@@ -82,9 +82,6 @@ func NewLogger(lc LogConfig) (*zap.Logge
+ 		}
+ 
+ 		backups := lc.Backups
+-		if backups == 0 {
+-			backups = 3
+-		}
+ 
+ 		rotator := &Rotator{
+ 			Filename:   lf,
+--- a/mlog/rotator.go
++++ b/mlog/rotator.go
+@@ -185,7 +185,7 @@ func (r *Rotator) Close() error {
+ // Supports K, M, G, T units. If no unit, defaults to M.
+ func ParseSize(s string) (int64, error) {
+ 	if s == "" {
+-		return 1024 * 1024, nil // Default 1M
++		return 5 * 1024 * 1024, nil // Default 5M
+ 	}
+ 	s = strings.ToUpper(strings.TrimSpace(s))
+ 
+--- /dev/null
++++ b/mlog/rotator_test.go
+@@ -0,0 +1,35 @@
++package mlog
++
++import (
++	"testing"
++)
++
++func TestParseSize(t *testing.T) {
++	size, err := ParseSize("")
++	if err != nil {
++		t.Fatalf("ParseSize(\"\") failed: %v", err)
++	}
++	if expected := int64(5 * 1024 * 1024); size != expected {
++		t.Errorf("expected default size %d, got %d", expected, size)
++	}
++
++	size, err = ParseSize("10M")
++	if err != nil {
++		t.Fatalf("ParseSize(\"10M\") failed: %v", err)
++	}
++	if expected := int64(10 * 1024 * 1024); size != expected {
++		t.Errorf("expected size %d, got %d", expected, size)
++	}
++}
++
++func TestNewLoggerBackups(t *testing.T) {
++	lc := LogConfig{
++		File:    "test.log",
++		Backups: 0,
++	}
++	// Verify that ParseSize and logger construction work without forcing backups to 3
++	_, err := NewLogger(lc)
++	if err != nil {
++		t.Fatalf("NewLogger failed: %v", err)
++	}
++}
