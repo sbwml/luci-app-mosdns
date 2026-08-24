@@ -33,6 +33,7 @@ get_config() {
 	config_get listen_port $1 listen_port 5335
 	config_get listen_address $1 listen_address "0.0.0.0"
 	config_get log_file $1 log_file "/var/log/mosdns.log"
+	config_get log_size $1 log_size "5"
 	config_get log_level $1 log_level "info"
 	config_get minimal_ttl $1 minimal_ttl 0
 	config_get maximum_ttl $1 maximum_ttl 0
@@ -67,6 +68,7 @@ generate_config() {
 	json_add_object 'log'
 	json_add_string "level" "$log_level"
 	json_add_string "file" "$log_file"
+	json_add_string "size" "$log_size"
 	json_close_object
 	# api
 	json_add_object 'api'

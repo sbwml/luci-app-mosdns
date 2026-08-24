@@ -172,6 +172,11 @@ return view.extend({
 		o.depends('configfile', '/var/etc/mosdns.json');
 		o.rmempty = false;
 
+		o = s.taboption('basic', form.Value, 'log_size', _('Log File Size'), _('Set the maximum size of the log file (in MB).'));
+		o.datatype = 'uinteger';
+		o.default = '5';
+		o.depends('configfile', '/var/etc/mosdns.json');
+
 		o = s.taboption('basic', form.Flag, 'redirect', _('DNS Forward'), _('Forward Dnsmasq Domain Name resolution requests to MosDNS'));
 		o.default = false;
 
