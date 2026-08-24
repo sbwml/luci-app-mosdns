@@ -107,7 +107,7 @@ plugins:
 
   install via ghproxy:
   ```shell
-  sh -c "$(curl -ksS https://raw.githubusercontent.com/sbwml/luci-app-mosdns/v5/install.sh)" _ gh_proxy="https://gh.cooluc.com"
+  sh -c "$(curl -ksS https://raw.githubusercontent.com/sbwml/luci-app-mosdns/v5/install.sh)" _ gh_proxy="https://gh-proxy.com"
   ```
 
 --------------
