@@ -72,7 +72,7 @@ jobs:
 
       - name: Build Packages
         if: ${{ env.SKIP_BUILD == '0' }}
-        uses: sbwml/openwrt-gh-action-sdk@go1.26
+        uses: sbwml/openwrt-gh-action-sdk@go1.27
         env:
           FEEDNAME: packages_ci
           PACKAGES: luci-app-mosdns
