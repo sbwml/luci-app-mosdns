@@ -57,7 +57,7 @@ jobs:
       - name: Build preparation
         run: |
           sed -i '/golang-package/a \\tGO_PKG_DEFAULT_LDFLAGS:=-w -s -extldflags "-static"' mosdns/Makefile
-          sed -i '/golang-package/a \\tGO_PKG_DEFAULT_LDFLAGS:=-w -s -extldflags "-static"' v2dat/Makefile
+          sed -i '/golang-package/a \\tGO_PKG_DEFAULT_LDFLAGS:=-w -s -extldflags "-static"' geo2txt/Makefile
           git clone https://github.com/sbwml/v2ray-geodata
           echo "SKIP_BUILD=0" >> $GITHUB_ENV
           if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
