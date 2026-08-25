@@ -141,7 +141,7 @@ fi
 # Extract and install packages
 msg_green "Installing Packages ..."
 tar -zxf "$TEMP_DIR/$PKG_FILE" -C "$TEMP_DIR/"
-for pkg in "$TEMP_DIR"/packages_ci/v2dat*.* \
+for pkg in "$TEMP_DIR"/packages_ci/geo2txt*.* \
            "$TEMP_DIR"/packages_ci/v2ray-geoip*.* \
            "$TEMP_DIR"/packages_ci/v2ray-geosite*.* \
            "$TEMP_DIR"/packages_ci/mosdns*.* \
