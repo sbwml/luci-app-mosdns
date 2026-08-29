@@ -95,6 +95,14 @@ const methods = {
 		}
 	},
 
+	get_history: {
+		args: { points: 24 },
+		call: function(request) {
+			let points = request?.args?.points || 24;
+			return call_mosdns_api(`/api/v1/history?points=${points}`, 'GET');
+		}
+	},
+
 	get_top: {
 		args: { limit: 10 },
 		call: function(request) {

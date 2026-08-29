@@ -18,6 +18,7 @@
 					"clean_log",
 					"clear_query_logs",
 					"flush_cache",
+					"get_history",
 					"get_logs",
 					"get_stats",
 					"get_top",
