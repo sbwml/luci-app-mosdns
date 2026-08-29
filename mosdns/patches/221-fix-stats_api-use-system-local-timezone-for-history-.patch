@@ -1,0 +1,86 @@
+From 006d70d6910080c7468ec8fa16fb67227b208036 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sun, 30 Aug 2026 07:12:23 +0800
+Subject: [PATCH] fix(stats_api): use system local timezone for history and log
+ timestamps
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      | 13 +++++++------
+ plugin/executable/stats_api/stats_api_test.go |  9 +++++++++
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -387,7 +387,7 @@ func NewHistoryStats() *HistoryStats {
+ }
+ 
+ func (h *HistoryStats) Record(t time.Time, isBlocked, isCached bool) {
+-	tHour := t.UTC().Truncate(time.Hour).Unix()
++	tHour := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location()).Unix()
+ 
+ 	h.mu.RLock()
+ 	bucket, ok := h.points[tHour]
+@@ -401,7 +401,7 @@ func (h *HistoryStats) Record(t time.Tim
+ 			h.points[tHour] = bucket
+ 
+ 			// Clean up old buckets beyond 48 hours
+-			cutoff := t.UTC().Add(-48 * time.Hour).Unix()
++			cutoff := t.Add(-48 * time.Hour).Unix()
+ 			for k := range h.points {
+ 				if k < cutoff {
+ 					delete(h.points, k)
+@@ -424,14 +424,15 @@ func (h *HistoryStats) GetHistory(numPoi
+ 	if numPoints <= 0 {
+ 		numPoints = 24
+ 	}
+-	now := time.Now().UTC().Truncate(time.Hour)
++	now := time.Now()
++	nowHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+ 	res := make([]HistoryPoint, 0, numPoints)
+ 
+ 	h.mu.RLock()
+ 	defer h.mu.RUnlock()
+ 
+ 	for i := numPoints - 1; i >= 0; i-- {
+-		slotTime := now.Add(time.Duration(-i) * time.Hour)
++		slotTime := nowHour.Add(time.Duration(-i) * time.Hour)
+ 		slotUnix := slotTime.Unix()
+ 
+ 		var total, blocked, cached uint64
+@@ -473,7 +474,7 @@ func (h *HistoryStats) Import(points map
+ 	defer h.mu.Unlock()
+ 
+ 	h.points = make(map[int64]*HistoryBucket, len(points))
+-	cutoff := time.Now().UTC().Add(-48 * time.Hour).Unix()
++	cutoff := time.Now().Add(-48 * time.Hour).Unix()
+ 	for k, v := range points {
+ 		if k >= cutoff {
+ 			bucket := &HistoryBucket{}
+@@ -1037,7 +1038,7 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 	elapsedMS := math.Round(float64(elapsed.Microseconds())/10.0) / 100.0
+ 
+ 	entry := LogEntry{
+-		Timestamp: start.UTC().Format(time.RFC3339),
++		Timestamp: start.Format(time.RFC3339),
+ 		ClientIP:  clientIP,
+ 		Domain:    domain,
+ 		QType:     qtypeStr,
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -215,6 +215,15 @@ func TestHistoryStats(t *testing.T) {
+ 	if lastPoint.Total != 3 || lastPoint.Blocked != 1 || lastPoint.Cached != 1 {
+ 		t.Errorf("history point mismatch: %+v", lastPoint)
+ 	}
++
++	parsedTime, err := time.Parse(time.RFC3339, lastPoint.Time)
++	if err != nil {
++		t.Fatalf("failed to parse history point time: %v", err)
++	}
++	expectedHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
++	if parsedTime.Unix() != expectedHour.Unix() {
++		t.Errorf("expected history point time unix %d, got %d", expectedHour.Unix(), parsedTime.Unix())
++	}
+ }
+ 
+ func TestHistoryStatsExportImport(t *testing.T) {
