@@ -1,0 +1,126 @@
+From 4a7034b471ea68aea2703b2c2dd89bcf195944dc Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sat, 29 Aug 2026 22:59:19 +0800
+Subject: [PATCH 5/5] fix(stats_api): improve rule hit extraction and upstream
+ formatting
+
+- Preserve configured upstream address in forward plugin
+- Format DoH/DoT/DoQ upstream URLs with proper protocol scheme
+- Filter out control rules and internal sequences when extracting rule hits
+- Update unit test assertions for upstream formatting
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/forward/forward.go          |  2 +-
+ plugin/executable/stats_api/stats_api.go      | 66 ++++++++++++++-----
+ plugin/executable/stats_api/stats_api_test.go |  4 +-
+ 3 files changed, 53 insertions(+), 19 deletions(-)
+
+--- a/plugin/executable/forward/forward.go
++++ b/plugin/executable/forward/forward.go
+@@ -330,7 +330,7 @@ func (f *Forward) exchange(ctx context.C
+ 				} else if proto == "QUIC" || proto == "DOQ" {
+ 					proto = "DoQ"
+ 				}
+-				qCtx.SetUpstreamSelected(addr, proto, chosenUpstream.cfg.Tag, f.pluginTag)
++				qCtx.SetUpstreamSelected(chosenUpstream.cfg.Addr, proto, chosenUpstream.cfg.Tag, f.pluginTag)
+ 			}
+ 
+ 			return r, nil
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -970,10 +970,20 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 	if isCached {
+ 		upstream = "cache"
+ 	} else if u := qCtx.UpstreamSelected; u != nil {
+-		if u.Protocol != "" && u.Addr != "" {
+-			upstream = fmt.Sprintf("%s://%s", u.Protocol, u.Addr)
+-		} else if u.Addr != "" {
+-			upstream = u.Addr
++		if u.Addr != "" {
++			if !strings.Contains(u.Addr, "://") {
++				if u.Protocol == "DoH" {
++					upstream = "https://" + u.Addr
++				} else if u.Protocol == "DoT" {
++					upstream = "tls://" + u.Addr
++				} else if u.Protocol == "DoQ" {
++					upstream = "quic://" + u.Addr
++				} else {
++					upstream = u.Addr
++				}
++			} else {
++				upstream = u.Addr
++			}
+ 		} else if u.Tag != "" {
+ 			upstream = u.Tag
+ 		}
+@@ -981,20 +991,44 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 
+ 	// Extract Rule information
+ 	var rule string
+-	if len(qCtx.RuleHits) > 0 {
+-		for i := len(qCtx.RuleHits) - 1; i >= 0; i-- {
+-			hit := qCtx.RuleHits[i]
+-			if len(hit.Matches) > 0 {
+-				rule = strings.Join(hit.Matches, ",")
+-				break
+-			} else if hit.Exec != "" {
+-				rule = hit.Exec
+-				break
+-			} else if hit.Sequence != "" {
+-				rule = hit.Sequence
+-				break
++	for i := len(qCtx.RuleHits) - 1; i >= 0; i-- {
++		hit := qCtx.RuleHits[i]
++		exec := strings.TrimSpace(hit.Exec)
++
++		if exec == "accept" || exec == "return" || strings.HasPrefix(exec, "jump ") || strings.HasPrefix(exec, "ttl ") {
++			continue
++		}
++
++		var positiveMatches []string
++		for _, m := range hit.Matches {
++			m = strings.TrimSpace(m)
++			if m != "" && m != "has_resp" && !strings.HasPrefix(m, "!") {
++				positiveMatches = append(positiveMatches, m)
+ 			}
+ 		}
++
++		if len(positiveMatches) > 0 {
++			rule = strings.Join(positiveMatches, ",")
++			break
++		}
++
++		if exec != "" && exec != "$stats_collector" {
++			rule = exec
++			break
++		}
++
++		if hit.Sequence != "" && hit.Sequence != "has_resp_sequence" && hit.Sequence != "main_sequence" {
++			rule = hit.Sequence
++			break
++		}
++	}
++
++	if rule == "" {
++		if isCached {
++			rule = "cache"
++		} else {
++			rule = "-"
++		}
+ 	}
+ 
+ 	s.topStats.Record(domain, clientIP, isBlocked)
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -381,8 +381,8 @@ func TestStatsAPIExec(t *testing.T) {
+ 	if logs[0].Domain != "google.com." {
+ 		t.Errorf("expected domain google.com., got %s", logs[0].Domain)
+ 	}
+-	if logs[0].Upstream != "UDP://8.8.8.8:53" {
+-		t.Errorf("expected upstream UDP://8.8.8.8:53, got %s", logs[0].Upstream)
++	if logs[0].Upstream != "8.8.8.8:53" {
++		t.Errorf("expected upstream 8.8.8.8:53, got %s", logs[0].Upstream)
+ 	}
+ 	if logs[0].Rule != "qname google.com." {
+ 		t.Errorf("expected rule qname google.com., got %s", logs[0].Rule)

@@ -1,0 +1,756 @@
+From 7279f1514e11b8a5bf6717a0127d73ecf36014a3 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sat, 29 Aug 2026 12:59:42 +0800
+Subject: [PATCH 4/5] feat(stats_api): add data persistence support
+
+Add dump_file and dump_interval configuration to support periodically
+persisting and restoring metrics, top stats, and query logs across restarts.
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      | 314 +++++++++++++++++-
+ plugin/executable/stats_api/stats_api_test.go | 244 ++++++++++++++
+ 2 files changed, 552 insertions(+), 6 deletions(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -24,8 +24,10 @@ import (
+ 	"encoding/json"
+ 	"errors"
+ 	"fmt"
++	"io"
+ 	"math"
+ 	"net/http"
++	"os"
+ 	"sort"
+ 	"strconv"
+ 	"strings"
+@@ -35,13 +37,18 @@ import (
+ 
+ 	"github.com/IrineSistiana/mosdns/v5/coremain"
+ 	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
++	"github.com/IrineSistiana/mosdns/v5/pkg/utils"
+ 	"github.com/IrineSistiana/mosdns/v5/plugin/executable/sequence"
+ 	"github.com/go-chi/chi/v5"
++	"github.com/klauspost/compress/gzip"
+ 	"github.com/miekg/dns"
+ 	"go.uber.org/zap"
+ )
+ 
+-const PluginType = "stats_api"
++const (
++	PluginType      = "stats_api"
++	statsDumpHeader = "mosdns_stats_v1"
++)
+ 
+ func init() {
+ 	coremain.RegNewPluginFunc(PluginType, Init, func() any { return new(Args) })
+@@ -51,14 +58,17 @@ func init() {
+ var _ sequence.RecursiveExecutable = (*StatsAPI)(nil)
+ 
+ type Args struct {
+-	Listen   string `yaml:"listen"`
+-	Capacity int    `yaml:"capacity"`
++	Listen       string `yaml:"listen"`
++	Capacity     int    `yaml:"capacity"`
++	DumpFile     string `yaml:"dump_file"`
++	DumpInterval int    `yaml:"dump_interval"`
+ }
+ 
+ func (a *Args) init() {
+ 	if a.Capacity <= 0 {
+ 		a.Capacity = 2000
+ 	}
++	utils.SetDefaultUnsignNum(&a.DumpInterval, 600)
+ }
+ 
+ type AnswerDTO struct {
+@@ -174,6 +184,42 @@ func (r *RingBuffer) QueryLogs(limit, of
+ 	return total, filtered[offset:end]
+ }
+ 
++// Export returns logs in chronological order (oldest first) and current seqID.
++func (r *RingBuffer) Export() ([]LogEntry, uint64) {
++	r.mu.RLock()
++	defer r.mu.RUnlock()
++
++	entries := make([]LogEntry, 0, r.count)
++	for i := 0; i < r.count; i++ {
++		idx := (r.head - r.count + i + r.capacity) % r.capacity
++		entries = append(entries, r.buf[idx])
++	}
++	return entries, r.seqID
++}
++
++// Import restores logs into ring buffer adapting to current capacity.
++func (r *RingBuffer) Import(entries []LogEntry, seqID uint64) {
++	r.mu.Lock()
++	defer r.mu.Unlock()
++
++	r.buf = make([]LogEntry, r.capacity)
++	r.head = 0
++	r.count = 0
++	r.seqID = seqID
++
++	start := 0
++	if len(entries) > r.capacity {
++		start = len(entries) - r.capacity
++	}
++	for i := start; i < len(entries); i++ {
++		r.buf[r.head] = entries[i]
++		r.head = (r.head + 1) % r.capacity
++		if r.count < r.capacity {
++			r.count++
++		}
++	}
++}
++
+ type TopItem struct {
+ 	Domain   string `json:"domain,omitempty"`
+ 	ClientIP string `json:"client_ip,omitempty"`
+@@ -220,6 +266,43 @@ func (t *TopStats) Clear() {
+ 	t.topBlocked = make(map[string]uint64)
+ }
+ 
++func (t *TopStats) Export() (map[string]uint64, map[string]uint64, map[string]uint64) {
++	t.mu.RLock()
++	defer t.mu.RUnlock()
++
++	domains := make(map[string]uint64, len(t.topDomains))
++	for k, v := range t.topDomains {
++		domains[k] = v
++	}
++	clients := make(map[string]uint64, len(t.topClients))
++	for k, v := range t.topClients {
++		clients[k] = v
++	}
++	blocked := make(map[string]uint64, len(t.topBlocked))
++	for k, v := range t.topBlocked {
++		blocked[k] = v
++	}
++	return domains, clients, blocked
++}
++
++func (t *TopStats) Import(domains, clients, blocked map[string]uint64) {
++	t.mu.Lock()
++	defer t.mu.Unlock()
++
++	t.topDomains = make(map[string]uint64, len(domains))
++	for k, v := range domains {
++		t.topDomains[k] = v
++	}
++	t.topClients = make(map[string]uint64, len(clients))
++	for k, v := range clients {
++		t.topClients[k] = v
++	}
++	t.topBlocked = make(map[string]uint64, len(blocked))
++	for k, v := range blocked {
++		t.topBlocked[k] = v
++	}
++}
++
+ func getSortedTop(m map[string]uint64, isClient bool, limit int) []TopItem {
+ 	type pair struct {
+ 		key   string
+@@ -286,6 +369,12 @@ type HistoryBucket struct {
+ 	Cached  atomic.Uint64
+ }
+ 
++type HistoryBucketData struct {
++	Total   uint64 `json:"total"`
++	Blocked uint64 `json:"blocked"`
++	Cached  uint64 `json:"cached"`
++}
++
+ type HistoryStats struct {
+ 	mu     sync.RWMutex
+ 	points map[int64]*HistoryBucket
+@@ -362,6 +451,55 @@ func (h *HistoryStats) GetHistory(numPoi
+ 	return res
+ }
+ 
++func (h *HistoryStats) Export() map[int64]HistoryBucketData {
++	h.mu.RLock()
++	defer h.mu.RUnlock()
++
++	res := make(map[int64]HistoryBucketData, len(h.points))
++	for k, v := range h.points {
++		if v != nil {
++			res[k] = HistoryBucketData{
++				Total:   v.Total.Load(),
++				Blocked: v.Blocked.Load(),
++				Cached:  v.Cached.Load(),
++			}
++		}
++	}
++	return res
++}
++
++func (h *HistoryStats) Import(points map[int64]HistoryBucketData) {
++	h.mu.Lock()
++	defer h.mu.Unlock()
++
++	h.points = make(map[int64]*HistoryBucket, len(points))
++	cutoff := time.Now().UTC().Add(-48 * time.Hour).Unix()
++	for k, v := range points {
++		if k >= cutoff {
++			bucket := &HistoryBucket{}
++			bucket.Total.Store(v.Total)
++			bucket.Blocked.Store(v.Blocked)
++			bucket.Cached.Store(v.Cached)
++			h.points[k] = bucket
++		}
++	}
++}
++
++type StatsDumpData struct {
++	Version        int                         `json:"version"`
++	Timestamp      int64                       `json:"timestamp"`
++	TotalQueries   uint64                      `json:"total_queries"`
++	BlockedQueries uint64                      `json:"blocked_queries"`
++	CachedQueries  uint64                      `json:"cached_queries"`
++	TotalLatencyUs uint64                      `json:"total_latency_us"`
++	TopDomains     map[string]uint64           `json:"top_domains,omitempty"`
++	TopClients     map[string]uint64           `json:"top_clients,omitempty"`
++	TopBlocked     map[string]uint64           `json:"top_blocked,omitempty"`
++	History        map[int64]HistoryBucketData `json:"history,omitempty"`
++	Logs           []LogEntry                  `json:"logs,omitempty"`
++	SeqID          uint64                      `json:"seq_id,omitempty"`
++}
++
+ type StatsAPI struct {
+ 	args   *Args
+ 	logger *zap.Logger
+@@ -375,8 +513,10 @@ type StatsAPI struct {
+ 	cachedQueries  atomic.Uint64
+ 	totalLatencyUs atomic.Uint64
+ 
+-	httpServer *http.Server
+-	closeOnce  sync.Once
++	updatedCount atomic.Uint64
++	closeNotify  chan struct{}
++	httpServer   *http.Server
++	closeOnce    sync.Once
+ }
+ 
+ func Init(bp *coremain.BP, args any) (any, error) {
+@@ -390,6 +530,8 @@ func QuickSetup(bq sequence.BQ, s string
+ 	fields := strings.Fields(s)
+ 	listen := ""
+ 	capacity := 2000
++	dumpFile := ""
++	dumpInterval := 600
+ 	if len(fields) > 0 {
+ 		listen = fields[0]
+ 	}
+@@ -398,7 +540,20 @@ func QuickSetup(bq sequence.BQ, s string
+ 			capacity = c
+ 		}
+ 	}
+-	return NewStatsAPI(&Args{Listen: listen, Capacity: capacity}, bq.L()), nil
++	if len(fields) > 2 {
++		dumpFile = fields[2]
++	}
++	if len(fields) > 3 {
++		if d, err := strconv.Atoi(fields[3]); err == nil && d > 0 {
++			dumpInterval = d
++		}
++	}
++	return NewStatsAPI(&Args{
++		Listen:       listen,
++		Capacity:     capacity,
++		DumpFile:     dumpFile,
++		DumpInterval: dumpInterval,
++	}, bq.L()), nil
+ }
+ 
+ func NewStatsAPI(args *Args, logger *zap.Logger) *StatsAPI {
+@@ -412,8 +567,14 @@ func NewStatsAPI(args *Args, logger *zap
+ 		ringBuffer:   NewRingBuffer(args.Capacity),
+ 		topStats:     NewTopStats(),
+ 		historyStats: NewHistoryStats(),
++		closeNotify:  make(chan struct{}),
+ 	}
+ 
++	if err := s.loadDump(); err != nil {
++		s.logger.Error("failed to load stats dump", zap.Error(err))
++	}
++	s.startDumpLoop()
++
+ 	if len(args.Listen) > 0 {
+ 		srv := &http.Server{
+ 			Addr:    args.Listen,
+@@ -450,6 +611,8 @@ func (s *StatsAPI) Router() *chi.Mux {
+ 	r.Get("/api/v1/logs", s.handleLogs)
+ 	r.Get("/api/v1/top", s.handleTop)
+ 	r.Get("/api/v1/history", s.handleHistory)
++	r.Get("/api/v1/dump", s.handleDump)
++	r.Post("/api/v1/load_dump", s.handleLoadDump)
+ 	r.Post("/api/v1/logs/clear", s.handleClearLogs)
+ 	r.Post("/api/v1/cache/clear", s.handleClearCache)
+ 
+@@ -560,9 +723,27 @@ func (s *StatsAPI) handleHistory(w http.
+ 	})
+ }
+ 
++func (s *StatsAPI) handleDump(w http.ResponseWriter, req *http.Request) {
++	w.Header().Set("Content-Type", "application/octet-stream")
++	if err := s.writeDump(w); err != nil {
++		http.Error(w, err.Error(), http.StatusInternalServerError)
++		return
++	}
++}
++
++func (s *StatsAPI) handleLoadDump(w http.ResponseWriter, req *http.Request) {
++	if err := s.readDump(req.Body); err != nil {
++		http.Error(w, err.Error(), http.StatusBadRequest)
++		return
++	}
++	s.updatedCount.Add(1)
++	w.WriteHeader(http.StatusOK)
++}
++
+ func (s *StatsAPI) handleClearLogs(w http.ResponseWriter, req *http.Request) {
+ 	s.ringBuffer.Clear()
+ 	s.topStats.Clear()
++	s.updatedCount.Add(1)
+ 
+ 	w.Header().Set("Content-Type", "application/json")
+ 	_ = json.NewEncoder(w).Encode(map[string]any{
+@@ -579,6 +760,122 @@ func (s *StatsAPI) handleClearCache(w ht
+ 	})
+ }
+ 
++func (s *StatsAPI) writeDump(w io.Writer) error {
++	gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
++	if err != nil {
++		return err
++	}
++	gw.Name = statsDumpHeader
++
++	data := StatsDumpData{
++		Version:        1,
++		Timestamp:      time.Now().Unix(),
++		TotalQueries:   s.totalQueries.Load(),
++		BlockedQueries: s.blockedQueries.Load(),
++		CachedQueries:  s.cachedQueries.Load(),
++		TotalLatencyUs: s.totalLatencyUs.Load(),
++	}
++
++	data.TopDomains, data.TopClients, data.TopBlocked = s.topStats.Export()
++	data.History = s.historyStats.Export()
++	data.Logs, data.SeqID = s.ringBuffer.Export()
++
++	if err := json.NewEncoder(gw).Encode(&data); err != nil {
++		_ = gw.Close()
++		return fmt.Errorf("failed to encode stats dump: %w", err)
++	}
++
++	return gw.Close()
++}
++
++func (s *StatsAPI) readDump(r io.Reader) error {
++	gr, err := gzip.NewReader(r)
++	if err != nil {
++		return fmt.Errorf("failed to create gzip reader: %w", err)
++	}
++	defer gr.Close()
++
++	if gr.Name != statsDumpHeader {
++		return fmt.Errorf("invalid stats dump header: got %s, want %s", gr.Name, statsDumpHeader)
++	}
++
++	var data StatsDumpData
++	if err := json.NewDecoder(gr).Decode(&data); err != nil {
++		return fmt.Errorf("failed to decode stats dump: %w", err)
++	}
++
++	s.totalQueries.Store(data.TotalQueries)
++	s.blockedQueries.Store(data.BlockedQueries)
++	s.cachedQueries.Store(data.CachedQueries)
++	s.totalLatencyUs.Store(data.TotalLatencyUs)
++
++	s.topStats.Import(data.TopDomains, data.TopClients, data.TopBlocked)
++	s.historyStats.Import(data.History)
++	s.ringBuffer.Import(data.Logs, data.SeqID)
++
++	return nil
++}
++
++func (s *StatsAPI) loadDump() error {
++	if len(s.args.DumpFile) == 0 {
++		return nil
++	}
++	f, err := os.Open(s.args.DumpFile)
++	if err != nil {
++		if errors.Is(err, os.ErrNotExist) {
++			s.logger.Info("stats dump file does not exist, starting with empty stats", zap.String("file", s.args.DumpFile))
++			return nil
++		}
++		return err
++	}
++	defer f.Close()
++
++	if err := s.readDump(f); err != nil {
++		return err
++	}
++	s.logger.Info("stats dump loaded successfully", zap.String("file", s.args.DumpFile))
++	return nil
++}
++
++func (s *StatsAPI) dumpStats() error {
++	if len(s.args.DumpFile) == 0 {
++		return nil
++	}
++	f, err := os.Create(s.args.DumpFile)
++	if err != nil {
++		return err
++	}
++	defer f.Close()
++
++	if err := s.writeDump(f); err != nil {
++		return fmt.Errorf("failed to write stats dump, %w", err)
++	}
++	s.logger.Info("stats dumped successfully", zap.String("file", s.args.DumpFile))
++	return nil
++}
++
++func (s *StatsAPI) startDumpLoop() {
++	if len(s.args.DumpFile) == 0 {
++		return
++	}
++	go func() {
++		ticker := time.NewTicker(time.Duration(s.args.DumpInterval) * time.Second)
++		defer ticker.Stop()
++		for {
++			select {
++			case <-ticker.C:
++				if s.updatedCount.Swap(0) > 0 {
++					if err := s.dumpStats(); err != nil {
++						s.logger.Error("failed to dump stats", zap.Error(err))
++					}
++				}
++			case <-s.closeNotify:
++				return
++			}
++		}
++	}()
++}
++
+ func (s *StatsAPI) Exec(ctx context.Context, qCtx *query_context.Context, next sequence.ChainWalker) error {
+ 	start := time.Now()
+ 	err := next.ExecNext(ctx, qCtx)
+@@ -586,6 +883,7 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 
+ 	s.totalQueries.Add(1)
+ 	s.totalLatencyUs.Add(uint64(elapsed.Microseconds()))
++	s.updatedCount.Add(1)
+ 
+ 	var clientIP string
+ 	if clientAddr := qCtx.ServerMeta.ClientAddr; clientAddr.IsValid() {
+@@ -725,6 +1023,10 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 
+ func (s *StatsAPI) Close() error {
+ 	s.closeOnce.Do(func() {
++		close(s.closeNotify)
++		if err := s.dumpStats(); err != nil {
++			s.logger.Error("failed to dump stats on close", zap.Error(err))
++		}
+ 		if s.httpServer != nil {
+ 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+ 			defer cancel()
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -20,16 +20,20 @@
+ package stats_api
+ 
+ import (
++	"bytes"
+ 	"context"
+ 	"encoding/json"
+ 	"fmt"
+ 	"net/http"
+ 	"net/http/httptest"
++	"os"
++	"path/filepath"
+ 	"testing"
+ 	"time"
+ 
+ 	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
+ 	"github.com/IrineSistiana/mosdns/v5/plugin/executable/sequence"
++	"github.com/klauspost/compress/gzip"
+ 	"github.com/miekg/dns"
+ 	"go.uber.org/zap"
+ )
+@@ -88,6 +92,65 @@ func TestRingBuffer(t *testing.T) {
+ 	}
+ }
+ 
++func TestRingBufferExportImport(t *testing.T) {
++	rb1 := NewRingBuffer(5)
++	for i := 1; i <= 8; i++ {
++		rb1.Push(LogEntry{
++			Domain:   fmt.Sprintf("domain%d.com.", i),
++			ClientIP: "10.0.0.1",
++		})
++	}
++
++	exported, seqID := rb1.Export()
++	if len(exported) != 5 {
++		t.Fatalf("expected 5 exported entries, got %d", len(exported))
++	}
++	if seqID != 8 {
++		t.Errorf("expected seqID 8, got %d", seqID)
++	}
++	if exported[0].Domain != "domain4.com." {
++		t.Errorf("expected oldest in exported to be domain4.com., got %s", exported[0].Domain)
++	}
++	if exported[4].Domain != "domain8.com." {
++		t.Errorf("expected newest in exported to be domain8.com., got %s", exported[4].Domain)
++	}
++
++	// Import into same capacity
++	rb2 := NewRingBuffer(5)
++	rb2.Import(exported, seqID)
++	total, logs2 := rb2.QueryLogs(10, 0, "", "all")
++	if total != 5 || len(logs2) != 5 {
++		t.Fatalf("expected 5 logs in rb2, got %d", total)
++	}
++	if logs2[0].Domain != "domain8.com." {
++		t.Errorf("expected newest log to be domain8.com., got %s", logs2[0].Domain)
++	}
++	if logs2[4].Domain != "domain4.com." {
++		t.Errorf("expected oldest log to be domain4.com., got %s", logs2[4].Domain)
++	}
++
++	// Test pushing another entry to rb2 to verify seqID continues
++	rb2.Push(LogEntry{Domain: "domain9.com."})
++	_, logsAfterPush := rb2.QueryLogs(1, 0, "", "all")
++	if logsAfterPush[0].Domain != "domain9.com." {
++		t.Errorf("expected newest log domain9.com., got %s", logsAfterPush[0].Domain)
++	}
++
++	// Import into smaller capacity (3)
++	rb3 := NewRingBuffer(3)
++	rb3.Import(exported, seqID)
++	total3, logs3 := rb3.QueryLogs(10, 0, "", "all")
++	if total3 != 3 || len(logs3) != 3 {
++		t.Fatalf("expected 3 logs in rb3, got %d", total3)
++	}
++	if logs3[0].Domain != "domain8.com." {
++		t.Errorf("expected newest log domain8.com., got %s", logs3[0].Domain)
++	}
++	if logs3[2].Domain != "domain6.com." {
++		t.Errorf("expected oldest log domain6.com., got %s", logs3[2].Domain)
++	}
++}
++
+ func TestTopStats(t *testing.T) {
+ 	top := NewTopStats()
+ 
+@@ -113,6 +176,28 @@ func TestTopStats(t *testing.T) {
+ 	}
+ }
+ 
++func TestTopStatsExportImport(t *testing.T) {
++	top1 := NewTopStats()
++	top1.Record("a.com.", "192.168.1.1", false)
++	top1.Record("a.com.", "192.168.1.1", false)
++	top1.Record("b.com.", "192.168.1.2", true)
++
++	d, c, b := top1.Export()
++	top2 := NewTopStats()
++	top2.Import(d, c, b)
++
++	domains, clients, blocked := top2.GetTop(10)
++	if len(domains) != 1 || domains[0].Domain != "a.com." || domains[0].Count != 2 {
++		t.Errorf("top domains export/import mismatch: %+v", domains)
++	}
++	if len(clients) != 2 {
++		t.Errorf("top clients count mismatch: %+v", clients)
++	}
++	if len(blocked) != 1 || blocked[0].Domain != "b.com." {
++		t.Errorf("top blocked mismatch: %+v", blocked)
++	}
++}
++
+ func TestHistoryStats(t *testing.T) {
+ 	h := NewHistoryStats()
+ 	now := time.Now()
+@@ -132,6 +217,26 @@ func TestHistoryStats(t *testing.T) {
+ 	}
+ }
+ 
++func TestHistoryStatsExportImport(t *testing.T) {
++	h1 := NewHistoryStats()
++	now := time.Now()
++	h1.Record(now, false, false)
++	h1.Record(now, true, true)
++
++	exported := h1.Export()
++	if len(exported) == 0 {
++		t.Fatalf("expected exported history points")
++	}
++
++	h2 := NewHistoryStats()
++	h2.Import(exported)
++	points := h2.GetHistory(24)
++	lastPoint := points[len(points)-1]
++	if lastPoint.Total != 2 || lastPoint.Blocked != 1 || lastPoint.Cached != 1 {
++		t.Errorf("history stats import mismatch: %+v", lastPoint)
++	}
++}
++
+ func TestStatsAPIHTTPEndpoints(t *testing.T) {
+ 	s := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
+ 	router := s.Router()
+@@ -185,6 +290,31 @@ func TestStatsAPIHTTPEndpoints(t *testin
+ 		t.Errorf("expected 24 history points, got %d", len(histPoints))
+ 	}
+ 
++	// Test GET /api/v1/dump
++	reqDump := httptest.NewRequest(http.MethodGet, "/api/v1/dump", nil)
++	wDump := httptest.NewRecorder()
++	router.ServeHTTP(wDump, reqDump)
++	if wDump.Code != http.StatusOK {
++		t.Fatalf("expected HTTP 200 for dump, got %d", wDump.Code)
++	}
++	dumpBytes := wDump.Body.Bytes()
++	if len(dumpBytes) == 0 {
++		t.Fatalf("expected non-empty dump body")
++	}
++
++	// Test POST /api/v1/load_dump
++	s2 := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
++	router2 := s2.Router()
++	reqLoadDump := httptest.NewRequest(http.MethodPost, "/api/v1/load_dump", bytes.NewReader(dumpBytes))
++	wLoadDump := httptest.NewRecorder()
++	router2.ServeHTTP(wLoadDump, reqLoadDump)
++	if wLoadDump.Code != http.StatusOK {
++		t.Fatalf("expected HTTP 200 for load_dump, got %d", wLoadDump.Code)
++	}
++	if s2.totalQueries.Load() != 1 {
++		t.Errorf("expected s2 total queries to be 1 after load_dump, got %d", s2.totalQueries.Load())
++	}
++
+ 	// Test POST /api/v1/logs/clear
+ 	reqClearLogs := httptest.NewRequest(http.MethodPost, "/api/v1/logs/clear", nil)
+ 	wClearLogs := httptest.NewRecorder()
+@@ -258,3 +388,117 @@ func TestStatsAPIExec(t *testing.T) {
+ 		t.Errorf("expected rule qname google.com., got %s", logs[0].Rule)
+ 	}
+ }
++
++func TestStatsAPIPersistence(t *testing.T) {
++	tempDir := t.TempDir()
++	dumpFilePath := filepath.Join(tempDir, "stats.dump")
++
++	// Phase 1: Start stats_api with dump_file configured
++	s1 := NewStatsAPI(&Args{
++		Capacity:     50,
++		DumpFile:     dumpFilePath,
++		DumpInterval: 600,
++	}, zap.NewNop())
++
++	// Push test logs and stats
++	for i := 1; i <= 10; i++ {
++		s1.ringBuffer.Push(LogEntry{
++			Domain:    fmt.Sprintf("test%d.com.", i),
++			ClientIP:  "192.168.1.100",
++			IsBlocked: i%2 == 0,
++			IsCached:  i%3 == 0,
++			ElapsedMS: float64(i * 5),
++		})
++		s1.totalQueries.Add(1)
++		if i%2 == 0 {
++			s1.blockedQueries.Add(1)
++		}
++		if i%3 == 0 {
++			s1.cachedQueries.Add(1)
++		}
++		s1.totalLatencyUs.Add(uint64(i * 5000))
++		s1.topStats.Record(fmt.Sprintf("test%d.com.", i), "192.168.1.100", i%2 == 0)
++		s1.historyStats.Record(time.Now(), i%2 == 0, i%3 == 0)
++	}
++
++	// Close s1 -> triggers dumpStats()
++	if err := s1.Close(); err != nil {
++		t.Fatalf("Close failed: %v", err)
++	}
++
++	// Verify file exists
++	fi, err := os.Stat(dumpFilePath)
++	if err != nil {
++		t.Fatalf("dump file was not created: %v", err)
++	}
++	if fi.Size() == 0 {
++		t.Fatalf("dump file is empty")
++	}
++
++	// Verify gzip header and compression
++	f, err := os.Open(dumpFilePath)
++	if err != nil {
++		t.Fatalf("failed to open dump file: %v", err)
++	}
++	gr, err := gzip.NewReader(f)
++	if err != nil {
++		t.Fatalf("failed to create gzip reader on dump file: %v", err)
++	}
++	if gr.Name != statsDumpHeader {
++		t.Errorf("expected gzip header %s, got %s", statsDumpHeader, gr.Name)
++	}
++	_ = gr.Close()
++	_ = f.Close()
++
++	// Phase 2: Start new instance s2 with same dump_file -> loads dump automatically
++	s2 := NewStatsAPI(&Args{
++		Capacity:     50,
++		DumpFile:     dumpFilePath,
++		DumpInterval: 600,
++	}, zap.NewNop())
++	defer s2.Close()
++
++	if s2.totalQueries.Load() != 10 {
++		t.Errorf("expected 10 total queries after load, got %d", s2.totalQueries.Load())
++	}
++	if s2.blockedQueries.Load() != 5 {
++		t.Errorf("expected 5 blocked queries after load, got %d", s2.blockedQueries.Load())
++	}
++	if s2.cachedQueries.Load() != 3 {
++		t.Errorf("expected 3 cached queries after load, got %d", s2.cachedQueries.Load())
++	}
++
++	totalLogs, logs := s2.ringBuffer.QueryLogs(10, 0, "", "all")
++	if totalLogs != 10 || len(logs) != 10 {
++		t.Fatalf("expected 10 logs in s2, got total=%d len=%d", totalLogs, len(logs))
++	}
++	if logs[0].Domain != "test10.com." {
++		t.Errorf("expected newest log test10.com., got %s", logs[0].Domain)
++	}
++
++	topDomains, topClients, topBlocked := s2.topStats.GetTop(10)
++	if len(topDomains) == 0 {
++		t.Errorf("expected top domains to be restored")
++	}
++	if len(topClients) == 0 || topClients[0].ClientIP != "192.168.1.100" {
++		t.Errorf("expected top clients to be restored")
++	}
++	if len(topBlocked) == 0 {
++		t.Errorf("expected top blocked to be restored")
++	}
++}
++
++func TestStatsAPINonExistentDumpFile(t *testing.T) {
++	tempDir := t.TempDir()
++	dumpFilePath := filepath.Join(tempDir, "non_existent_stats.dump")
++
++	// Should not error or panic
++	s := NewStatsAPI(&Args{
++		DumpFile: dumpFilePath,
++	}, zap.NewNop())
++	defer s.Close()
++
++	if s.totalQueries.Load() != 0 {
++		t.Errorf("expected 0 total queries, got %d", s.totalQueries.Load())
++	}
++}

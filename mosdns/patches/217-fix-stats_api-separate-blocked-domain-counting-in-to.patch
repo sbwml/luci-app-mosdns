@@ -1,0 +1,47 @@
+From 7a0bf53ad7219ab07693f93be4700551802bde5d Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Fri, 28 Aug 2026 21:41:05 +0800
+Subject: [PATCH 2/5] fix(stats_api): separate blocked domain counting in top
+ stats
+
+Avoid incrementing non-blocked top domain counter when a query is blocked.
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      | 9 +++++----
+ plugin/executable/stats_api/stats_api_test.go | 2 +-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -200,14 +200,15 @@ func (t *TopStats) Record(domain, client
+ 	defer t.mu.Unlock()
+ 
+ 	if domain != "" {
+-		t.topDomains[domain]++
++		if isBlocked {
++			t.topBlocked[domain]++
++		} else {
++			t.topDomains[domain]++
++		}
+ 	}
+ 	if clientIP != "" {
+ 		t.topClients[clientIP]++
+ 	}
+-	if isBlocked && domain != "" {
+-		t.topBlocked[domain]++
+-	}
+ }
+ 
+ func (t *TopStats) Clear() {
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -98,7 +98,7 @@ func TestTopStats(t *testing.T) {
+ 
+ 	domains, clients, blocked := top.GetTop(10)
+ 
+-	if len(domains) == 0 || domains[0].Domain != "a.com." || domains[0].Count != 3 {
++	if len(domains) == 0 || domains[0].Domain != "a.com." || domains[0].Count != 2 {
+ 		t.Errorf("top domains mismatch: %+v", domains)
+ 	}
+ 

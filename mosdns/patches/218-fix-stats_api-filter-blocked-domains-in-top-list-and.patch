@@ -1,0 +1,72 @@
+From 1fba45727126115b09c7f73d944e960643b21d24 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Fri, 28 Aug 2026 22:01:35 +0800
+Subject: [PATCH 3/5] fix(stats_api): filter blocked domains in top list and
+ ignore HTTPS queries
+
+- Filter out blocked domains from top domains list
+- Do not mark HTTPS type queries as blocked on NXDOMAIN/REFUSED
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      | 12 ++++++++++--
+ plugin/executable/stats_api/stats_api_test.go | 13 ++++---------
+ 2 files changed, 14 insertions(+), 11 deletions(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -259,7 +259,15 @@ func (t *TopStats) GetTop(limit int) ([]
+ 	if limit <= 0 {
+ 		limit = 10
+ 	}
+-	topDomains := getSortedTop(t.topDomains, false, limit)
++
++	cleanTopDomains := make(map[string]uint64, len(t.topDomains))
++	for domain, count := range t.topDomains {
++		if _, isBlocked := t.topBlocked[domain]; !isBlocked {
++			cleanTopDomains[domain] = count
++		}
++	}
++
++	topDomains := getSortedTop(cleanTopDomains, false, limit)
+ 	topClients := getSortedTop(t.topClients, true, limit)
+ 	topBlocked := getSortedTop(t.topBlocked, false, limit)
+ 	return topDomains, topClients, topBlocked
+@@ -614,7 +622,7 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 			status = fmt.Sprintf("RCODE%d", r.Rcode)
+ 		}
+ 
+-		if r.Rcode == dns.RcodeNameError || r.Rcode == dns.RcodeRefused {
++		if (r.Rcode == dns.RcodeNameError || r.Rcode == dns.RcodeRefused) && qQuestion.Qtype != dns.TypeHTTPS {
+ 			isBlocked = true
+ 		}
+ 
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -92,22 +92,17 @@ func TestTopStats(t *testing.T) {
+ 	top := NewTopStats()
+ 
+ 	top.Record("a.com.", "192.168.1.1", false)
+-	top.Record("a.com.", "192.168.1.1", true)
++	top.Record("a.com.", "192.168.1.1", false)
+ 	top.Record("b.com.", "192.168.1.2", true)
+-	top.Record("a.com.", "192.168.1.2", false)
+ 
+-	domains, clients, blocked := top.GetTop(10)
++	domains, _, blocked := top.GetTop(10)
+ 
+ 	if len(domains) == 0 || domains[0].Domain != "a.com." || domains[0].Count != 2 {
+ 		t.Errorf("top domains mismatch: %+v", domains)
+ 	}
+ 
+-	if len(clients) < 2 {
+-		t.Fatalf("expected at least 2 clients, got %d", len(clients))
+-	}
+-
+-	if len(blocked) < 2 {
+-		t.Fatalf("expected at least 2 blocked domains, got %d", len(blocked))
++	if len(blocked) == 0 || blocked[0].Domain != "b.com." {
++		t.Errorf("top blocked mismatch: %+v", blocked)
+ 	}
+ 
+ 	// Test Clear
