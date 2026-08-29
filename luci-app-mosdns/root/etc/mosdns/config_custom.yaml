@@ -9,6 +9,14 @@ api:
 include: []
 
 plugins:
+  # 统计收集器
+  - tag: stats_collector
+    type: stats_api
+    args:
+      capacity: 2000                      # 查询日志环缓冲区容量 (FIFO 覆盖)
+      dump_file: "/etc/mosdns/stats.dump" # 数据持久化转存文件路径，不设置则不转存
+      dump_interval: 600                  # 周期性转储间隔（秒）
+
   # 国内域名
   - tag: geosite_cn
     type: domain_set
@@ -120,6 +128,7 @@ plugins:
   - tag: main_sequence
     type: sequence
     args:
+      - exec: $stats_collector           # 执行全局统计控制器
       - exec: $lazy_cache
       - exec: jump has_resp_sequence
       - exec: $query_is_local_domain

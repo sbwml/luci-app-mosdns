@@ -426,6 +426,29 @@ return view.extend({
 		o.default = 52001;
 		o.depends('configfile', '/var/etc/mosdns.json');
 
+		o = s.taboption('api', form.Flag, 'stats_collector', _('Enable Stats Collector'));
+		o.rmempty = false;
+		o.default = o.enabled;
+		o.depends('configfile', '/var/etc/mosdns.json');
+
+		o = s.taboption('api', form.Value, 'stats_capacity', _('Ring Buffer Capacity'),
+			_('Query log ring buffer capacity (FIFO overwrite, default 2000, larger values consume more memory)'));
+		o.datatype = 'and(uinteger,min(1))';
+		o.default = 2000;
+		o.depends('stats_collector', '1');
+
+		o = s.taboption('api', form.Flag, 'stats_dump_file', _('Stats Dump'),
+			_('Save query statistics and logs locally and reload on next startup.'));
+		o.rmempty = false;
+		o.default = false;
+		o.depends('stats_collector', '1');
+
+		o = s.taboption('api', form.Value, 'stats_dump_interval',
+			_('Auto Save Stats Interval'));
+		o.datatype = 'and(uinteger,min(1))';
+		o.default = 600;
+		o.depends('stats_dump_file', '1');
+
 		o = s.taboption('api', form.Button, '_flush_cache', null,
 			_('Flushing DNS Cache will clear any IP addresses or DNS records from MosDNS cache.'));
 		o.title = '&#160;';

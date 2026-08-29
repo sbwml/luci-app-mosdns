@@ -58,16 +58,77 @@ function get_logfile_path_internal() {
 	}
 }
 
+function parse_json_safe(str) {
+	if (!str || str == "")
+		return null;
+
+	try {
+		return json(str);
+	} catch(e) {
+		return null;
+	}
+}
+
+function call_mosdns_api(endpoint, method) {
+	try {
+		let uci_cursor = cursor();
+		uci_cursor.load('mosdns');
+		let port = uci_cursor.get('mosdns', 'config', 'listen_port_api') || '9091';
+		let http_method = method ? method : 'GET';
+		let post_flag = (http_method === 'POST') ? '--post-data=""' : '';
+		let cmd = `wget -q -O - ${post_flag} "http://127.0.0.1:${port}/plugins/stats_collector${endpoint}"`;
+		let res = exec_sys(cmd);
+		if (res.code === 0 && res.stdout != "") {
+			let json_val = parse_json_safe(res.stdout);
+			if (json_val) return json_val;
+		}
+		return { error: "MosDNS API unreachable" };
+	} catch (e) {
+		return { error: String(e) };
+	}
+}
+
 const methods = {
+	get_stats: {
+		call: function() {
+			return call_mosdns_api('/api/v1/stats', 'GET');
+		}
+	},
+
+	get_top: {
+		args: { limit: 10 },
+		call: function(request) {
+			let limit = request?.args?.limit || 10;
+			return call_mosdns_api(`/api/v1/top?limit=${limit}`, 'GET');
+		}
+	},
+
+	get_logs: {
+		args: { limit: 50, offset: 0, search: '', filter: 'all' },
+		call: function(request) {
+			let limit = request?.args?.limit || 50;
+			let offset = request?.args?.offset || 0;
+			let search = request?.args?.search || '';
+			let filter = request?.args?.filter || 'all';
+			return call_mosdns_api(`/api/v1/logs?limit=${limit}&offset=${offset}&search=${search}&filter=${filter}`, 'GET');
+		}
+	},
+
+	clear_query_logs: {
+		call: function() {
+			return call_mosdns_api('/api/v1/logs/clear', 'POST');
+		}
+	},
+
 	flush_cache: {
 		call: function() {
 			try {
 				let uci_cursor = cursor();
 				uci_cursor.load('mosdns');
-				let port = uci_cursor.get('mosdns', 'config', 'listen_port_api');
+				let port = uci_cursor.get('mosdns', 'config', 'listen_port_api') || '9091';
 				if (!port) return { error: "API listen port not configured." };
 
-				let res = exec_sys(`curl -s 127.0.0.1:${port}/plugins/lazy_cache/flush`);
+				let res = exec_sys(`wget -q -O - "http://127.0.0.1:${port}/plugins/lazy_cache/flush"`);
 				if (res.code === 0) {
 					return { success: true };
 				} else {

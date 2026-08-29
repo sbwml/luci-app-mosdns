@@ -57,6 +57,10 @@ get_config() {
 	config_get cloudflare $1 cloudflare 0
 	config_get cloudflare_ip $1 cloudflare_ip ""
 	config_get reject_type65 $1 reject_type65 "0"
+	config_get stats_collector $1 stats_collector 1
+	config_get stats_capacity $1 stats_capacity 2000
+	config_get stats_dump_file $1 stats_dump_file 0
+	config_get stats_dump_interval $1 stats_dump_interval 600
 }
 
 generate_config() {
@@ -79,6 +83,20 @@ generate_config() {
 	json_close_array
 	# plugins
 	json_add_array "plugins"
+	# plugin: stats_collector
+	[ "$stats_collector" -eq 1 ] && {
+		json_add_object
+		json_add_string "tag" "stats_collector"
+		json_add_string "type" "stats_api"
+		json_add_object "args"
+		json_add_int "capacity" "$stats_capacity"
+		[ "$stats_dump_file" -eq 1 ] && {
+			json_add_string "dump_file" "/etc/mosdns/stats.dump"
+			json_add_int "dump_interval" "$stats_dump_interval"
+		}
+		json_close_object
+		json_close_object
+	}
 	# plugin: geosite_cn
 	json_add_object
 	json_add_string "tag" "geosite_cn"
@@ -589,6 +607,11 @@ generate_config() {
 	json_add_string "tag" "main_sequence"
 	json_add_string "type" "sequence"
 	json_add_array "args"
+	[ "$stats_collector" -eq 1 ] && {
+		json_add_object
+		json_add_string "exec" "\$stats_collector"
+		json_close_object
+	}
 	json_add_object
 	json_add_string "exec" "\$hosts"
 	json_close_object

@@ -16,10 +16,14 @@
 				"service": [ "list" ],
 				"luci.mosdns": [
 					"clean_log",
+					"clear_query_logs",
 					"flush_cache",
+					"get_logs",
+					"get_stats",
+					"get_top",
+					"get_update_log",
 					"get_version",
 					"print_log",
-					"get_update_log",
 					"start_update"
 				]
 			},
@@ -35,7 +39,8 @@
 				"/var/mosdns/*": [ "write" ]
 			},
 			"ubus": {
-				"file": [ "write" ]
+				"file": [ "write" ],
+				"luci.mosdns": [ "clear_query_logs" ]
 			},
 			"uci": [ "mosdns" ]
 		}

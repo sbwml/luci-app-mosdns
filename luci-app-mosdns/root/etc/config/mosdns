@@ -30,4 +30,9 @@ config mosdns 'config'
 	option lazy_cache_ttl '86400'
 	option dump_file '0'
 	option reject_type65 '1'
+	option stats_collector '1'
+	option stats_capacity '2000'
+	option stats_dump_file '0'
+	option stats_dump_interval '600'
+
 
