@@ -149,7 +149,7 @@ function update_adlist() {
 
 			print(`Downloading ${mirror}${url}\n`);
 			stdout.flush();
-			let dl_res = exec_sys(`wget -4 -q --no-check-certificate -T 90 -t 2 -O "${ad_tmpdir}/${filename}" "${mirror}${url}"`);
+			let dl_res = exec_sys(`wget -4 -q --no-check-certificate -T 90 -O "${ad_tmpdir}/${filename}" "${mirror}${url}"`);
 			if (dl_res.code !== 0) download_failed = true;
 		}
 	}
@@ -192,7 +192,7 @@ function update_geodat() {
 
 	print(`Downloading ${geoip_url}.sha256sum\n`);
 	stdout.flush();
-	if (exec_sys(`wget -4 -q --no-check-certificate -T 20 -t 2 -O "${tmpdir}/geoip.dat.sha256sum" "${geoip_url}.sha256sum"`).code !== 0) {
+	if (exec_sys(`wget -4 -q --no-check-certificate -T 20 -O "${tmpdir}/geoip.dat.sha256sum" "${geoip_url}.sha256sum"`).code !== 0) {
 		exec_sys(`rm -rf "${tmpdir}"`);
 		die("Failed to download geoip.dat.sha256sum");
 	}
@@ -209,7 +209,7 @@ function update_geodat() {
 	} else {
 		print(`Downloading ${geoip_url}\n`);
 		stdout.flush();
-		if (exec_sys(`wget -4 -q --no-check-certificate -T 120 -t 2 -O "${tmpdir}/geoip.dat" "${geoip_url}"`).code !== 0) {
+		if (exec_sys(`wget -4 -q --no-check-certificate -T 120 -O "${tmpdir}/geoip.dat" "${geoip_url}"`).code !== 0) {
 			exec_sys(`rm -rf "${tmpdir}"`);
 			die("Failed to download geoip.dat");
 		}
@@ -227,7 +227,7 @@ function update_geodat() {
 
 	print(`Downloading ${geosite_url}.sha256sum\n`);
 	stdout.flush();
-	if (exec_sys(`wget -4 -q --no-check-certificate -T 20 -t 2 -O "${tmpdir}/geosite.dat.sha256sum" "${geosite_url}.sha256sum"`).code !== 0) {
+	if (exec_sys(`wget -4 -q --no-check-certificate -T 20 -O "${tmpdir}/geosite.dat.sha256sum" "${geosite_url}.sha256sum"`).code !== 0) {
 		exec_sys(`rm -rf "${tmpdir}"`);
 		die("Failed to download geosite.dat.sha256sum");
 	}
@@ -244,7 +244,7 @@ function update_geodat() {
 	} else {
 		print(`Downloading ${geosite_url}\n`);
 		stdout.flush();
-		if (exec_sys(`wget -4 -q --no-check-certificate -T 120 -t 2 -O "${tmpdir}/geosite.dat" "${geosite_url}"`).code !== 0) {
+		if (exec_sys(`wget -4 -q --no-check-certificate -T 120 -O "${tmpdir}/geosite.dat" "${geosite_url}"`).code !== 0) {
 			exec_sys(`rm -rf "${tmpdir}"`);
 			die("Failed to download geosite.dat");
 		}
