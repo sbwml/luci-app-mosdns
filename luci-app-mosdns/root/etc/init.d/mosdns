@@ -10,6 +10,7 @@ CONF=$(uci -q get mosdns.config.configfile)
 CRON_FILE=/etc/crontabs/root
 DUMP_FILE=/etc/mosdns/cache.dump
 DUMP_FILE_DEFAULT=/usr/share/mosdns/cache.dump
+STATS_DUMP_FILE=/etc/mosdns/stats.dump
 MOSDNS_SCRIPT=/usr/share/mosdns/mosdns.uc
 REDIRECT_LOCK_FILE=/etc/mosdns/redirect.lock
 
@@ -91,7 +92,7 @@ generate_config() {
 		json_add_object "args"
 		json_add_int "capacity" "$stats_capacity"
 		[ "$stats_dump_file" -eq 1 ] && {
-			json_add_string "dump_file" "/etc/mosdns/stats.dump"
+			json_add_string "dump_file" "$STATS_DUMP_FILE"
 			json_add_int "dump_interval" "$stats_dump_interval"
 		}
 		json_close_object
@@ -724,6 +725,7 @@ generate_config() {
 	# init dump_file
 	[ "$dump_file" -eq 1 ] && [ ! -f $DUMP_FILE ] && cp -a $DUMP_FILE_DEFAULT $DUMP_FILE
 	[ "$dump_file" -eq 0 ] && \cp -a $DUMP_FILE_DEFAULT $DUMP_FILE
+	[ "$stats_dump_file" -eq 0 ] && rm -f $STATS_DUMP_FILE
 }
 
 service_triggers() {
