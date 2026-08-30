@@ -163,7 +163,7 @@ return view.extend({
 		o.value('info', _('Info'));
 		o.value('warn', _('Warning'));
 		o.value('error', _('Error'));
-		o.default = 'info';
+		o.default = 'error';
 		o.depends('configfile', '/var/etc/mosdns.json');
 
 		o = s.taboption('basic', form.Value, 'log_file', _('Log File'));
