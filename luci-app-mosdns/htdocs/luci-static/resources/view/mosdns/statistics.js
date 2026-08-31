@@ -48,6 +48,10 @@ let nodeStats;
 let nodeTop;
 let nodeLogs;
 let autoStatusBadge;
+let statsElements = null;
+let currentBadgeState = null;
+let lastTopJson = '';
+let lastLogsJson = '';
 
 const cleanIP = ip => {
 	if (!ip) return '-';
@@ -66,9 +70,10 @@ const injectStyles = () => {
 		'.mosdns-stat-card .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.85rem; opacity: 0.75; font-weight: 500; }',
 		'.mosdns-stat-card .metric-val { font-size: 1.85rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }',
 		'.mosdns-stat-card .subtext { font-size: 0.8rem; opacity: 0.6; margin-top: 0.4rem; }',
-		'.mosdns-sparkline-wrap { margin-top: 0.5rem; height: 44px; position: relative; overflow: visible; display: flex; align-items: flex-end; }',
+		'.mosdns-sparkline-wrap { margin-top: 0.5rem; height: 44px; position: relative; overflow: visible; display: flex; align-items: flex-end; touch-action: none; -webkit-user-select: none; user-select: none; }',
 		'.mosdns-sparkline { width: 100%; height: 100%; display: block; overflow: visible; }',
 		'.mosdns-sparkline-tooltip { position: absolute; pointer-events: none; z-index: 20; padding: 0.25rem 0.5rem; border-radius: 5px; background: var(--cbi-section-bg, #fff); border: 1px solid rgba(0,0,0,0.12); box-shadow: 0 3px 10px rgba(0,0,0,0.12); line-height: 1.25; text-align: center; white-space: nowrap; transition: opacity 0.15s ease; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }',
+		'.spark-hover-hitbox { touch-action: none; -webkit-user-select: none; user-select: none; cursor: crosshair; }',
 		'.mosdns-rank-panel { background: var(--cbi-section-bg, #fff); border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; padding: 1rem 1.1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }',
 		'.mosdns-rank-panel h4 { margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }',
 		'.mosdns-rank-item { position: relative; overflow: hidden; border-radius: 6px; padding: 0.35rem 0.65rem; display: flex; justify-content: space-between; align-items: center; background: rgba(125,125,125,0.03); border: 1px solid rgba(125,125,125,0.08); margin-bottom: 0.35rem; }',
@@ -143,7 +148,15 @@ const getLatencyClass = elapsedMs => {
 
 const updateLiveStatusBadge = () => {
 	if (!autoStatusBadge) return;
-	if (pageIdx === 0 && !searchVal && !isUserPaused) {
+	const isLive = (pageIdx === 0 && !searchVal && !isUserPaused);
+	const targetState = isLive ? 'live' : ('paused:' + pageIdx);
+
+	if (currentBadgeState === targetState)
+		return;
+
+	currentBadgeState = targetState;
+
+	if (isLive) {
 		dom.content(autoStatusBadge, [
 			E('span', { class: 'mosdns-badge badge-teal badge-pulse' }, _('● Live Auto-refresh'))
 		]);
@@ -154,47 +167,17 @@ const updateLiveStatusBadge = () => {
 	}
 };
 
-const createSparklineSVG = (dataItems, strokeColor, fillGradId, maxScale) => {
+const createSparklineSVG = (strokeColor, fillGradId) => {
 	const width = 300;
 	const height = 44;
 	const padTop = 4;
 	const padBottom = 2;
 	const drawHeight = height - padTop - padBottom;
 
-	let items = (dataItems && dataItems.length > 0) ? dataItems : [];
-	if (!items.length) {
-		items = new Array(24).fill(0).map(() => ({ time: '', val: 0 }));
-	}
-	if (items.length < 2) {
-		items = [items[0] || { time: '', val: 0 }, items[0] || { time: '', val: 0 }];
-	}
-
-	const vals = items.map(i => i.val || 0);
-	const maxVal = maxScale || Math.max(...vals, 1);
-	const len = items.length;
-
-	const coords = items.map((item, idx) => {
-		const x = (idx / (len - 1)) * width;
-		const y = height - padBottom - ((item.val || 0) / maxVal) * drawHeight;
-		return { x, y, time: item.time, val: item.val || 0 };
-	});
-
-	let pathD = 'M ' + coords[0].x.toFixed(1) + ',' + coords[0].y.toFixed(1);
-	for (let i = 0; i < coords.length - 1; i++) {
-		const p0 = coords[i === 0 ? 0 : i - 1];
-		const p1 = coords[i];
-		const p2 = coords[i + 1];
-		const p3 = coords[i + 2 < coords.length ? i + 2 : i + 1];
-
-		const cp1x = p1.x + (p2.x - p0.x) / 6;
-		const cp1y = p1.y + (p2.y - p0.y) / 6;
-		const cp2x = p2.x - (p3.x - p1.x) / 6;
-		const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-		pathD += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) + ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) + ' ' + p2.x.toFixed(1) + ',' + p2.y.toFixed(1);
-	}
-
-	const areaD = pathD + ' L ' + width + ',' + height + ' L 0,' + height + ' Z';
+	let coords = [];
+	let isHovered = false;
+	let currentIdx = -1;
+	let hideTimer = null;
 
 	const svgContainer = E('div', { class: 'mosdns-sparkline-wrap' });
 	svgContainer.innerHTML =
@@ -205,27 +188,26 @@ const createSparklineSVG = (dataItems, strokeColor, fillGradId, maxScale) => {
 					'<stop offset="100%" stop-color="' + strokeColor + '" stop-opacity="0.02" />' +
 				'</linearGradient>' +
 			'</defs>' +
-			'<path d="' + areaD + '" fill="url(#' + fillGradId + ')" />' +
-			'<path d="' + pathD + '" fill="none" stroke="' + strokeColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />' +
+			'<path class="spark-area-path" fill="url(#' + fillGradId + ')" />' +
+			'<path class="spark-line-path" fill="none" stroke="' + strokeColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />' +
 			'<g class="spark-hover-group" style="display: none;">' +
 				'<line class="spark-hover-line" x1="0" y1="' + padTop + '" x2="0" y2="' + (height - padBottom) + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.6" />' +
 				'<circle class="spark-hover-dot" cx="0" cy="0" r="3.5" fill="' + strokeColor + '" stroke="#fff" stroke-width="1.5" />' +
 			'</g>' +
-			'<rect width="' + width + '" height="' + height + '" fill="transparent" class="spark-hover-hitbox" style="cursor: crosshair;" />' +
+			'<rect width="' + width + '" height="' + height + '" fill="transparent" class="spark-hover-hitbox" />' +
 		'</svg>' +
 		'<div class="mosdns-sparkline-tooltip" style="display: none;"></div>';
 
+	const areaPath = svgContainer.querySelector('.spark-area-path');
+	const linePath = svgContainer.querySelector('.spark-line-path');
 	const hoverGroup = svgContainer.querySelector('.spark-hover-group');
 	const hoverLine = svgContainer.querySelector('.spark-hover-line');
 	const hoverDot = svgContainer.querySelector('.spark-hover-dot');
 	const hitbox = svgContainer.querySelector('.spark-hover-hitbox');
 	const tooltip = svgContainer.querySelector('.mosdns-sparkline-tooltip');
 
-	const onMove = e => {
-		const rect = svgContainer.getBoundingClientRect();
-		const mouseX = e.clientX - rect.left;
-		const ratio = Math.max(0, Math.min(1, mouseX / rect.width));
-		const idx = Math.round(ratio * (len - 1));
+	const renderTooltipAndHover = idx => {
+		if (idx < 0 || idx >= coords.length) return;
 		const coord = coords[idx];
 		if (!coord) return;
 
@@ -251,10 +233,14 @@ const createSparklineSVG = (dataItems, strokeColor, fillGradId, maxScale) => {
 			'<div style="font-size: 0.72rem; opacity: 0.75; margin-top: 0.15rem;">' + timeStr + '</div>';
 		tooltip.style.display = 'block';
 
-		const tooltipX = (coord.x / width) * rect.width;
+		const rect = svgContainer.getBoundingClientRect();
+		const containerWidth = rect.width || width;
+		const tooltipX = (coord.x / width) * containerWidth;
+		const ratio = coord.x / width;
+
 		if (ratio > 0.65) {
 			tooltip.style.left = 'auto';
-			tooltip.style.right = (rect.width - tooltipX + 8) + 'px';
+			tooltip.style.right = (containerWidth - tooltipX + 8) + 'px';
 		} else {
 			tooltip.style.left = (tooltipX + 8) + 'px';
 			tooltip.style.right = 'auto';
@@ -262,21 +248,203 @@ const createSparklineSVG = (dataItems, strokeColor, fillGradId, maxScale) => {
 		tooltip.style.top = '-6px';
 	};
 
-	const onLeave = () => {
-		hoverGroup.style.display = 'none';
-		tooltip.style.display = 'none';
+	const update = (dataItems, maxScale) => {
+		let items = (dataItems && dataItems.length > 0) ? dataItems : [];
+		if (!items.length) {
+			items = new Array(24).fill(0).map(() => ({ time: '', val: 0 }));
+		}
+		if (items.length < 2) {
+			items = [items[0] || { time: '', val: 0 }, items[0] || { time: '', val: 0 }];
+		}
+
+		const vals = items.map(i => i.val || 0);
+		const maxVal = maxScale || Math.max(...vals, 1);
+		const len = items.length;
+
+		coords = items.map((item, idx) => {
+			const x = (idx / (len - 1)) * width;
+			const y = height - padBottom - ((item.val || 0) / maxVal) * drawHeight;
+			return { x, y, time: item.time, val: item.val || 0 };
+		});
+
+		let pathD = 'M ' + coords[0].x.toFixed(1) + ',' + coords[0].y.toFixed(1);
+		for (let i = 0; i < coords.length - 1; i++) {
+			const p0 = coords[i === 0 ? 0 : i - 1];
+			const p1 = coords[i];
+			const p2 = coords[i + 1];
+			const p3 = coords[i + 2 < coords.length ? i + 2 : i + 1];
+
+			const cp1x = p1.x + (p2.x - p0.x) / 6;
+			const cp1y = p1.y + (p2.y - p0.y) / 6;
+			const cp2x = p2.x - (p3.x - p1.x) / 6;
+			const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+			pathD += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) + ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) + ' ' + p2.x.toFixed(1) + ',' + p2.y.toFixed(1);
+		}
+
+		const areaD = pathD + ' L ' + width + ',' + height + ' L 0,' + height + ' Z';
+
+		areaPath.setAttribute('d', areaD);
+		linePath.setAttribute('d', pathD);
+
+		if (isHovered && currentIdx >= 0) {
+			renderTooltipAndHover(currentIdx);
+		}
 	};
 
-	hitbox.addEventListener('mousemove', onMove);
-	hitbox.addEventListener('mouseleave', onLeave);
+	const onPositionMove = clientX => {
+		if (hideTimer) {
+			clearTimeout(hideTimer);
+			hideTimer = null;
+		}
+		const rect = svgContainer.getBoundingClientRect();
+		if (!rect.width || !coords.length) return;
+		const mouseX = clientX - rect.left;
+		const ratio = Math.max(0, Math.min(1, mouseX / rect.width));
+		const idx = Math.round(ratio * (coords.length - 1));
+		currentIdx = idx;
+		isHovered = true;
+		renderTooltipAndHover(idx);
+	};
 
+	const onLeave = (delay = 0) => {
+		if (delay > 0) {
+			if (hideTimer) clearTimeout(hideTimer);
+			hideTimer = setTimeout(() => {
+				isHovered = false;
+				currentIdx = -1;
+				hoverGroup.style.display = 'none';
+				tooltip.style.display = 'none';
+				hideTimer = null;
+			}, delay);
+		} else {
+			if (hideTimer) {
+				clearTimeout(hideTimer);
+				hideTimer = null;
+			}
+			isHovered = false;
+			currentIdx = -1;
+			hoverGroup.style.display = 'none';
+			tooltip.style.display = 'none';
+		}
+	};
+
+	hitbox.addEventListener('mousemove', e => onPositionMove(e.clientX));
+	hitbox.addEventListener('mouseenter', e => onPositionMove(e.clientX));
+	hitbox.addEventListener('mouseleave', () => onLeave(0));
+
+	hitbox.addEventListener('touchstart', e => {
+		if (e.touches && e.touches.length > 0) {
+			onPositionMove(e.touches[0].clientX);
+		}
+	}, { passive: true });
+
+	hitbox.addEventListener('touchmove', e => {
+		if (e.touches && e.touches.length > 0) {
+			onPositionMove(e.touches[0].clientX);
+		}
+	}, { passive: true });
+
+	hitbox.addEventListener('touchend', () => onLeave(1500), { passive: true });
+	hitbox.addEventListener('touchcancel', () => onLeave(0), { passive: true });
+
+	svgContainer.update = update;
 	return svgContainer;
 };
 
-const renderOverviewStats = (stats, historyData) => {
+const createOverviewStatsDOM = () => {
+	const metricTotal = E('div', { class: 'metric-val' }, '-');
+	const subtextTotal = E('div', { class: 'subtext' }, '-');
+	const sparklineTotal = createSparklineSVG('#3b82f6', 'spark-grad-total');
+
+	const badgeBlocked = E('span', { class: 'mosdns-badge badge-danger' }, '-');
+	const metricBlocked = E('div', { class: 'metric-val', style: 'color: #dc2626;' }, '-');
+	const sparklineBlocked = createSparklineSVG('#dc2626', 'spark-grad-blocked');
+
+	const badgeCached = E('span', { class: 'mosdns-badge badge-teal' }, '-');
+	const metricCached = E('div', { class: 'metric-val', style: 'color: #059669;' }, '-');
+	const sparklineCached = createSparklineSVG('#059669', 'spark-grad-cached');
+
+	const metricLatency = E('div', { class: 'metric-val', style: 'color: #2563eb;' }, '-');
+	const subtextLatency = E('div', { class: 'subtext' }, _('Per-query speed'));
+
+	const grid = E('div', { class: 'mosdns-grid' }, [
+		E('div', { class: 'mosdns-stat-card' }, [
+			E('div', {}, [
+				E('div', { class: 'title-row' }, [
+					E('span', {}, _('DNS Queries Total')),
+					E('span', { class: 'mosdns-badge badge-teal badge-pulse' }, _('● Live'))
+				]),
+				metricTotal,
+				subtextTotal
+			]),
+			sparklineTotal
+		]),
+
+		E('div', { class: 'mosdns-stat-card' }, [
+			E('div', {}, [
+				E('div', { class: 'title-row' }, [
+					E('span', {}, _('Blocked by Filters')),
+					badgeBlocked
+				]),
+				metricBlocked
+			]),
+			sparklineBlocked
+		]),
+
+		E('div', { class: 'mosdns-stat-card' }, [
+			E('div', {}, [
+				E('div', { class: 'title-row' }, [
+					E('span', {}, _('Cached Queries')),
+					badgeCached
+				]),
+				metricCached
+			]),
+			sparklineCached
+		]),
+
+		E('div', { class: 'mosdns-stat-card' }, [
+			E('div', {}, [
+				E('div', { class: 'title-row' }, [
+					E('span', {}, _('Average Processing Time')),
+					E('span', { class: 'mosdns-badge badge-primary' }, _('Latency'))
+				]),
+				metricLatency,
+				subtextLatency
+			])
+		])
+	]);
+
+	statsElements = {
+		grid,
+		metricTotal,
+		subtextTotal,
+		sparklineTotal,
+		badgeBlocked,
+		metricBlocked,
+		sparklineBlocked,
+		badgeCached,
+		metricCached,
+		sparklineCached,
+		metricLatency,
+		subtextLatency
+	};
+
+	return grid;
+};
+
+const updateOverviewStats = (stats, historyData) => {
 	if (!stats || stats.error) {
-		return E('div', { class: 'alert-message warning' },
-			_('MosDNS API is unreachable. Please ensure MosDNS is running and stats_api plugin is enabled.'));
+		if (nodeStats) {
+			dom.content(nodeStats, E('div', { class: 'alert-message warning' },
+				_('MosDNS API is unreachable. Please ensure MosDNS is running and stats_api plugin is enabled.')));
+			statsElements = null;
+		}
+		return;
+	}
+
+	if (!statsElements || !nodeStats.contains(statsElements.grid)) {
+		dom.content(nodeStats, createOverviewStatsDOM());
 	}
 
 	const {
@@ -295,52 +463,19 @@ const renderOverviewStats = (stats, historyData) => {
 
 	const baseMax = Math.max(...totalItems.map(i => i.val), 1);
 
-	return E('div', { class: 'mosdns-grid' }, [
-		E('div', { class: 'mosdns-stat-card' }, [
-			E('div', {}, [
-				E('div', { class: 'title-row' }, [
-					E('span', {}, _('DNS Queries Total')),
-					E('span', { class: 'mosdns-badge badge-teal badge-pulse' }, _('● Live'))
-				]),
-				E('div', { class: 'metric-val' }, total.toLocaleString()),
-				E('div', { class: 'subtext' }, _('Avg Processing') + ': ' + avg_ms + ' ms')
-			]),
-			createSparklineSVG(totalItems, '#3b82f6', 'spark-grad-total', baseMax)
-		]),
+	statsElements.metricTotal.textContent = total.toLocaleString();
+	statsElements.subtextTotal.textContent = _('Avg Processing') + ': ' + avg_ms + ' ms';
+	statsElements.sparklineTotal.update(totalItems, baseMax);
 
-		E('div', { class: 'mosdns-stat-card' }, [
-			E('div', {}, [
-				E('div', { class: 'title-row' }, [
-					E('span', {}, _('Blocked by Filters')),
-					E('span', { class: 'mosdns-badge badge-danger' }, blocked_pct + '%')
-				]),
-				E('div', { class: 'metric-val', style: 'color: #dc2626;' }, blocked.toLocaleString())
-			]),
-			createSparklineSVG(blockedItems, '#dc2626', 'spark-grad-blocked', baseMax)
-		]),
+	statsElements.badgeBlocked.textContent = blocked_pct + '%';
+	statsElements.metricBlocked.textContent = blocked.toLocaleString();
+	statsElements.sparklineBlocked.update(blockedItems, baseMax);
 
-		E('div', { class: 'mosdns-stat-card' }, [
-			E('div', {}, [
-				E('div', { class: 'title-row' }, [
-					E('span', {}, _('Cached Queries')),
-					E('span', { class: 'mosdns-badge badge-teal' }, cached_pct + '%')
-				]),
-				E('div', { class: 'metric-val', style: 'color: #059669;' }, cached.toLocaleString())
-			]),
-			createSparklineSVG(cachedItems, '#059669', 'spark-grad-cached', baseMax)
-		]),
+	statsElements.badgeCached.textContent = cached_pct + '%';
+	statsElements.metricCached.textContent = cached.toLocaleString();
+	statsElements.sparklineCached.update(cachedItems, baseMax);
 
-		E('div', { class: 'mosdns-stat-card' }, [
-			E('div', {}, [
-				E('div', { class: 'title-row' }, [
-					E('span', {}, _('Average Processing Time')),
-					E('span', { class: 'mosdns-badge badge-primary' }, _('Latency'))
-				]),
-				E('div', { class: 'metric-val', style: 'color: #2563eb;' }, avg_ms + ' ms'),
-				E('div', { class: 'subtext' }, _('Per-query speed'))
-			])
-		])
-	]);
+	statsElements.metricLatency.textContent = avg_ms + ' ms';
 };
 
 const renderTopRankings = topData => {
@@ -396,6 +531,13 @@ const renderTopRankings = topData => {
 			renderList(top_clients, 'client_ip', '#059669', true)
 		])
 	]);
+};
+
+const updateTopRankings = topData => {
+	const json = JSON.stringify(topData || {});
+	if (json === lastTopJson) return;
+	lastTopJson = json;
+	dom.content(nodeTop, renderTopRankings(topData));
 };
 
 const showLogDetailsModal = item => {
@@ -579,11 +721,15 @@ const pollScheduler = async () => {
 
 		const results = await Promise.all(promises);
 
-		dom.content(nodeStats, renderOverviewStats(results[0], results[2]));
-		dom.content(nodeTop, renderTopRankings(results[1]));
+		updateOverviewStats(results[0], results[2]);
+		updateTopRankings(results[1]);
 
 		if (shouldRefreshLogs && results[3]) {
-			dom.content(nodeLogs, renderLogsTable(results[3]));
+			const json = JSON.stringify(results[3]);
+			if (json !== lastLogsJson) {
+				lastLogsJson = json;
+				dom.content(nodeLogs, renderLogsTable(results[3]));
+			}
 		}
 		updateLiveStatusBadge();
 	} catch (e) {
@@ -593,6 +739,7 @@ const pollScheduler = async () => {
 const refreshLogs = async () => {
 	try {
 		const logs = await callGetLogs(PAGE_SIZE, pageIdx * PAGE_SIZE, searchVal, filterVal);
+		lastLogsJson = JSON.stringify(logs || {});
 		dom.content(nodeLogs, renderLogsTable(logs));
 		updateLiveStatusBadge();
 	} catch (e) {
@@ -613,13 +760,19 @@ return view.extend({
 	render(data) {
 		injectStyles();
 
+		statsElements = null;
+		currentBadgeState = null;
+		lastTopJson = '';
+		lastLogsJson = '';
+
 		nodeStats = E('div', { id: 'overview-stats' });
 		nodeTop = E('div', { id: 'top-rankings' });
 		nodeLogs = E('div', { id: 'logs-table' });
 		autoStatusBadge = E('div', { style: 'display: inline-block;' });
 
-		dom.content(nodeStats, renderOverviewStats(data[0], data[3]));
-		dom.content(nodeTop, renderTopRankings(data[1]));
+		updateOverviewStats(data[0], data[3]);
+		updateTopRankings(data[1]);
+		lastLogsJson = JSON.stringify(data[2] || {});
 		dom.content(nodeLogs, renderLogsTable(data[2]));
 		updateLiveStatusBadge();
 
