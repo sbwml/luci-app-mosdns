@@ -1,0 +1,74 @@
+From 68799cf43340bf2e9e0b7145ea961d69ca45d6fe Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Mon, 31 Aug 2026 22:49:01 +0800
+Subject: [PATCH] feat(stats_api): exclude blocked queries from cache hit
+ percentage
+
+Calculate cache hit rate based on unblocked queries (total - blocked)
+instead of total queries to prevent ad blocking from skewing the stats.
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      |  7 +++-
+ plugin/executable/stats_api/stats_api_test.go | 35 +++++++++++++++++++
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -629,9 +629,14 @@ func (s *StatsAPI) handleStats(w http.Re
+ 	var blockedPct, cachedPct, avgLat float64
+ 	if total > 0 {
+ 		blockedPct = float64(blocked) / float64(total) * 100.0
+-		cachedPct = float64(cached) / float64(total) * 100.0
+ 		avgLat = (float64(latUs) / float64(total)) / 1000.0
+ 	}
++	if total > blocked {
++		cachedPct = float64(cached) / float64(total-blocked) * 100.0
++		if cachedPct > 100.0 {
++			cachedPct = 100.0
++		}
++	}
+ 
+ 	blockedPct = math.Round(blockedPct*100) / 100
+ 	cachedPct = math.Round(cachedPct*100) / 100
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -511,3 +511,38 @@ func TestStatsAPINonExistentDumpFile(t *
+ 		t.Errorf("expected 0 total queries, got %d", s.totalQueries.Load())
+ 	}
+ }
++
++func TestStatsAPICachedPercentageExcludesBlocked(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
++	router := s.Router()
++
++	// 100 total queries: 50 blocked, 25 cached, 25 forwarded to upstream
++	s.totalQueries.Store(100)
++	s.blockedQueries.Store(50)
++	s.cachedQueries.Store(25)
++	s.totalLatencyUs.Store(50000)
++
++	req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
++	w := httptest.NewRecorder()
++	router.ServeHTTP(w, req)
++
++	if w.Code != http.StatusOK {
++		t.Fatalf("expected HTTP 200, got %d", w.Code)
++	}
++
++	var statsResp map[string]any
++	if err := json.Unmarshal(w.Body.Bytes(), &statsResp); err != nil {
++		t.Fatalf("failed to unmarshal stats response: %v", err)
++	}
++
++	// blocked_percentage = 50 / 100 = 50%
++	if blockedPct := statsResp["blocked_percentage"].(float64); blockedPct != 50.0 {
++		t.Errorf("expected blocked_percentage 50.0, got %v", blockedPct)
++	}
++
++	// cached_percentage = 25 / (100 - 50) = 50% (previously 25%)
++	if cachedPct := statsResp["cached_percentage"].(float64); cachedPct != 50.0 {
++		t.Errorf("expected cached_percentage 50.0, got %v", cachedPct)
++	}
++}
++
