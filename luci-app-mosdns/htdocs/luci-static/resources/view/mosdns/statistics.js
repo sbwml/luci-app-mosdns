@@ -38,6 +38,12 @@ const callClearQueryLogs = rpc.declare({
 	expect: { '': {} }
 });
 
+const callGetLeases = rpc.declare({
+	object: 'luci.mosdns',
+	method: 'get_leases',
+	expect: { '': {} }
+});
+
 let filterVal = 'all';
 let searchVal = '';
 let pageIdx = 0;
@@ -52,10 +58,33 @@ let statsElements = null;
 let currentBadgeState = null;
 let lastTopJson = '';
 let lastLogsJson = '';
+let clientLeases = {};
 
 const cleanIP = ip => {
 	if (!ip) return '-';
 	return ip.replace(/^::ffff:/i, '');
+};
+
+const getClientDisplay = ip => {
+	const cleaned = cleanIP(ip);
+	if (!cleaned || cleaned === '-') return { display: '-', title: '-', host: null, ip: '-' };
+
+	const host = clientLeases[cleaned] || clientLeases[cleaned.toLowerCase()] || clientLeases[ip] || clientLeases[ip?.toLowerCase?.()];
+	if (host && host !== '*' && host !== 'unknown' && host !== '') {
+		return {
+			display: `${host} (${cleaned})`,
+			title: `${host} (${cleaned})`,
+			host: host,
+			ip: cleaned
+		};
+	}
+
+	return {
+		display: cleaned,
+		title: cleaned,
+		host: null,
+		ip: cleaned
+	};
 };
 
 const injectStyles = () => {
@@ -490,8 +519,14 @@ const renderTopRankings = topData => {
 		const maxCount = Math.max(...items.map(i => i.count || 1));
 		return E('div', { style: 'display: flex; flex-direction: column;' },
 			items.map(item => {
-				let val = item[key] || '-';
-				if (isClient) val = cleanIP(val);
+				let rawVal = item[key] || '-';
+				let valText = rawVal;
+				let valTitle = rawVal;
+				if (isClient) {
+					const clientInfo = getClientDisplay(rawVal);
+					valText = clientInfo.display;
+					valTitle = clientInfo.title;
+				}
 				const cnt = item.count || 0;
 				const pct = Math.round((cnt / maxCount) * 100);
 
@@ -500,8 +535,8 @@ const renderTopRankings = topData => {
 					E('span', {
 						class: 'mosdns-mono',
 						style: 'font-size: 0.82rem; z-index: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5rem;',
-						title: val
-					}, val),
+						title: valTitle
+					}, valText),
 					E('span', { class: 'mosdns-badge badge-neutral mosdns-mono', style: 'z-index: 1;' }, cnt.toLocaleString())
 				]);
 			})
@@ -534,6 +569,9 @@ const renderTopRankings = topData => {
 };
 
 const updateTopRankings = topData => {
+	if (topData?.leases && typeof topData.leases === 'object') {
+		clientLeases = Object.assign(clientLeases, topData.leases);
+	}
 	const json = JSON.stringify(topData || {});
 	if (json === lastTopJson) return;
 	lastTopJson = json;
@@ -570,6 +608,8 @@ const showLogDetailsModal = item => {
 		}, _('No DNS answer records returned.'));
 	}
 
+	const clientInfo = getClientDisplay(item.client_ip);
+
 	const body = E('div', { style: 'padding: 0.25rem 0;' }, [
 		E('div', { class: 'mosdns-modal-header' }, [
 			E('div', { class: 'mosdns-modal-domain' }, [
@@ -585,7 +625,7 @@ const showLogDetailsModal = item => {
 		E('div', { class: 'mosdns-modal-meta-grid' }, [
 			E('div', { class: 'mosdns-modal-meta-item' }, [
 				E('div', { class: 'meta-label' }, _('Client IP')),
-				E('div', { class: 'meta-val mosdns-mono' }, cleanIP(item.client_ip))
+				E('div', { class: 'meta-val mosdns-mono' }, clientInfo.display)
 			]),
 			E('div', { class: 'mosdns-modal-meta-item' }, [
 				E('div', { class: 'meta-label' }, _('Time')),
@@ -639,9 +679,15 @@ const renderLogsTable = logsData => {
 			? item.answers.map(a => a.data + ' (' + a.type + ')').join(', ')
 			: '-';
 
+		const clientInfo = getClientDisplay(item.client_ip);
+
 		return E('tr', { class: 'tr' }, [
 			E('td', { class: 'td', style: 'font-size: 0.82rem; opacity: 0.7; white-space: nowrap;' }, formatTimestamp(item.timestamp)),
-			E('td', { class: 'td mosdns-mono', style: 'font-size: 0.82rem; white-space: nowrap;' }, cleanIP(item.client_ip)),
+			E('td', {
+				class: 'td mosdns-mono',
+				style: 'font-size: 0.82rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
+				title: clientInfo.title
+			}, clientInfo.display),
 			E('td', { class: 'td', style: 'max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', title: item.domain || '-' }, [
 				E('span', { class: 'mosdns-mono', style: 'font-weight: 600;' }, item.domain || '-'),
 				E('span', { class: 'badge-qtype' }, item.qtype || 'A')
@@ -753,7 +799,8 @@ return view.extend({
 			L.resolveDefault(callGetStats(), {}),
 			L.resolveDefault(callGetTop(10), {}),
 			L.resolveDefault(callGetLogs(PAGE_SIZE, 0, searchVal, filterVal), {}),
-			L.resolveDefault(callGetHistory(24), {})
+			L.resolveDefault(callGetHistory(24), {}),
+			L.resolveDefault(callGetLeases(), {})
 		]);
 	},
 
@@ -764,6 +811,14 @@ return view.extend({
 		currentBadgeState = null;
 		lastTopJson = '';
 		lastLogsJson = '';
+		clientLeases = {};
+
+		if (data[4]?.leases) {
+			clientLeases = Object.assign(clientLeases, data[4].leases);
+		}
+		if (data[1]?.leases) {
+			clientLeases = Object.assign(clientLeases, data[1].leases);
+		}
 
 		nodeStats = E('div', { id: 'overview-stats' });
 		nodeTop = E('div', { id: 'top-rankings' });

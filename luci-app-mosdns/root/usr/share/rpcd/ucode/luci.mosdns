@@ -88,6 +88,91 @@ function call_mosdns_api(endpoint, method) {
 	}
 }
 
+function get_client_leases() {
+	let leases = {};
+
+	let add_lease = function(ip, name) {
+		if (!ip || !name) return;
+		ip = replace(ip, /^\s+|\s+$/g, '');
+		name = replace(name, /^\s+|\s+$/g, '');
+		if (ip == "" || name == "" || name == "*" || name == "unknown") return;
+
+		ip = replace(ip, /\/[0-9]+$/, '');
+		ip = replace(ip, /^::ffff:/i, '');
+
+		leases[ip] = name;
+		try {
+			if (type(lc) == 'function') {
+				leases[lc(ip)] = name;
+			}
+		} catch (e) {}
+	};
+
+	let parse_hosts_file = function(filepath) {
+		try {
+			if (stat(filepath)) {
+				let content = readfile(filepath);
+				if (content) {
+					let lines = split(content, '\n');
+					for (let i = 0; i < length(lines); i++) {
+						let line = replace(lines[i], /^\s+|\s+$/g, '');
+						if (line == "" || match(line, /^#/)) continue;
+						let parts = split(line, /[ \t]+/);
+						if (length(parts) >= 2) {
+							add_lease(parts[0], parts[1]);
+						}
+					}
+				}
+			}
+		} catch (e) {}
+	};
+
+	try {
+		if (stat('/tmp/dhcp.leases')) {
+			let content = readfile('/tmp/dhcp.leases');
+			if (content) {
+				let lines = split(content, '\n');
+				for (let i = 0; i < length(lines); i++) {
+					let line = replace(lines[i], /^\s+|\s+$/g, '');
+					if (line == "" || match(line, /^#/)) continue;
+					let parts = split(line, /[ \t]+/);
+					if (length(parts) >= 4) {
+						add_lease(parts[2], parts[3]);
+					}
+				}
+			}
+		}
+	} catch (e) {}
+
+	parse_hosts_file('/tmp/hosts/odhcpd');
+
+	parse_hosts_file('/tmp/hosts/dhcp');
+
+	try {
+		if (stat('/tmp/odhcpd.leases')) {
+			let content = readfile('/tmp/odhcpd.leases');
+			if (content) {
+				let lines = split(content, '\n');
+				for (let i = 0; i < length(lines); i++) {
+					let line = replace(lines[i], /^\s+|\s+$/g, '');
+					if (line == "" || match(line, /^#/)) continue;
+					let parts = split(line, /[ \t]+/);
+					if (length(parts) >= 6) {
+						let host = parts[3];
+						for (let j = 5; j < length(parts); j++) {
+							add_lease(parts[j], host);
+						}
+					}
+				}
+			}
+		}
+	} catch (e) {}
+
+	parse_hosts_file('/etc/hosts');
+
+	return leases;
+}
+
 const methods = {
 	get_stats: {
 		call: function() {
@@ -107,7 +192,17 @@ const methods = {
 		args: { limit: 10 },
 		call: function(request) {
 			let limit = request?.args?.limit || 10;
-			return call_mosdns_api(`/api/v1/top?limit=${limit}`, 'GET');
+			let res = call_mosdns_api(`/api/v1/top?limit=${limit}`, 'GET');
+			if (type(res) == 'object' && !res.error) {
+				res.leases = get_client_leases();
+			}
+			return res;
+		}
+	},
+
+	get_leases: {
+		call: function() {
+			return { leases: get_client_leases() };
 		}
 	},
 

@@ -3,9 +3,13 @@
 		"description": "Grant UCI access for luci-app-mosdns",
 		"read": {
 			"file": {
+				"/etc/hosts": [ "read" ],
 				"/etc/init.d/mosdns": [ "exec" ],
 				"/etc/mosdns/config_custom.yaml": [ "read" ],
 				"/etc/mosdns/rule/*": [ "read" ],
+				"/tmp/dhcp.leases": [ "read" ],
+				"/tmp/hosts/*": [ "read" ],
+				"/tmp/odhcpd.leases": [ "read" ],
 				"/usr/bin/mosdns": [ "exec" ],
 				"/usr/share/mosdns/mosdns.uc": [ "exec" ],
 				"/var/log/*": [ "read" ],
@@ -19,6 +23,7 @@
 					"clear_query_logs",
 					"flush_cache",
 					"get_history",
+					"get_leases",
 					"get_logs",
 					"get_stats",
 					"get_top",
