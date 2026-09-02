@@ -385,6 +385,7 @@ const createOverviewStatsDOM = () => {
 	const metricTotal = E('div', { class: 'metric-val' }, '-');
 	const subtextTotal = E('div', { class: 'subtext' }, '-');
 	const sparklineTotal = createSparklineSVG('#3b82f6', 'spark-grad-total');
+	const badgeQps = E('span', { class: 'mosdns-badge badge-teal badge-pulse' }, _('● Live') + ' - QPS');
 
 	const badgeBlocked = E('span', { class: 'mosdns-badge badge-danger' }, '-');
 	const metricBlocked = E('div', { class: 'metric-val', style: 'color: #dc2626;' }, '-');
@@ -402,7 +403,7 @@ const createOverviewStatsDOM = () => {
 			E('div', {}, [
 				E('div', { class: 'title-row' }, [
 					E('span', {}, _('DNS Queries Total')),
-					E('span', { class: 'mosdns-badge badge-teal badge-pulse' }, _('● Live'))
+					badgeQps
 				]),
 				metricTotal,
 				subtextTotal
@@ -449,6 +450,7 @@ const createOverviewStatsDOM = () => {
 		metricTotal,
 		subtextTotal,
 		sparklineTotal,
+		badgeQps,
 		badgeBlocked,
 		metricBlocked,
 		sparklineBlocked,
@@ -482,7 +484,8 @@ const updateOverviewStats = (stats, historyData) => {
 		cached_queries: cached = 0,
 		blocked_percentage: blocked_pct = 0,
 		cached_percentage: cached_pct = 0,
-		avg_latency_ms: avg_ms = 0
+		avg_latency_ms: avg_ms = 0,
+		qps = 0
 	} = stats;
 
 	const points = historyData?.points || [];
@@ -495,6 +498,7 @@ const updateOverviewStats = (stats, historyData) => {
 	statsElements.metricTotal.textContent = total.toLocaleString();
 	statsElements.subtextTotal.textContent = _('Avg Processing') + ': ' + avg_ms + ' ms';
 	statsElements.sparklineTotal.update(totalItems, baseMax);
+	statsElements.badgeQps.textContent = _('● Live') + ' ' + (qps || 0) + ' QPS';
 
 	statsElements.badgeBlocked.textContent = blocked_pct + '%';
 	statsElements.metricBlocked.textContent = blocked.toLocaleString();
