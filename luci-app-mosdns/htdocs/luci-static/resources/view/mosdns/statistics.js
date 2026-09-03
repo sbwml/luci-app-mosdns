@@ -250,10 +250,16 @@ const createSparklineSVG = (strokeColor, fillGradId) => {
 		if (coord.time) {
 			const d = new Date(coord.time);
 			if (!isNaN(d)) {
+				const yyyy = d.getFullYear();
+				const mm = String(d.getMonth() + 1).padStart(2, '0');
+				const dd = String(d.getDate()).padStart(2, '0');
 				const hh = String(d.getHours()).padStart(2, '0');
-				timeStr = hh + ':00';
+				const min = String(d.getMinutes()).padStart(2, '0');
+				timeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+			} else if (coord.time.length >= 16 && coord.time.includes('T')) {
+				timeStr = coord.time.slice(0, 10) + ' ' + coord.time.slice(11, 16);
 			} else {
-				timeStr = coord.time.slice(11, 16) || coord.time;
+				timeStr = coord.time;
 			}
 		}
 
@@ -267,7 +273,7 @@ const createSparklineSVG = (strokeColor, fillGradId) => {
 		const tooltipX = (coord.x / width) * containerWidth;
 		const ratio = coord.x / width;
 
-		if (ratio > 0.65) {
+		if (ratio > 0.5) {
 			tooltip.style.left = 'auto';
 			tooltip.style.right = (containerWidth - tooltipX + 8) + 'px';
 		} else {
