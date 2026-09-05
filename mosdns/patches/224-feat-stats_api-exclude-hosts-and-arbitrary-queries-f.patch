@@ -1,0 +1,432 @@
+From aa3e90c717c234a3483716c81a349736b0d1b27c Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 3 Sep 2026 22:34:10 +0800
+Subject: [PATCH 2/3] feat(stats_api): exclude hosts and arbitrary queries from
+ cache hit percentage
+
+Exclude queries resolved by hosts and arbitrary plugins from the cache
+hit rate calculation (total - blocked - hosts - arbitrary), as locally
+resolved queries bypass cache and should not skew the cache hit rate.
+
+Also track hosts_queries and arbitrary_queries in stats endpoint and
+dump data.
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ pkg/query_context/context.go                  |  22 +++
+ plugin/executable/arbitrary/arbitrary.go      |   1 +
+ plugin/executable/cache/cache.go              |   2 +
+ plugin/executable/forward/forward.go          |   2 +
+ plugin/executable/hosts/hosts.go              |   1 +
+ plugin/executable/stats_api/stats_api.go      |  81 +++++++---
+ plugin/executable/stats_api/stats_api_test.go | 143 ++++++++++++++++++
+ 7 files changed, 227 insertions(+), 25 deletions(-)
+
+--- a/pkg/query_context/context.go
++++ b/pkg/query_context/context.go
+@@ -75,6 +75,8 @@ type Context struct {
+ 	UpstreamSelected *UpstreamLog
+ 	RuleHits         []RuleHit
+ 	CacheState       CacheLog
++	FromHosts        bool
++	FromArbitrary    bool
+ 
+ 	// lazy init.
+ 	kv    map[uint32]any
+@@ -107,6 +109,16 @@ func (ctx *Context) SetCacheState(hit, l
+ 	}
+ }
+ 
++func (ctx *Context) SetFromHosts() {
++	ctx.FromHosts = true
++	ctx.FromArbitrary = false
++}
++
++func (ctx *Context) SetFromArbitrary() {
++	ctx.FromArbitrary = true
++	ctx.FromHosts = false
++}
++
+ var contextUid atomic.Uint32
+ 
+ type ServerMeta = server.QueryMeta
+@@ -241,6 +253,9 @@ func (ctx *Context) CopyTo(d *Context) *
+ 	}
+ 	d.upstreamOpt = ctx.upstreamOpt
+ 
++	d.FromHosts = ctx.FromHosts
++	d.FromArbitrary = ctx.FromArbitrary
++
+ 	d.kv = copyMap(ctx.kv)
+ 	d.marks = copyMap(ctx.marks)
+ 	return d
+@@ -350,6 +365,13 @@ func (ctx *Context) MarshalLogObject(enc
+ 		return nil
+ 	}))
+ 
++	if ctx.FromHosts {
++		encoder.AddBool("hosts", true)
++	}
++	if ctx.FromArbitrary {
++		encoder.AddBool("arbitrary", true)
++	}
++
+ 	if r := ctx.resp; r != nil {
+ 		encoder.AddInt("rcode", r.Rcode)
+ 		encoder.AddInt("resp_size", r.Len())
+--- a/plugin/executable/arbitrary/arbitrary.go
++++ b/plugin/executable/arbitrary/arbitrary.go
+@@ -99,6 +99,7 @@ func (a *Arbitrary) Exec(_ context.Conte
+ 	if inner := a.m.Load(); inner != nil {
+ 		if r := inner.Reply(qCtx.Q()); r != nil {
+ 			qCtx.SetResponse(r)
++			qCtx.SetFromArbitrary()
+ 		}
+ 	}
+ 	return nil
+--- a/plugin/executable/cache/cache.go
++++ b/plugin/executable/cache/cache.go
+@@ -234,6 +234,8 @@ func (c *Cache) Exec(ctx context.Context
+ 		c.hitTotal.Inc()
+ 		cachedResp.Id = q.Id // change msg id
+ 		qCtx.SetResponse(cachedResp)
++		qCtx.FromHosts = false
++		qCtx.FromArbitrary = false
+ 		if v, _, ok := c.backend.Get(key(msgKey)); ok && v != nil {
+ 			v.hitCount.Add(1)
+ 			ttl := int(v.expirationTime.Sub(v.storedTime).Seconds())
+--- a/plugin/executable/forward/forward.go
++++ b/plugin/executable/forward/forward.go
+@@ -201,6 +201,8 @@ func (f *Forward) Exec(ctx context.Conte
+ 		return err
+ 	}
+ 	qCtx.SetResponse(r)
++	qCtx.FromHosts = false
++	qCtx.FromArbitrary = false
+ 	return nil
+ }
+ 
+--- a/plugin/executable/hosts/hosts.go
++++ b/plugin/executable/hosts/hosts.go
+@@ -113,6 +113,7 @@ func (h *Hosts) Exec(_ context.Context,
+ 		r := inner.LookupMsg(qCtx.Q())
+ 		if r != nil {
+ 			qCtx.SetResponse(r)
++			qCtx.SetFromHosts()
+ 		}
+ 	}
+ 	return nil
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -487,18 +487,20 @@ func (h *HistoryStats) Import(points map
+ }
+ 
+ type StatsDumpData struct {
+-	Version        int                         `json:"version"`
+-	Timestamp      int64                       `json:"timestamp"`
+-	TotalQueries   uint64                      `json:"total_queries"`
+-	BlockedQueries uint64                      `json:"blocked_queries"`
+-	CachedQueries  uint64                      `json:"cached_queries"`
+-	TotalLatencyUs uint64                      `json:"total_latency_us"`
+-	TopDomains     map[string]uint64           `json:"top_domains,omitempty"`
+-	TopClients     map[string]uint64           `json:"top_clients,omitempty"`
+-	TopBlocked     map[string]uint64           `json:"top_blocked,omitempty"`
+-	History        map[int64]HistoryBucketData `json:"history,omitempty"`
+-	Logs           []LogEntry                  `json:"logs,omitempty"`
+-	SeqID          uint64                      `json:"seq_id,omitempty"`
++	Version          int                         `json:"version"`
++	Timestamp        int64                       `json:"timestamp"`
++	TotalQueries     uint64                      `json:"total_queries"`
++	BlockedQueries   uint64                      `json:"blocked_queries"`
++	CachedQueries    uint64                      `json:"cached_queries"`
++	HostsQueries     uint64                      `json:"hosts_queries,omitempty"`
++	ArbitraryQueries uint64                      `json:"arbitrary_queries,omitempty"`
++	TotalLatencyUs   uint64                      `json:"total_latency_us"`
++	TopDomains       map[string]uint64           `json:"top_domains,omitempty"`
++	TopClients       map[string]uint64           `json:"top_clients,omitempty"`
++	TopBlocked       map[string]uint64           `json:"top_blocked,omitempty"`
++	History          map[int64]HistoryBucketData `json:"history,omitempty"`
++	Logs             []LogEntry                  `json:"logs,omitempty"`
++	SeqID            uint64                      `json:"seq_id,omitempty"`
+ }
+ 
+ type StatsAPI struct {
+@@ -509,11 +511,13 @@ type StatsAPI struct {
+ 	topStats     *TopStats
+ 	historyStats *HistoryStats
+ 
+-	totalQueries   atomic.Uint64
+-	blockedQueries atomic.Uint64
+-	cachedQueries  atomic.Uint64
+-	totalLatencyUs atomic.Uint64
+-	currentQPS     atomic.Uint64
++	totalQueries     atomic.Uint64
++	blockedQueries   atomic.Uint64
++	cachedQueries    atomic.Uint64
++	hostsQueries     atomic.Uint64
++	arbitraryQueries atomic.Uint64
++	totalLatencyUs   atomic.Uint64
++	currentQPS       atomic.Uint64
+ 
+ 	updatedCount atomic.Uint64
+ 	closeNotify  chan struct{}
+@@ -626,6 +630,8 @@ func (s *StatsAPI) handleStats(w http.Re
+ 	total := s.totalQueries.Load()
+ 	blocked := s.blockedQueries.Load()
+ 	cached := s.cachedQueries.Load()
++	hosts := s.hostsQueries.Load()
++	arbitrary := s.arbitraryQueries.Load()
+ 	latUs := s.totalLatencyUs.Load()
+ 
+ 	var blockedPct, cachedPct, avgLat float64
+@@ -633,8 +639,9 @@ func (s *StatsAPI) handleStats(w http.Re
+ 		blockedPct = float64(blocked) / float64(total) * 100.0
+ 		avgLat = (float64(latUs) / float64(total)) / 1000.0
+ 	}
+-	if total > blocked {
+-		cachedPct = float64(cached) / float64(total-blocked) * 100.0
++	excluded := blocked + hosts + arbitrary
++	if total > excluded {
++		cachedPct = float64(cached) / float64(total-excluded) * 100.0
+ 		if cachedPct > 100.0 {
+ 			cachedPct = 100.0
+ 		}
+@@ -649,6 +656,8 @@ func (s *StatsAPI) handleStats(w http.Re
+ 		"total_queries":      total,
+ 		"blocked_queries":    blocked,
+ 		"cached_queries":     cached,
++		"hosts_queries":      hosts,
++		"arbitrary_queries":  arbitrary,
+ 		"blocked_percentage": blockedPct,
+ 		"cached_percentage":  cachedPct,
+ 		"avg_latency_ms":     avgLat,
+@@ -778,12 +787,14 @@ func (s *StatsAPI) writeDump(w io.Writer
+ 	gw.Name = statsDumpHeader
+ 
+ 	data := StatsDumpData{
+-		Version:        1,
+-		Timestamp:      time.Now().Unix(),
+-		TotalQueries:   s.totalQueries.Load(),
+-		BlockedQueries: s.blockedQueries.Load(),
+-		CachedQueries:  s.cachedQueries.Load(),
+-		TotalLatencyUs: s.totalLatencyUs.Load(),
++		Version:          1,
++		Timestamp:        time.Now().Unix(),
++		TotalQueries:     s.totalQueries.Load(),
++		BlockedQueries:   s.blockedQueries.Load(),
++		CachedQueries:    s.cachedQueries.Load(),
++		HostsQueries:     s.hostsQueries.Load(),
++		ArbitraryQueries: s.arbitraryQueries.Load(),
++		TotalLatencyUs:   s.totalLatencyUs.Load(),
+ 	}
+ 
+ 	data.TopDomains, data.TopClients, data.TopBlocked = s.topStats.Export()
+@@ -817,6 +828,8 @@ func (s *StatsAPI) readDump(r io.Reader)
+ 	s.totalQueries.Store(data.TotalQueries)
+ 	s.blockedQueries.Store(data.BlockedQueries)
+ 	s.cachedQueries.Store(data.CachedQueries)
++	s.hostsQueries.Store(data.HostsQueries)
++	s.arbitraryQueries.Store(data.ArbitraryQueries)
+ 	s.totalLatencyUs.Store(data.TotalLatencyUs)
+ 
+ 	s.topStats.Import(data.TopDomains, data.TopClients, data.TopBlocked)
+@@ -1022,10 +1035,24 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 		s.blockedQueries.Add(1)
+ 	}
+ 
++	isHosts := qCtx.FromHosts && !isBlocked && !isCached && qCtx.UpstreamSelected == nil
++	if isHosts {
++		s.hostsQueries.Add(1)
++	}
++
++	isArbitrary := qCtx.FromArbitrary && !isBlocked && !isCached && qCtx.UpstreamSelected == nil
++	if isArbitrary {
++		s.arbitraryQueries.Add(1)
++	}
++
+ 	// Extract Upstream information
+ 	var upstream string
+ 	if isCached {
+ 		upstream = "cache"
++	} else if isHosts {
++		upstream = "hosts"
++	} else if isArbitrary {
++		upstream = "arbitrary"
+ 	} else if u := qCtx.UpstreamSelected; u != nil {
+ 		if u.Addr != "" {
+ 			if !strings.Contains(u.Addr, "://") {
+@@ -1083,6 +1110,10 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 	if rule == "" {
+ 		if isCached {
+ 			rule = "cache"
++		} else if isHosts {
++			rule = "hosts"
++		} else if isArbitrary {
++			rule = "arbitrary"
+ 		} else {
+ 			rule = "-"
+ 		}
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -428,6 +428,12 @@ func TestStatsAPIPersistence(t *testing.
+ 		if i%3 == 0 {
+ 			s1.cachedQueries.Add(1)
+ 		}
++		if i%4 == 0 {
++			s1.hostsQueries.Add(1)
++		}
++		if i%5 == 0 {
++			s1.arbitraryQueries.Add(1)
++		}
+ 		s1.totalLatencyUs.Add(uint64(i * 5000))
+ 		s1.topStats.Record(fmt.Sprintf("test%d.com.", i), "192.168.1.100", i%2 == 0)
+ 		s1.historyStats.Record(time.Now(), i%2 == 0, i%3 == 0)
+@@ -479,6 +485,12 @@ func TestStatsAPIPersistence(t *testing.
+ 	if s2.cachedQueries.Load() != 3 {
+ 		t.Errorf("expected 3 cached queries after load, got %d", s2.cachedQueries.Load())
+ 	}
++	if s2.hostsQueries.Load() != 2 {
++		t.Errorf("expected 2 hosts queries after load, got %d", s2.hostsQueries.Load())
++	}
++	if s2.arbitraryQueries.Load() != 2 {
++		t.Errorf("expected 2 arbitrary queries after load, got %d", s2.arbitraryQueries.Load())
++	}
+ 
+ 	totalLogs, logs := s2.ringBuffer.QueryLogs(10, 0, "", "all")
+ 	if totalLogs != 10 || len(logs) != 10 {
+@@ -569,4 +581,135 @@ func TestStatsAPIQPS(t *testing.T) {
+ 	}
+ }
+ 
++func TestStatsAPICachedPercentageExcludesHostsAndArbitrary(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
++	router := s.Router()
++
++	// 100 total queries: 20 blocked, 15 hosts, 15 arbitrary, 25 cached, 25 forwarded to upstream
++	// denominator = 100 - (20 + 15 + 15) = 50
++	// cached_percentage = 25 / 50 = 50%
++	s.totalQueries.Store(100)
++	s.blockedQueries.Store(20)
++	s.hostsQueries.Store(15)
++	s.arbitraryQueries.Store(15)
++	s.cachedQueries.Store(25)
++	s.totalLatencyUs.Store(50000)
++
++	req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
++	w := httptest.NewRecorder()
++	router.ServeHTTP(w, req)
++
++	if w.Code != http.StatusOK {
++		t.Fatalf("expected HTTP 200, got %d", w.Code)
++	}
++
++	var statsResp map[string]any
++	if err := json.Unmarshal(w.Body.Bytes(), &statsResp); err != nil {
++		t.Fatalf("failed to unmarshal stats response: %v", err)
++	}
++
++	if hostsQueries := statsResp["hosts_queries"].(float64); hostsQueries != 15 {
++		t.Errorf("expected hosts_queries 15, got %v", hostsQueries)
++	}
++	if arbitraryQueries := statsResp["arbitrary_queries"].(float64); arbitraryQueries != 15 {
++		t.Errorf("expected arbitrary_queries 15, got %v", arbitraryQueries)
++	}
++	if blockedPct := statsResp["blocked_percentage"].(float64); blockedPct != 20.0 {
++		t.Errorf("expected blocked_percentage 20.0, got %v", blockedPct)
++	}
++	if cachedPct := statsResp["cached_percentage"].(float64); cachedPct != 50.0 {
++		t.Errorf("expected cached_percentage 50.0, got %v", cachedPct)
++	}
++}
++
++func TestStatsAPIExecWithHostsAndArbitrary(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
++
++	// Test 1: Normal hosts resolution
++	q1 := new(dns.Msg)
++	q1.SetQuestion("lan.local.", dns.TypeA)
++	qCtx1 := query_context.NewContext(q1)
++
++	execHosts := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "lan.local.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{192, 168, 1, 10},
++		})
++		qCtx.SetResponse(resp)
++		qCtx.SetFromHosts()
++		return nil
++	})
++
++	walker1 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execHosts}}, nil)
++	if err := s.Exec(context.Background(), qCtx1, walker1); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++	if s.hostsQueries.Load() != 1 {
++		t.Errorf("expected hostsQueries 1, got %d", s.hostsQueries.Load())
++	}
++	_, logs1 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs1) != 1 || logs1[0].Upstream != "hosts" {
++		t.Errorf("expected upstream 'hosts', got %+v", logs1)
++	}
++
++	// Test 2: Hosts returning 0.0.0.0 (adblock) -> should be counted in blockedQueries, NOT hostsQueries
++	q2 := new(dns.Msg)
++	q2.SetQuestion("ad.example.com.", dns.TypeA)
++	qCtx2 := query_context.NewContext(q2)
++
++	execHostsBlock := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "ad.example.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{0, 0, 0, 0},
++		})
++		qCtx.SetResponse(resp)
++		qCtx.SetFromHosts()
++		return nil
++	})
++
++	walker2 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execHostsBlock}}, nil)
++	if err := s.Exec(context.Background(), qCtx2, walker2); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++	if s.blockedQueries.Load() != 1 {
++		t.Errorf("expected blockedQueries 1, got %d", s.blockedQueries.Load())
++	}
++	if s.hostsQueries.Load() != 1 { // Should still be 1 (not incremented)
++		t.Errorf("expected hostsQueries to remain 1, got %d", s.hostsQueries.Load())
++	}
++
++	// Test 3: Arbitrary resolution
++	q3 := new(dns.Msg)
++	q3.SetQuestion("custom.zone.", dns.TypeA)
++	qCtx3 := query_context.NewContext(q3)
++
++	execArbitrary := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "custom.zone.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{10, 0, 0, 1},
++		})
++		qCtx.SetResponse(resp)
++		qCtx.SetFromArbitrary()
++		return nil
++	})
++
++	walker3 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execArbitrary}}, nil)
++	if err := s.Exec(context.Background(), qCtx3, walker3); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++	if s.arbitraryQueries.Load() != 1 {
++		t.Errorf("expected arbitraryQueries 1, got %d", s.arbitraryQueries.Load())
++	}
++	_, logs3 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs3) != 1 || logs3[0].Upstream != "arbitrary" {
++		t.Errorf("expected upstream 'arbitrary', got %+v", logs3)
++	}
++}
++
+ 
