@@ -126,12 +126,30 @@ const injectStyles = () => {
 		'.dns-latency-timeout { color: #dc2626; font-weight: 600; }',
 		'.mosdns-table td { vertical-align: middle !important; padding: 0.45rem 0.6rem !important; }',
 		'.mosdns-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }',
+		'.mosdns-log-row { cursor: pointer; transition: background 0.15s ease; }',
+		'.mosdns-log-row:hover { background: rgba(125,125,125,0.05); }',
+		'@media (max-width: 992px) {',
+		'	.mosdns-table { display: block !important; width: 100% !important; border: none !important; }',
+		'	.mosdns-table tbody { display: block !important; width: 100% !important; }',
+		'	.mosdns-table .table-titles, .mosdns-table .col-client, .mosdns-table .col-answers, .mosdns-table .col-action { display: none !important; }',
+		'	.mosdns-table .mosdns-log-row { display: grid !important; grid-template-columns: 1fr auto !important; grid-template-rows: auto auto !important; grid-template-areas: "domain status" "time latency" !important; align-items: center !important; padding: 0.6rem 0.75rem !important; border-bottom: 1px solid rgba(125,125,125,0.12) !important; border-radius: 6px !important; margin-bottom: 0.25rem !important; cursor: pointer !important; -webkit-tap-highlight-color: transparent !important; }',
+		'	.mosdns-table .mosdns-log-row:active { background: rgba(125,125,125,0.1) !important; }',
+		'	.mosdns-table .col-domain { grid-area: domain !important; display: flex !important; align-items: center !important; min-width: 0 !important; overflow: hidden !important; padding: 0 !important; border: none !important; }',
+		'	.mosdns-table .col-domain .mosdns-mono { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-size: 0.88rem !important; font-weight: 600 !important; }',
+		'	.mosdns-table .col-domain .badge-qtype { flex-shrink: 0 !important; margin-left: 0.35rem !important; font-size: 0.68rem !important; }',
+		'	.mosdns-table .col-status { grid-area: status !important; display: flex !important; justify-content: flex-end !important; align-items: center !important; padding: 0 0 0 0.5rem !important; border: none !important; flex-shrink: 0 !important; }',
+		'	.mosdns-table .col-status .mosdns-badge { font-size: 0.72rem !important; min-width: 62px !important; padding: 0.15em 0.4em !important; }',
+		'	.mosdns-table .col-time { grid-area: time !important; display: block !important; font-size: 0.76rem !important; opacity: 0.6 !important; padding: 0.25rem 0 0 0 !important; border: none !important; white-space: nowrap !important; }',
+		'	.mosdns-table .col-latency { grid-area: latency !important; display: block !important; text-align: right !important; font-size: 0.78rem !important; font-weight: 600 !important; padding: 0.25rem 0 0 0.5rem !important; border: none !important; white-space: nowrap !important; }',
+		'	.mosdns-table .mosdns-empty-row { display: block !important; text-align: center !important; border-bottom: none !important; }',
+		'	.mosdns-table .mosdns-empty-row .td { display: block !important; width: 100% !important; padding: 2rem 0 !important; border: none !important; }',
+		'}',
 		'.mosdns-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(125,125,125,0.15); flex-wrap: wrap; gap: 0.5rem; }',
 		'.mosdns-modal-domain { font-size: 1.05rem; font-weight: 700; word-break: break-all; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }',
-		'.mosdns-modal-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }',
-		'.mosdns-modal-meta-item { background: rgba(125,125,125,0.04); border: 1px solid rgba(125,125,125,0.08); border-radius: 6px; padding: 0.5rem 0.75rem; }',
+		'.mosdns-modal-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }',
+		'.mosdns-modal-meta-item { background: rgba(125,125,125,0.04); border: 1px solid rgba(125,125,125,0.08); border-radius: 6px; padding: 0.5rem 0.75rem; min-width: 0; overflow: hidden; }',
 		'.mosdns-modal-meta-item .meta-label { font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.2rem; font-weight: 600; }',
-		'.mosdns-modal-meta-item .meta-val { font-size: 0.85rem; font-weight: 600; }',
+		'.mosdns-modal-meta-item .meta-val { font-size: 0.85rem; font-weight: 600; word-break: break-all; overflow-wrap: anywhere; }',
 		'.mosdns-modal-section-title { font-size: 0.9rem; font-weight: 700; margin: 0.85rem 0 0.45rem 0; display: flex; align-items: center; justify-content: space-between; }',
 		'.mosdns-answers-list { display: flex; flex-direction: column; gap: 0.35rem; max-height: 240px; overflow-y: auto; }',
 		'.mosdns-answer-row { display: flex; justify-content: space-between; align-items: center; background: rgba(125,125,125,0.04); border: 1px solid rgba(125,125,125,0.08); border-radius: 6px; padding: 0.4rem 0.65rem; gap: 0.5rem; font-size: 0.82rem; }',
@@ -146,6 +164,9 @@ const injectStyles = () => {
 		'@media (prefers-color-scheme: dark) {',
 		'	.mosdns-stat-card, .mosdns-rank-panel, .mosdns-modal-meta-item, .mosdns-answer-row { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08); box-shadow: none; }',
 		'	.mosdns-sparkline-tooltip { background: #1e242b; border-color: rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }',
+		'	.mosdns-log-row:hover { background: rgba(255,255,255,0.04); }',
+		'	.mosdns-log-row:active { background: rgba(255,255,255,0.08) !important; }',
+		'	.mosdns-log-row { border-bottom-color: rgba(255,255,255,0.08) !important; }',
 		'	.badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.35); }',
 		'	.badge-teal { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.35); }',
 		'	.badge-primary { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.35); }',
@@ -852,31 +873,34 @@ const renderLogsTable = logsData => {
 			}
 		}, _('Intercept'));
 
-		return E('tr', { class: 'tr' }, [
-			E('td', { class: 'td', style: 'font-size: 0.82rem; opacity: 0.7; white-space: nowrap;' }, formatTimestamp(item.timestamp)),
+		return E('tr', {
+			class: 'tr mosdns-log-row',
+			title: _('Click to view full details'),
+			click: () => showLogDetailsModal(item)
+		}, [
+			E('td', { class: 'td col-time', style: 'font-size: 0.82rem; opacity: 0.7; white-space: nowrap;' }, formatTimestamp(item.timestamp)),
 			E('td', {
-				class: 'td mosdns-mono',
+				class: 'td col-client mosdns-mono',
 				style: 'font-size: 0.82rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
 				title: clientInfo.title
 			}, clientInfo.display),
-			E('td', { class: 'td', style: 'max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', title: item.domain || '-' }, [
+			E('td', { class: 'td col-domain', style: 'max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', title: item.domain || '-' }, [
 				E('span', { class: 'mosdns-mono', style: 'font-weight: 600;' }, item.domain || '-'),
 				E('span', { class: 'badge-qtype' }, item.qtype || 'A')
 			]),
-			E('td', { class: 'td' }, statusBadge),
+			E('td', { class: 'td col-status' }, statusBadge),
 			E('td', {
-				class: 'td mosdns-mono',
-				style: 'font-size: 0.82rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;',
-				title: _('Click to view full details'),
-				click: () => showLogDetailsModal(item)
+				class: 'td col-answers mosdns-mono',
+				style: 'font-size: 0.82rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
+				title: _('Click to view full details')
 			}, answersText),
-			E('td', { class: 'td mosdns-mono ' + getLatencyClass(item.elapsed_ms), style: 'text-align: right; font-size: 0.82rem;' }, item.elapsed_ms + ' ms'),
-			E('td', { class: 'td', style: 'text-align: center; white-space: nowrap;' }, btnAction)
+			E('td', { class: 'td col-latency mosdns-mono ' + getLatencyClass(item.elapsed_ms), style: 'text-align: right; font-size: 0.82rem;' }, item.elapsed_ms + ' ms'),
+			E('td', { class: 'td col-action', style: 'text-align: center; white-space: nowrap;' }, btnAction)
 		]);
 	});
 
 	if (!rows.length) {
-		rows.push(E('tr', { class: 'tr' }, [
+		rows.push(E('tr', { class: 'tr mosdns-empty-row' }, [
 			E('td', { class: 'td', colspan: 7, style: 'text-align: center; opacity: 0.5; padding: 2rem;' }, _('No query log entries found.'))
 		]));
 	}
@@ -884,13 +908,13 @@ const renderLogsTable = logsData => {
 	return E('div', {}, [
 		E('table', { class: 'table cbi-section-table mosdns-table', style: 'margin-top: 0.25rem;' }, [
 			E('tr', { class: 'tr table-titles' }, [
-				E('th', { class: 'th', style: 'width: 85px;' }, _('Time')),
-				E('th', { class: 'th', style: 'width: 125px;' }, _('Client IP')),
-				E('th', { class: 'th' }, _('Domain & Record')),
-				E('th', { class: 'th', style: 'width: 90px;' }, _('Status')),
-				E('th', { class: 'th' }, _('Answers')),
-				E('th', { class: 'th', style: 'width: 80px; text-align: right;' }, _('Elapsed')),
-				E('th', { class: 'th', style: 'width: 75px; text-align: center;' }, _('Action'))
+				E('th', { class: 'th col-time', style: 'width: 85px;' }, _('Time')),
+				E('th', { class: 'th col-client', style: 'width: 125px;' }, _('Client IP')),
+				E('th', { class: 'th col-domain' }, _('Domain & Record')),
+				E('th', { class: 'th col-status', style: 'width: 90px;' }, _('Status')),
+				E('th', { class: 'th col-answers' }, _('Answers')),
+				E('th', { class: 'th col-latency', style: 'width: 80px; text-align: right;' }, _('Elapsed')),
+				E('th', { class: 'th col-action', style: 'width: 75px; text-align: center;' }, _('Action'))
 			]),
 			...rows
 		]),

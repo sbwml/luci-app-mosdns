@@ -17,31 +17,31 @@ msgstr ""
 msgid "API Options"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:893
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:917
 msgid "Action"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:848
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:869
 msgid "Add %s to Blocklist"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:841
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:862
 msgid "Add %s to Whitelist"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:697
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:718
 msgid "Add domain to the blocklist to block DNS resolution:"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:696
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:717
 msgid "Add domain to the whitelist to permit DNS resolution:"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:689
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:710
 msgid "Add to Blocklist"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:689
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:710
 msgid "Add to Whitelist"
 msgstr ""
 
@@ -102,7 +102,7 @@ msgstr ""
 msgid "Aliyun Public DNS (DNS over QUIC)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1021
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1045
 msgid "All Queries"
 msgstr ""
 
@@ -111,8 +111,8 @@ msgstr ""
 msgid "Another update is already in progress."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:784
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:891
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:805
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:915
 msgid "Answers"
 msgstr ""
 
@@ -120,7 +120,7 @@ msgstr ""
 msgid "Apple domains optimization"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1048
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1072
 msgid ""
 "Are you sure you want to clear all real-time query logs and top rankings?"
 msgstr ""
@@ -139,11 +139,11 @@ msgid ""
 "rules through scheduled tasks."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:457
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:478
 msgid "Average Processing Time"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:517
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:538
 msgid "Avg Processing"
 msgstr ""
 
@@ -167,8 +167,8 @@ msgid ""
 msgstr ""
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:31
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:612
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:614
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:633
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:635
 msgid "Block Lists"
 msgstr ""
 
@@ -176,11 +176,11 @@ msgstr ""
 msgid "Block PTR"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1022
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1046
 msgid "Blocked Only"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:435
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:456
 msgid "Blocked by Filters"
 msgstr ""
 
@@ -202,16 +202,16 @@ msgstr ""
 msgid "Cache Prefetching"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1023
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1047
 msgid "Cached Only"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:446
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:467
 msgid "Cached Queries"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:709
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1053
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:730
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1077
 msgid "Cancel"
 msgstr ""
 
@@ -241,7 +241,7 @@ msgstr ""
 msgid "Cisco Public DNS (208.67.222.222)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1073
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1097
 msgid "Clear"
 msgstr ""
 
@@ -249,21 +249,22 @@ msgstr ""
 msgid "Clear logs"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1044
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1047
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1068
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1071
 msgid "Clear query logs"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:870
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:878
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:895
 msgid "Click to view full details"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:766
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:888
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:787
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:912
 msgid "Client IP"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:811
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:832
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:35
 msgid "Close"
 msgstr ""
@@ -303,7 +304,7 @@ msgstr ""
 msgid "Configuration Editor"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:713
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:734
 msgid "Confirm"
 msgstr ""
 
@@ -341,7 +342,7 @@ msgstr ""
 msgid "DNS Forward"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:423
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:444
 msgid "DNS Queries Total"
 msgstr ""
 
@@ -385,20 +386,20 @@ msgstr ""
 msgid "DoH/TCP/DoT Connection Multiplexing idle timeout (default 30 seconds)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:889
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:913
 msgid "Domain & Record"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:606
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:634
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:627
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:655
 msgid "Domain name cannot be empty."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:699
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:720
 msgid "Domain:"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:892
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:916
 msgid "Elapsed"
 msgstr ""
 
@@ -489,7 +490,7 @@ msgstr ""
 msgid "Failed to clean logs."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1067
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1091
 msgid "Failed to clear query logs:"
 msgstr ""
 
@@ -497,15 +498,15 @@ msgstr ""
 msgid "Failed to start update."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:965
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:989
 msgid "Failed to update query logs:"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:678
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:699
 msgid "Failed to update rule file: %s"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1039
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1063
 msgid "First Page / Resume"
 msgstr ""
 
@@ -632,8 +633,8 @@ msgstr ""
 msgid "Info"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:807
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:853
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:828
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:874
 msgid "Intercept"
 msgstr ""
 
@@ -643,7 +644,7 @@ msgid ""
 "seconds)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:458
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:479
 msgid "Latency"
 msgstr ""
 
@@ -728,12 +729,12 @@ msgstr ""
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:33
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:106
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/logs.js:70
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1089
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1113
 #: luci-app-mosdns/root/usr/share/luci/menu.d/luci-app-mosdns.json:3
 msgid "MosDNS"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:489
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:510
 msgid ""
 "MosDNS API is unreachable. Please ensure MosDNS is running and stats_api "
 "plugin is enabled."
@@ -751,15 +752,15 @@ msgstr ""
 msgid "Netflix, Disney+, Hulu and streaming media rules list will use this DNS"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:922
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:946
 msgid "Next"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:747
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:768
 msgid "No DNS answer records returned."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:539
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:560
 msgid "No data available"
 msgstr ""
 
@@ -767,20 +768,20 @@ msgstr ""
 msgid "No log data."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:880
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:904
 msgid "No query log entries found."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:899
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:923
 msgid "Page %d / %d (%d entries)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:417
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:438
 msgid "Per-query speed"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:800
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:846
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:821
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:867
 msgid "Permit"
 msgstr ""
 
@@ -815,7 +816,7 @@ msgstr ""
 msgid "Prevent DNS Leaks"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:911
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:935
 msgid "Previous"
 msgstr ""
 
@@ -834,7 +835,7 @@ msgstr ""
 msgid "Quad9 Public DNS (9.9.9.9)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:790
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:811
 msgid "Query Log Details"
 msgstr ""
 
@@ -844,7 +845,7 @@ msgid ""
 "consume more memory)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1062
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1086
 msgid "Query logs cleared successfully."
 msgstr ""
 
@@ -852,7 +853,7 @@ msgstr ""
 msgid "RUNNING"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1093
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1117
 msgid "Real-time Query Logs"
 msgstr ""
 
@@ -882,7 +883,7 @@ msgstr ""
 msgid "Ring Buffer Capacity"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:778
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:799
 msgid "Rule Hit"
 msgstr ""
 
@@ -902,7 +903,7 @@ msgstr ""
 msgid "Save the cache locally and reload the cache dump on the next startup"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1010
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1034
 msgid "Search domain or client IP..."
 msgstr ""
 
@@ -914,7 +915,7 @@ msgstr ""
 msgid "Starting update..."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1089
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:1113
 #: luci-app-mosdns/root/usr/share/luci/menu.d/luci-app-mosdns.json:38
 msgid "Statistics"
 msgstr ""
@@ -923,7 +924,7 @@ msgstr ""
 msgid "Stats Dump"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:890
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:914
 msgid "Status"
 msgstr ""
 
@@ -943,7 +944,7 @@ msgstr ""
 msgid "TCP/DoT Connection Multiplexing"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:702
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:723
 msgid "Target file: %s (supports domain matching rules)"
 msgstr ""
 
@@ -979,20 +980,20 @@ msgid ""
 "content in yaml format."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:770
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:887
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:791
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:911
 msgid "Time"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:578
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:599
 msgid "Top Blocked Domains"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:585
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:606
 msgid "Top Clients"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:571
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:592
 msgid "Top Queried Domains"
 msgstr ""
 
@@ -1042,7 +1043,7 @@ msgstr ""
 msgid "Updating Database..."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:774
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:795
 msgid "Upstream"
 msgstr ""
 
@@ -1064,8 +1065,8 @@ msgid ""
 msgstr ""
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:23
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:612
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:614
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:633
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:635
 msgid "White Lists"
 msgstr ""
 
@@ -1083,15 +1084,15 @@ msgstr ""
 msgid "https://gh-proxy.com"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:406
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:519
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:427
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:540
 msgid "● Live"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:202
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:223
 msgid "● Live Auto-refresh"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:206
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:227
 msgid "❚❚ Paused (Page %d)"
 msgstr ""
