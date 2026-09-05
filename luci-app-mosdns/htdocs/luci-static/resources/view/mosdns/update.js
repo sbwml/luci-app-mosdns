@@ -86,9 +86,20 @@ return view.extend({
 					});
 				}, 1000);
 			} else {
-				statusMsg.textContent = res.error || _('Failed to start update.');
+				if (res.error && res.error.match(/Another update is already in progress/)) {
+					statusMsg.textContent = _('Another update is already in progress.');
+					statusMsg.style.color = '#ff9900';
+					callGetUpdateLog().then(logRes => {
+						if (logRes && logRes.log) {
+							logTextarea.value = logRes.log;
+							logTextarea.scrollTop = logTextarea.scrollHeight;
+						}
+					});
+				} else {
+					statusMsg.textContent = res.error || _('Failed to start update.');
+					statusMsg.style.color = '#ed4014';
+				}
 				statusMsg.classList.remove('spinning');
-				statusMsg.style.color = '#ed4014';
 				closeButton.style.display = 'inline';
 			}
 		}).catch(e => {
