@@ -1,0 +1,123 @@
+From f178e9542a7effb74e8feb8b535197b3131ff05a Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 3 Sep 2026 22:42:53 +0800
+Subject: [PATCH 3/3] fix(fallback): preserve upstream and query context
+ metadata from winning branch
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ pkg/query_context/context.go                  | 41 +++++++++++++++++++
+ .../executable/sequence/fallback/fallback.go  | 22 +++++++---
+ 2 files changed, 57 insertions(+), 6 deletions(-)
+
+--- a/pkg/query_context/context.go
++++ b/pkg/query_context/context.go
+@@ -253,6 +253,15 @@ func (ctx *Context) CopyTo(d *Context) *
+ 	}
+ 	d.upstreamOpt = ctx.upstreamOpt
+ 
++	if ctx.UpstreamSelected != nil {
++		u := *ctx.UpstreamSelected
++		d.UpstreamSelected = &u
++	}
++	if len(ctx.RuleHits) > 0 {
++		d.RuleHits = make([]RuleHit, len(ctx.RuleHits))
++		copy(d.RuleHits, ctx.RuleHits)
++	}
++	d.CacheState = ctx.CacheState
+ 	d.FromHosts = ctx.FromHosts
+ 	d.FromArbitrary = ctx.FromArbitrary
+ 
+@@ -261,6 +270,38 @@ func (ctx *Context) CopyTo(d *Context) *
+ 	return d
+ }
+ 
++// CopyMetadataFrom copies execution metadata and log details from src Context.
++func (ctx *Context) CopyMetadataFrom(src *Context) {
++	if src == nil {
++		return
++	}
++	ctx.upstreamOpt = src.upstreamOpt
++	ctx.UpstreamSelected = src.UpstreamSelected
++	if len(src.RuleHits) > 0 {
++		ctx.RuleHits = src.RuleHits
++	}
++	ctx.CacheState = src.CacheState
++	ctx.FromHosts = src.FromHosts
++	ctx.FromArbitrary = src.FromArbitrary
++
++	if src.marks != nil {
++		if ctx.marks == nil {
++			ctx.marks = make(map[uint32]struct{})
++		}
++		for k, v := range src.marks {
++			ctx.marks[k] = v
++		}
++	}
++	if src.kv != nil {
++		if ctx.kv == nil {
++			ctx.kv = make(map[uint32]any)
++		}
++		for k, v := range src.kv {
++			ctx.kv[k] = v
++		}
++	}
++}
++
+ // StoreValue stores any v in to this Context
+ // k MUST from RegKey.
+ func (ctx *Context) StoreValue(k uint32, v any) {
+--- a/plugin/executable/sequence/fallback/fallback.go
++++ b/plugin/executable/sequence/fallback/fallback.go
+@@ -107,8 +107,13 @@ func (f *fallback) Exec(ctx context.Cont
+ 	return f.doFallback(ctx, qCtx)
+ }
+ 
++type fallbackResult struct {
++	r    *dns.Msg
++	qCtx *query_context.Context
++}
++
+ func (f *fallback) doFallback(ctx context.Context, qCtx *query_context.Context) error {
+-	respChan := make(chan *dns.Msg, 2) // resp could be nil.
++	respChan := make(chan *fallbackResult, 2) // resp could be nil.
+ 	primFailed := make(chan struct{})
+ 	primDone := make(chan struct{})
+ 
+@@ -129,7 +134,7 @@ func (f *fallback) doFallback(ctx contex
+ 			respChan <- nil
+ 		} else {
+ 			close(primDone)
+-			respChan <- r
++			respChan <- &fallbackResult{r: r, qCtx: qCtx}
+ 		}
+ 	}()
+ 
+@@ -167,18 +172,23 @@ func (f *fallback) doFallback(ctx contex
+ 			case <-timer.C: // or timed out.
+ 			}
+ 		}
+-		respChan <- r
++		if r == nil {
++			respChan <- nil
++		} else {
++			respChan <- &fallbackResult{r: r, qCtx: qCtx}
++		}
+ 	}()
+ 
+ 	for i := 0; i < 2; i++ {
+ 		select {
+ 		case <-ctx.Done():
+ 			return context.Cause(ctx)
+-		case r := <-respChan:
+-			if r == nil { // One of goroutines finished but failed.
++		case res := <-respChan:
++			if res == nil || res.r == nil { // One of goroutines finished but failed.
+ 				continue
+ 			}
+-			qCtx.SetResponse(r)
++			qCtx.SetResponse(res.r)
++			qCtx.CopyMetadataFrom(res.qCtx)
+ 			return nil
+ 		}
+ 	}
