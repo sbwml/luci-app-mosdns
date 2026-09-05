@@ -1,0 +1,136 @@
+From 6af46a12d9149422a9b9cac5ca3510c25ca7220f Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Wed, 2 Sep 2026 23:08:38 +0800
+Subject: [PATCH 1/3] feat(stats_api): support real-time QPS in stats endpoint
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ plugin/executable/stats_api/stats_api.go      | 51 +++++++++++++++++++
+ plugin/executable/stats_api/stats_api_test.go | 24 +++++++++
+ 2 files changed, 75 insertions(+)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -513,6 +513,7 @@ type StatsAPI struct {
+ 	blockedQueries atomic.Uint64
+ 	cachedQueries  atomic.Uint64
+ 	totalLatencyUs atomic.Uint64
++	currentQPS     atomic.Uint64
+ 
+ 	updatedCount atomic.Uint64
+ 	closeNotify  chan struct{}
+@@ -575,6 +576,7 @@ func NewStatsAPI(args *Args, logger *zap
+ 		s.logger.Error("failed to load stats dump", zap.Error(err))
+ 	}
+ 	s.startDumpLoop()
++	s.startQPSLoop()
+ 
+ 	if len(args.Listen) > 0 {
+ 		srv := &http.Server{
+@@ -641,6 +643,7 @@ func (s *StatsAPI) handleStats(w http.Re
+ 	blockedPct = math.Round(blockedPct*100) / 100
+ 	cachedPct = math.Round(cachedPct*100) / 100
+ 	avgLat = math.Round(avgLat*100) / 100
++	qps := s.currentQPS.Load()
+ 
+ 	resp := map[string]any{
+ 		"total_queries":      total,
+@@ -649,6 +652,7 @@ func (s *StatsAPI) handleStats(w http.Re
+ 		"blocked_percentage": blockedPct,
+ 		"cached_percentage":  cachedPct,
+ 		"avg_latency_ms":     avgLat,
++		"qps":                qps,
+ 	}
+ 
+ 	w.Header().Set("Content-Type", "application/json")
+@@ -878,6 +882,53 @@ func (s *StatsAPI) startDumpLoop() {
+ 			case <-s.closeNotify:
+ 				return
+ 			}
++		}
++	}()
++}
++
++func (s *StatsAPI) startQPSLoop() {
++	go func() {
++		ticker := time.NewTicker(1 * time.Second)
++		defer ticker.Stop()
++
++		const windowSize = 5
++		history := make([]uint64, windowSize)
++		timestamps := make([]int64, windowSize)
++		lastTotal := s.totalQueries.Load()
++
++		for {
++			select {
++			case now := <-ticker.C:
++				curTotal := s.totalQueries.Load()
++				var delta uint64
++				if curTotal >= lastTotal {
++					delta = curTotal - lastTotal
++				}
++				lastTotal = curTotal
++
++				nowSec := now.Unix()
++				idx := int(nowSec % windowSize)
++				history[idx] = delta
++				timestamps[idx] = nowSec
++
++				var sum uint64
++				validSecs := 0
++				for i := 0; i < windowSize; i++ {
++					if timestamps[i] > 0 && nowSec-timestamps[i] < windowSize {
++						sum += history[i]
++						validSecs++
++					}
++				}
++
++				var qps uint64
++				if validSecs > 0 {
++					qps = (sum + uint64(validSecs)/2) / uint64(validSecs)
++				}
++				s.currentQPS.Store(qps)
++
++			case <-s.closeNotify:
++				return
++			}
+ 		}
+ 	}()
+ }
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -281,6 +281,9 @@ func TestStatsAPIHTTPEndpoints(t *testin
+ 	if statsResp["total_queries"].(float64) != 1 {
+ 		t.Errorf("expected total_queries 1, got %v", statsResp["total_queries"])
+ 	}
++	if _, ok := statsResp["qps"]; !ok {
++		t.Errorf("expected qps field in stats response")
++	}
+ 
+ 	// Test GET /api/v1/history
+ 	reqHist := httptest.NewRequest(http.MethodGet, "/api/v1/history?points=24", nil)
+@@ -546,3 +549,24 @@ func TestStatsAPICachedPercentageExclude
+ 	}
+ }
+ 
++func TestStatsAPIQPS(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 100}, zap.NewNop())
++	defer s.Close()
++
++	// Initially QPS is 0
++	req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
++	w := httptest.NewRecorder()
++	s.Router().ServeHTTP(w, req)
++
++	var statsResp map[string]any
++	if err := json.Unmarshal(w.Body.Bytes(), &statsResp); err != nil {
++		t.Fatalf("failed to unmarshal: %v", err)
++	}
++	if qps, ok := statsResp["qps"]; !ok {
++		t.Fatalf("expected qps field in stats response")
++	} else if qps.(float64) != 0 {
++		t.Errorf("expected initial qps 0, got %v", qps)
++	}
++}
++
++
