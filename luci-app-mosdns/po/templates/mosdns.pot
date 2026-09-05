@@ -45,32 +45,32 @@ msgstr ""
 msgid "Add to Whitelist"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:31
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:26
 msgid ""
 "Added domain names always permit resolution using 'local DNS' with the "
 "highest priority (one domain per line, supports domain matching rules)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:103
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:50
 msgid ""
 "Added domain names will always use 'Local DNS' for resolution, with a forced "
 "TTL of 5 seconds, and results will not be cached (one domain per line, "
 "supports domain matching rules)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:79
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:42
 msgid ""
 "Added domain names will always use 'Remote DNS' for resolution (one domain "
 "per line, supports domain matching rules)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:55
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:34
 msgid ""
 "Added domain names will block DNS resolution (one domain per line, supports "
 "domain matching rules)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:175
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:74
 msgid ""
 "Added domain names will block PTR requests (one domain per line, supports "
 "domain matching rules)."
@@ -107,6 +107,7 @@ msgid "All Queries"
 msgstr ""
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:68
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:90
 msgid "Another update is already in progress."
 msgstr ""
 
@@ -132,7 +133,7 @@ msgstr ""
 msgid "Auto Save Stats Interval"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:106
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:117
 msgid ""
 "Automatically update GeoIP and GeoSite databases as well as ad filtering "
 "rules through scheduled tasks."
@@ -165,13 +166,13 @@ msgid ""
 "using only A/AAAA records."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:19
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:31
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:612
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:614
 msgid "Block Lists"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:24
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:71
 msgid "Block PTR"
 msgstr ""
 
@@ -214,11 +215,11 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:150
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:161
 msgid "Check And Update"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:148
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:159
 msgid "Check And Update GeoData."
 msgstr ""
 
@@ -314,7 +315,7 @@ msgstr ""
 msgid "Custom Config"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:127
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:58
 msgid ""
 "Custom Hosts rewrite, for example: baidu.com 10.0.0.1 (one rule per line, "
 "supports domain matching rules)."
@@ -328,7 +329,7 @@ msgstr ""
 msgid "Custom Stream Media DNS"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:21
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:47
 msgid "DDNS Lists"
 msgstr ""
 
@@ -354,7 +355,7 @@ msgstr ""
 msgid "DNS redirect"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:149
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:160
 msgid "Database Update"
 msgstr ""
 
@@ -401,7 +402,7 @@ msgstr ""
 msgid "Elapsed"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:111
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:122
 msgid "Enable Auto Database Update"
 msgstr ""
 
@@ -447,35 +448,35 @@ msgstr ""
 msgid "Error"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:115
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:126
 msgid "Every Day"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:120
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:131
 msgid "Every Friday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:116
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:127
 msgid "Every Monday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:121
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:132
 msgid "Every Saturday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:122
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:133
 msgid "Every Sunday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:119
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:130
 msgid "Every Thursday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:117
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:128
 msgid "Every Tuesday"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:118
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:129
 msgid "Every Wednesday"
 msgstr ""
 
@@ -492,7 +493,7 @@ msgstr ""
 msgid "Failed to clear query logs:"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:89
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:99
 msgid "Failed to start update."
 msgstr ""
 
@@ -544,11 +545,11 @@ msgstr ""
 msgid "Forward Dnsmasq Domain Name resolution requests to MosDNS"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:136
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:147
 msgid "Full"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:134
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:145
 msgid "Full: includes all Countries and Private IP addresses."
 msgstr ""
 
@@ -560,7 +561,7 @@ msgstr ""
 msgid "GeoIP Tags"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:131
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:142
 msgid "GeoIP Type"
 msgstr ""
 
@@ -572,7 +573,7 @@ msgstr ""
 msgid "Geodata Update"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:141
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:152
 msgid "GitHub Proxy"
 msgstr ""
 
@@ -591,11 +592,11 @@ msgstr ""
 msgid "Grant UCI access for luci-app-mosdns"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:20
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:39
 msgid "Grey Lists"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:22
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:55
 msgid "Hosts"
 msgstr ""
 
@@ -663,11 +664,11 @@ msgstr ""
 msgid "Listen Port"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:137
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:148
 msgid "Little"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:132
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:143
 msgid "Little: only include Mainland China and Private IP addresses."
 msgstr ""
 
@@ -855,11 +856,11 @@ msgstr ""
 msgid "Real-time Query Logs"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:23
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:63
 msgid "Redirect"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:151
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:66
 msgid ""
 "Redirecting requests for domain names. Request domain A, but return records "
 "for domain B, for example: baidu.com qq.com (one rule per line)."
@@ -885,7 +886,7 @@ msgstr ""
 msgid "Rule Hit"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:11
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:9
 msgid "Rule Settings"
 msgstr ""
 
@@ -926,7 +927,7 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:25
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:79
 msgid "Streaming Media"
 msgstr ""
 
@@ -960,7 +961,7 @@ msgstr ""
 msgid "Tencent Public DNS (DNS over HTTPS)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:12
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:10
 msgid "The list of rules only apply to 'Default Config' profiles."
 msgstr ""
 
@@ -1004,38 +1005,23 @@ msgid "TrafficRoute Public DNS (180.184.2.2)"
 msgstr ""
 
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/basic.js:494
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:43
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:48
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:67
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:72
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:91
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:96
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:115
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:120
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:139
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:144
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:163
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:168
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:187
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:192
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:211
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:216
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:17
 msgid "Unable to save contents: %s"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:114
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:125
 msgid "Update Cycle"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:105
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:116
 msgid "Update GeoIP & GeoSite databases"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:125
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:136
 msgid "Update Time"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:142
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:153
 msgid ""
 "Update data files with GitHub Proxy, leave blank to disable proxy downloads."
 msgstr ""
@@ -1044,7 +1030,7 @@ msgstr ""
 msgid "Update failed"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:95
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:106
 msgid "Update failed: %s"
 msgstr ""
 
@@ -1064,7 +1050,7 @@ msgstr ""
 msgid "Warning"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:199
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:82
 msgid ""
 "When enabling 'Custom Stream Media DNS', added domains will always use the "
 "'Streaming Media DNS server' for resolution (one domain per line, supports "
@@ -1077,7 +1063,7 @@ msgid ""
 "(domain list or AdGuardHome rules)."
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:18
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/rules.js:23
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:612
 #: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/statistics.js:614
 msgid "White Lists"
@@ -1093,7 +1079,7 @@ msgstr ""
 msgid "Xinfeng Public DNS (114.114.115.115)"
 msgstr ""
 
-#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:143
+#: luci-app-mosdns/htdocs/luci-static/resources/view/mosdns/update.js:154
 msgid "https://gh-proxy.com"
 msgstr ""
 
