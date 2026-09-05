@@ -131,7 +131,7 @@ const injectStyles = () => {
 		'@media (max-width: 992px) {',
 		'	.mosdns-table { display: block !important; width: 100% !important; border: none !important; }',
 		'	.mosdns-table tbody { display: block !important; width: 100% !important; }',
-		'	.mosdns-table .table-titles, .mosdns-table .col-client, .mosdns-table .col-answers, .mosdns-table .col-action { display: none !important; }',
+		'	.mosdns-table .table-titles, .mosdns-table .col-client, .mosdns-table .col-answers { display: none !important; }',
 		'	.mosdns-table .mosdns-log-row { display: grid !important; grid-template-columns: 1fr auto !important; grid-template-rows: auto auto !important; grid-template-areas: "domain status" "time latency" !important; align-items: center !important; padding: 0.6rem 0.75rem !important; border-bottom: 1px solid rgba(125,125,125,0.12) !important; border-radius: 6px !important; margin-bottom: 0.25rem !important; cursor: pointer !important; -webkit-tap-highlight-color: transparent !important; }',
 		'	.mosdns-table .mosdns-log-row:active { background: rgba(125,125,125,0.1) !important; }',
 		'	.mosdns-table .col-domain { grid-area: domain !important; display: flex !important; align-items: center !important; min-width: 0 !important; overflow: hidden !important; padding: 0 !important; border: none !important; }',
@@ -855,23 +855,6 @@ const renderLogsTable = logsData => {
 			: '-';
 
 		const clientInfo = getClientDisplay(item.client_ip);
-		const cleanDom = (item.domain || '').replace(/\.+$/, '').trim();
-
-		const btnAction = item.is_blocked ? E('button', {
-			class: 'btn cbi-button mosdns-action-btn btn-allow',
-			title: _('Add %s to Whitelist').format(cleanDom),
-			click: e => {
-				e.stopPropagation();
-				promptAddRule(item.domain, 'permit');
-			}
-		}, _('Permit')) : E('button', {
-			class: 'btn cbi-button mosdns-action-btn btn-block',
-			title: _('Add %s to Blocklist').format(cleanDom),
-			click: e => {
-				e.stopPropagation();
-				promptAddRule(item.domain, 'intercept');
-			}
-		}, _('Intercept'));
 
 		return E('tr', {
 			class: 'tr mosdns-log-row',
@@ -894,14 +877,13 @@ const renderLogsTable = logsData => {
 				style: 'font-size: 0.82rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
 				title: _('Click to view full details')
 			}, answersText),
-			E('td', { class: 'td col-latency mosdns-mono ' + getLatencyClass(item.elapsed_ms), style: 'text-align: right; font-size: 0.82rem;' }, item.elapsed_ms + ' ms'),
-			E('td', { class: 'td col-action', style: 'text-align: center; white-space: nowrap;' }, btnAction)
+			E('td', { class: 'td col-latency mosdns-mono ' + getLatencyClass(item.elapsed_ms), style: 'text-align: right; font-size: 0.82rem;' }, item.elapsed_ms + ' ms')
 		]);
 	});
 
 	if (!rows.length) {
 		rows.push(E('tr', { class: 'tr mosdns-empty-row' }, [
-			E('td', { class: 'td', colspan: 7, style: 'text-align: center; opacity: 0.5; padding: 2rem;' }, _('No query log entries found.'))
+			E('td', { class: 'td', colspan: 6, style: 'text-align: center; opacity: 0.5; padding: 2rem;' }, _('No query log entries found.'))
 		]));
 	}
 
@@ -913,8 +895,7 @@ const renderLogsTable = logsData => {
 				E('th', { class: 'th col-domain' }, _('Domain & Record')),
 				E('th', { class: 'th col-status', style: 'width: 90px;' }, _('Status')),
 				E('th', { class: 'th col-answers' }, _('Answers')),
-				E('th', { class: 'th col-latency', style: 'width: 80px; text-align: right;' }, _('Elapsed')),
-				E('th', { class: 'th col-action', style: 'width: 75px; text-align: center;' }, _('Action'))
+				E('th', { class: 'th col-latency', style: 'width: 80px; text-align: right;' }, _('Elapsed'))
 			]),
 			...rows
 		]),
