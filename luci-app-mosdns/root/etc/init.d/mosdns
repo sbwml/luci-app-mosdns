@@ -429,7 +429,11 @@ generate_config() {
 	json_add_string "exec" "\$modify_ddns_ttl"
 	json_close_object
 	json_add_object
-	json_add_string "matches" "!qname \$ddnslist"
+	json_add_array "matches"
+	json_add_string "" "!qname \$ddnslist"
+	json_add_string "" "!qname \$blocklist"
+	json_add_string "" "!qname \$adlist"
+	json_close_array
 	json_add_string "exec" "\$modify_ttl"
 	json_close_object
 	[ "$cloudflare" -eq 1 ] && {
@@ -569,6 +573,22 @@ generate_config() {
 	json_add_string "tag" "query_is_reject_domain"
 	json_add_string "type" "sequence"
 	json_add_array "args"
+	json_add_object
+	json_add_string "matches" "qname \$blocklist"
+	json_add_string "exec" "black_hole 0.0.0.0 ::"
+	json_close_object
+	json_add_object
+	json_add_string "matches" "qname \$adlist"
+	json_add_string "exec" "black_hole 0.0.0.0 ::"
+	json_close_object
+	json_add_object
+	json_add_string "matches" "has_resp"
+	json_add_string "exec" "ttl 3600"
+	json_close_object
+	json_add_object
+	json_add_string "matches" "has_resp"
+	json_add_string "exec" "accept"
+	json_close_object
 	json_add_object
 	json_add_string "matches" "qname \$blocklist"
 	json_add_string "exec" "reject 3"
