@@ -160,8 +160,18 @@ const injectStyles = () => {
 		'.btn-allow:hover { background: #059669 !important; color: #fff !important; }',
 		'.btn-block { background: rgba(239, 68, 68, 0.12) !important; color: #dc2626 !important; border: 1px solid rgba(239, 68, 68, 0.3) !important; }',
 		'.btn-block:hover { background: #dc2626 !important; color: #fff !important; }',
+		'.mosdns-pagination-bar { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-top: 0.5rem !important; padding: 0.75rem 0.5rem 0.25rem 0.5rem !important; border-top: 1px solid var(--border-color-medium, rgba(125,125,125,0.15)) !important; flex-wrap: wrap !important; gap: 0.5rem !important; box-sizing: border-box !important; width: 100% !important; }',
+		'.mosdns-pagination-bar::after, .mosdns-pagination-bar::before { display: none !important; content: none !important; }',
+		'.mosdns-pagination-info { display: inline-flex !important; align-items: center !important; font-size: 0.85rem !important; opacity: 0.85 !important; }',
+		'.mosdns-pagination-btns { display: flex !important; gap: 0.5rem !important; margin-left: auto !important; }',
+		'.mosdns-page-input { height: 24px !important; line-height: 22px !important; text-align: center !important; font-size: 0.82rem !important; font-weight: 600 !important; padding: 0 4px !important; margin: 0 4px !important; border: 1px solid rgba(125,125,125,0.3) !important; border-radius: 4px !important; background: var(--cbi-section-bg, #fff) !important; color: inherit !important; display: inline-block !important; vertical-align: middle !important; box-sizing: border-box !important; transition: all 0.2s ease !important; }',
+		'.mosdns-page-input:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important; outline: none !important; }',
+		'.mosdns-page-input::-webkit-outer-spin-button, .mosdns-page-input::-webkit-inner-spin-button { -webkit-appearance: none !important; margin: 0 !important; }',
+		'.mosdns-page-input[type=number] { -moz-appearance: textfield !important; }',
 		'@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }',
 		'@media (prefers-color-scheme: dark) {',
+		'	.mosdns-pagination-bar { border-top-color: rgba(255,255,255,0.08) !important; }',
+		'	.mosdns-page-input { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.18) !important; color: #fff !important; }',
 		'	.mosdns-stat-card, .mosdns-rank-panel, .mosdns-modal-meta-item, .mosdns-answer-row { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08); box-shadow: none; }',
 		'	.mosdns-sparkline-tooltip { background: #1e242b; border-color: rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }',
 		'	.mosdns-log-row:hover { background: rgba(255,255,255,0.04); }',
@@ -864,7 +874,7 @@ const renderLogsTable = logsData => {
 			E('td', { class: 'td col-time', style: 'font-size: 0.82rem; opacity: 0.7; white-space: nowrap;' }, formatTimestamp(item.timestamp)),
 			E('td', {
 				class: 'td col-client mosdns-mono',
-				style: 'font-size: 0.82rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
+				style: 'font-size: 0.82rem; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
 				title: clientInfo.title
 			}, clientInfo.display),
 			E('td', { class: 'td col-domain', style: 'max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', title: item.domain || '-' }, [
@@ -887,47 +897,99 @@ const renderLogsTable = logsData => {
 		]));
 	}
 
-	return E('div', {}, [
-		E('table', { class: 'table cbi-section-table mosdns-table', style: 'margin-top: 0.25rem;' }, [
-			E('tr', { class: 'tr table-titles' }, [
-				E('th', { class: 'th col-time', style: 'width: 85px;' }, _('Time')),
-				E('th', { class: 'th col-client', style: 'width: 125px;' }, _('Client IP')),
-				E('th', { class: 'th col-domain' }, _('Domain & Record')),
-				E('th', { class: 'th col-status', style: 'width: 90px;' }, _('Status')),
-				E('th', { class: 'th col-answers' }, _('Answers')),
-				E('th', { class: 'th col-latency', style: 'width: 80px; text-align: right;' }, _('Elapsed'))
-			]),
-			...rows
-		]),
+		const inputWidth = Math.max(46, (String(totalPages).length * 8 + 18)) + 'px';
+		const pageInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text mosdns-page-input',
+			min: 1,
+			max: totalPages,
+			value: pageIdx + 1,
+			style: `width: ${inputWidth};`,
+			title: _('Enter page number and press Enter to jump')
+		});
 
-		E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;' }, [
-			E('span', { style: 'font-size: 0.85rem; opacity: 0.7;' }, _('Page %d / %d (%d entries)').format(pageIdx + 1, totalPages, total)),
-			E('div', { style: 'display: flex; gap: 0.5rem;' }, [
-				E('button', {
-					class: 'btn cbi-button cbi-button-action',
-					disabled: pageIdx === 0 ? 'disabled' : null,
-					click: () => {
-						if (pageIdx > 0) {
-							pageIdx--;
-							updateLiveStatusBadge();
-							refreshLogs();
+		const doJump = () => {
+			const val = parseInt(pageInput.value, 10);
+			if (isNaN(val)) {
+				pageInput.value = pageIdx + 1;
+				return;
+			}
+			const targetPage = Math.max(1, Math.min(totalPages, val));
+			pageInput.value = targetPage;
+			if (targetPage - 1 !== pageIdx) {
+				pageIdx = targetPage - 1;
+				updateLiveStatusBadge();
+				refreshLogs();
+			}
+		};
+
+		pageInput.addEventListener('keydown', ev => {
+			if (ev.key === 'Enter') {
+				ev.preventDefault();
+				pageInput.blur();
+			}
+		});
+
+		pageInput.addEventListener('focus', () => {
+			pageInput.select();
+		});
+
+		pageInput.addEventListener('blur', () => {
+			doJump();
+		});
+
+		const pageParts = _('Page %d / %d (%d entries)').format(999999, totalPages, total).split('999999');
+		const paginationLabel = E('div', {
+			class: 'mosdns-pagination-info'
+		}, [
+			pageParts[0] || '',
+			pageInput,
+			pageParts[1] || ''
+		]);
+
+		return E('div', {}, [
+			E('table', { class: 'table cbi-section-table mosdns-table', style: 'margin-top: 0.25rem; margin-bottom: 0;' }, [
+				E('tr', { class: 'tr table-titles' }, [
+					E('th', { class: 'th col-time', style: 'width: 85px;' }, _('Time')),
+					E('th', { class: 'th col-client', style: 'width: 125px;' }, _('Client IP')),
+					E('th', { class: 'th col-domain' }, _('Domain & Record')),
+					E('th', { class: 'th col-status', style: 'width: 90px;' }, _('Status')),
+					E('th', { class: 'th col-answers' }, _('Answers')),
+					E('th', { class: 'th col-latency', style: 'width: 95px; text-align: right;' }, _('Elapsed'))
+				]),
+				...rows
+			]),
+
+			E('div', {
+				class: 'mosdns-pagination-bar'
+			}, [
+				paginationLabel,
+				E('div', { class: 'mosdns-pagination-btns' }, [
+					E('button', {
+						class: 'btn cbi-button cbi-button-action',
+						disabled: pageIdx === 0 ? 'disabled' : null,
+						click: () => {
+							if (pageIdx > 0) {
+								pageIdx--;
+								updateLiveStatusBadge();
+								refreshLogs();
+							}
 						}
-					}
-				}, _('Previous')),
-				E('button', {
-					class: 'btn cbi-button cbi-button-action',
-					disabled: (pageIdx + 1) >= totalPages ? 'disabled' : null,
-					click: () => {
-						if ((pageIdx + 1) < totalPages) {
-							pageIdx++;
-							updateLiveStatusBadge();
-							refreshLogs();
+					}, _('Previous')),
+					E('button', {
+						class: 'btn cbi-button cbi-button-action',
+						disabled: (pageIdx + 1) >= totalPages ? 'disabled' : null,
+						click: () => {
+							if ((pageIdx + 1) < totalPages) {
+								pageIdx++;
+								updateLiveStatusBadge();
+								refreshLogs();
+							}
 						}
-					}
-				}, _('Next'))
+					}, _('Next'))
+				])
 			])
-		])
-	]);
+		]);
 };
 
 const pollScheduler = async () => {
