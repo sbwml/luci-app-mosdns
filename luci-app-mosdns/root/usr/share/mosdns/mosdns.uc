@@ -72,7 +72,7 @@ function get_adlist() {
 	let adblock = uci_cursor.get('mosdns', 'config', 'adblock');
 
 	if (adblock !== '1') {
-		mkdir('/etc/mosdns/rule', 0755);
+		mkdir('/var/mosdns', 0755);
 		exec_sys('rm -rf /etc/mosdns/rule/adlist /etc/mosdns/rule/.ad_source');
 		writefile('/var/mosdns/disable-ads.txt', '');
 		print("/var/mosdns/disable-ads.txt\n");
