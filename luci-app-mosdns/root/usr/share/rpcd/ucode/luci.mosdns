@@ -248,7 +248,8 @@ const methods = {
 			try {
 				let path = get_logfile_path_internal();
 				if (path && stat(path)) {
-					return { log: readfile(path) };
+					// 只回最后 256KB：日志变大（如断线风暴产生上万行）时避免 RPC 响应过大撑爆 LuCI 日志页
+					return { log: exec_sys('tail -c 262144 ' + path).stdout };
 				} else {
 					return { error: 'Log file not accessible or does not exist.' };
 				}
