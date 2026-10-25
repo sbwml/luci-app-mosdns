@@ -1,0 +1,21 @@
+From 707d8f33174bfb403f3affe52d21be1e4c460cdd Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Fri, 2 Oct 2026 01:01:08 +0800
+Subject: [PATCH 1/5] fix(fallback): preserve respOpt with EDNS0 options from
+ winning branch
+
+Signed-off-by: sbwml <admin@cooluc.com>
+---
+ pkg/query_context/context.go | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/pkg/query_context/context.go
++++ b/pkg/query_context/context.go
+@@ -275,6 +275,7 @@ func (ctx *Context) CopyMetadataFrom(src
+ 	if src == nil {
+ 		return
+ 	}
++	ctx.respOpt = src.respOpt
+ 	ctx.upstreamOpt = src.upstreamOpt
+ 	ctx.UpstreamSelected = src.UpstreamSelected
+ 	if len(src.RuleHits) > 0 {

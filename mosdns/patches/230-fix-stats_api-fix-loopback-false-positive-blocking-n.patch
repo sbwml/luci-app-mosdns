@@ -1,0 +1,786 @@
+From 9425cf5e6520b2381175fe4d69f15fcbf4dbe256 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 15 Oct 2026 18:59:58 +0800
+Subject: [PATCH 4/5] fix(stats_api): fix loopback false-positive blocking,
+ null answers and optimize memory
+
+- Exclude loopback domain queries (localhost) from ad-blocking while preserving adblock sinkhole rules
+- Fix empty answers slice serializing as null instead of empty JSON array
+- Exclude RFC 9460 SVCB queries from false-positive ad-blocking on NXDOMAIN
+- Connect handleClearCache to FlushAllCaches on cache and dual_selector plugins
+- Persist state atomically with fsync and rename to prevent corrupted dumps
+- Immediately flush disk dump upon clearing logs
+- Optimize RingBuffer and TopStats memory allocations and enforce 20k entry bounds
+- Align history retention window to 168 hours (7 days)
+---
+ coremain/mosdns.go                            |  13 +
+ plugin/executable/cache/cache.go              |   5 +
+ .../executable/dual_selector/dual_selector.go |   5 +
+ plugin/executable/stats_api/stats_api.go      | 265 +++++++++++++-----
+ plugin/executable/stats_api/stats_api_test.go | 206 ++++++++++++++
+ 5 files changed, 423 insertions(+), 71 deletions(-)
+
+--- a/coremain/mosdns.go
++++ b/coremain/mosdns.go
+@@ -152,6 +152,19 @@ func (m *Mosdns) GetPlugin(tag string) a
+ 	return m.plugins[tag]
+ }
+ 
++type Flusher interface {
++	Flush()
++}
++
++// FlushAllCaches flushes all registered plugins that implement Flusher.
++func (m *Mosdns) FlushAllCaches() {
++	for _, p := range m.plugins {
++		if f, ok := p.(Flusher); ok {
++			f.Flush()
++		}
++	}
++}
++
+ // GetMetricsReg returns a prometheus.Registerer with a prefix of "mosdns_"
+ func (m *Mosdns) GetMetricsReg() prometheus.Registerer {
+ 	return prometheus.WrapRegistererWithPrefix("mosdns_", m.metricsReg)
+--- a/plugin/executable/cache/cache.go
++++ b/plugin/executable/cache/cache.go
+@@ -373,6 +373,11 @@ func (c *Cache) Close() error {
+ 	return c.backend.Close()
+ }
+ 
++// Flush removes all stored entries from backend.
++func (c *Cache) Flush() {
++	c.backend.Flush()
++}
++
+ func (c *Cache) loadDump() error {
+ 	if len(c.args.DumpFile) == 0 {
+ 		return nil
+--- a/plugin/executable/dual_selector/dual_selector.go
++++ b/plugin/executable/dual_selector/dual_selector.go
+@@ -172,6 +172,11 @@ func (s *Selector) Close() error {
+ 	return nil
+ }
+ 
++// Flush removes all cached entries from preferTypOkCache.
++func (s *Selector) Flush() {
++	s.preferTypOkCache.Flush()
++}
++
+ func NewPreferIpv4(bq sequence.BQ) *Selector {
+ 	return newSelector(bq, dns.TypeA)
+ }
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -28,6 +28,7 @@ import (
+ 	"math"
+ 	"net/http"
+ 	"os"
++	"path/filepath"
+ 	"sort"
+ 	"strconv"
+ 	"strings"
+@@ -137,25 +138,48 @@ func (r *RingBuffer) Clear() {
+ }
+ 
+ func (r *RingBuffer) QueryLogs(limit, offset int, search, filter string) (int, []LogEntry) {
++	searchLower := strings.ToLower(strings.TrimSpace(search))
++	filterLower := strings.ToLower(strings.TrimSpace(filter))
++
+ 	r.mu.RLock()
+ 	defer r.mu.RUnlock()
+ 
+-	all := make([]LogEntry, 0, r.count)
++	filtered := make([]LogEntry, 0, r.count)
+ 	for i := 0; i < r.count; i++ {
+ 		idx := (r.head - 1 - i + r.capacity) % r.capacity
+-		all = append(all, r.buf[idx])
+-	}
++		entry := r.buf[idx]
+ 
+-	searchLower := strings.ToLower(strings.TrimSpace(search))
+-	filterLower := strings.ToLower(strings.TrimSpace(filter))
+-
+-	filtered := make([]LogEntry, 0, len(all))
+-	for _, entry := range all {
+-		if filterLower == "blocked" && !entry.IsBlocked {
+-			continue
+-		}
+-		if filterLower == "cached" && !entry.IsCached {
+-			continue
++		switch filterLower {
++		case "blocked":
++			if !entry.IsBlocked {
++				continue
++			}
++		case "cached":
++			if !entry.IsCached {
++				continue
++			}
++		case "hosts":
++			if entry.Upstream != "hosts" && entry.Rule != "hosts" {
++				continue
++			}
++		case "arbitrary":
++			if entry.Upstream != "arbitrary" && entry.Rule != "arbitrary" {
++				continue
++			}
++		case "timeout":
++			if entry.Status != "TIMEOUT" {
++				continue
++			}
++		case "error":
++			if entry.Status != "ERROR" {
++				continue
++			}
++		case "all", "":
++			// no filter
++		default:
++			if !strings.EqualFold(entry.Status, filterLower) {
++				continue
++			}
+ 		}
+ 
+ 		if searchLower != "" {
+@@ -241,19 +265,49 @@ func NewTopStats() *TopStats {
+ 	}
+ }
+ 
++const maxTopEntries = 20000
++
++func pruneMap(m map[string]uint64) {
++	if len(m) <= maxTopEntries {
++		return
++	}
++	for k, v := range m {
++		if v <= 1 {
++			delete(m, k)
++		}
++	}
++	if len(m) > maxTopEntries {
++		for k, v := range m {
++			if v <= 2 {
++				delete(m, k)
++			}
++		}
++	}
++}
++
+ func (t *TopStats) Record(domain, clientIP string, isBlocked bool) {
+ 	t.mu.Lock()
+ 	defer t.mu.Unlock()
+ 
+ 	if domain != "" {
++		domainLower := strings.ToLower(domain)
+ 		if isBlocked {
+-			t.topBlocked[domain]++
++			t.topBlocked[domainLower]++
++			if len(t.topBlocked) > maxTopEntries {
++				pruneMap(t.topBlocked)
++			}
+ 		} else {
+-			t.topDomains[domain]++
++			t.topDomains[domainLower]++
++			if len(t.topDomains) > maxTopEntries {
++				pruneMap(t.topDomains)
++			}
+ 		}
+ 	}
+ 	if clientIP != "" {
+ 		t.topClients[clientIP]++
++		if len(t.topClients) > maxTopEntries {
++			pruneMap(t.topClients)
++		}
+ 	}
+ }
+ 
+@@ -303,38 +357,6 @@ func (t *TopStats) Import(domains, clien
+ 	}
+ }
+ 
+-func getSortedTop(m map[string]uint64, isClient bool, limit int) []TopItem {
+-	type pair struct {
+-		key   string
+-		count uint64
+-	}
+-	pairs := make([]pair, 0, len(m))
+-	for k, v := range m {
+-		pairs = append(pairs, pair{key: k, count: v})
+-	}
+-	sort.Slice(pairs, func(i, j int) bool {
+-		if pairs[i].count == pairs[j].count {
+-			return pairs[i].key < pairs[j].key
+-		}
+-		return pairs[i].count > pairs[j].count
+-	})
+-
+-	if limit > len(pairs) {
+-		limit = len(pairs)
+-	}
+-	res := make([]TopItem, 0, limit)
+-	for i := 0; i < limit; i++ {
+-		item := TopItem{Count: pairs[i].count}
+-		if isClient {
+-			item.ClientIP = pairs[i].key
+-		} else {
+-			item.Domain = pairs[i].key
+-		}
+-		res = append(res, item)
+-	}
+-	return res
+-}
+-
+ func (t *TopStats) GetTop(limit int) ([]TopItem, []TopItem, []TopItem) {
+ 	t.mu.RLock()
+ 	defer t.mu.RUnlock()
+@@ -343,16 +365,56 @@ func (t *TopStats) GetTop(limit int) ([]
+ 		limit = 10
+ 	}
+ 
+-	cleanTopDomains := make(map[string]uint64, len(t.topDomains))
++	type pair struct {
++		key   string
++		count uint64
++	}
++
++	sortPairs := func(pairs []pair, isClient bool) []TopItem {
++		sort.Slice(pairs, func(i, j int) bool {
++			if pairs[i].count == pairs[j].count {
++				return pairs[i].key < pairs[j].key
++			}
++			return pairs[i].count > pairs[j].count
++		})
++
++		n := limit
++		if n > len(pairs) {
++			n = len(pairs)
++		}
++		res := make([]TopItem, 0, n)
++		for i := 0; i < n; i++ {
++			item := TopItem{Count: pairs[i].count}
++			if isClient {
++				item.ClientIP = pairs[i].key
++			} else {
++				item.Domain = pairs[i].key
++			}
++			res = append(res, item)
++		}
++		return res
++	}
++
++	domainPairs := make([]pair, 0, len(t.topDomains))
+ 	for domain, count := range t.topDomains {
+ 		if _, isBlocked := t.topBlocked[domain]; !isBlocked {
+-			cleanTopDomains[domain] = count
++			domainPairs = append(domainPairs, pair{key: domain, count: count})
+ 		}
+ 	}
+ 
+-	topDomains := getSortedTop(cleanTopDomains, false, limit)
+-	topClients := getSortedTop(t.topClients, true, limit)
+-	topBlocked := getSortedTop(t.topBlocked, false, limit)
++	clientPairs := make([]pair, 0, len(t.topClients))
++	for client, count := range t.topClients {
++		clientPairs = append(clientPairs, pair{key: client, count: count})
++	}
++
++	blockedPairs := make([]pair, 0, len(t.topBlocked))
++	for blocked, count := range t.topBlocked {
++		blockedPairs = append(blockedPairs, pair{key: blocked, count: count})
++	}
++
++	topDomains := sortPairs(domainPairs, false)
++	topClients := sortPairs(clientPairs, true)
++	topBlocked := sortPairs(blockedPairs, false)
+ 	return topDomains, topClients, topBlocked
+ }
+ 
+@@ -400,8 +462,8 @@ func (h *HistoryStats) Record(t time.Tim
+ 			bucket = &HistoryBucket{}
+ 			h.points[tHour] = bucket
+ 
+-			// Clean up old buckets beyond 48 hours
+-			cutoff := t.Add(-48 * time.Hour).Unix()
++			// Clean up old buckets beyond 168 hours (7 days)
++			cutoff := t.Add(-168 * time.Hour).Unix()
+ 			for k := range h.points {
+ 				if k < cutoff {
+ 					delete(h.points, k)
+@@ -474,7 +536,7 @@ func (h *HistoryStats) Import(points map
+ 	defer h.mu.Unlock()
+ 
+ 	h.points = make(map[int64]*HistoryBucket, len(points))
+-	cutoff := time.Now().Add(-48 * time.Hour).Unix()
++	cutoff := time.Now().Add(-168 * time.Hour).Unix()
+ 	for k, v := range points {
+ 		if k >= cutoff {
+ 			bucket := &HistoryBucket{}
+@@ -506,6 +568,8 @@ type StatsDumpData struct {
+ type StatsAPI struct {
+ 	args   *Args
+ 	logger *zap.Logger
++	m      *coremain.Mosdns
++	tag    string
+ 
+ 	ringBuffer   *RingBuffer
+ 	topStats     *TopStats
+@@ -528,6 +592,8 @@ type StatsAPI struct {
+ func Init(bp *coremain.BP, args any) (any, error) {
+ 	a := args.(*Args)
+ 	s := NewStatsAPI(a, bp.L())
++	s.m = bp.M()
++	s.tag = bp.Tag()
+ 	bp.RegAPI(s.Router())
+ 	return s, nil
+ }
+@@ -554,12 +620,14 @@ func QuickSetup(bq sequence.BQ, s string
+ 			dumpInterval = d
+ 		}
+ 	}
+-	return NewStatsAPI(&Args{
++	api := NewStatsAPI(&Args{
+ 		Listen:       listen,
+ 		Capacity:     capacity,
+ 		DumpFile:     dumpFile,
+ 		DumpInterval: dumpInterval,
+-	}, bq.L()), nil
++	}, bq.L())
++	api.m = bq.M()
++	return api, nil
+ }
+ 
+ func NewStatsAPI(args *Args, logger *zap.Logger) *StatsAPI {
+@@ -584,8 +652,9 @@ func NewStatsAPI(args *Args, logger *zap
+ 
+ 	if len(args.Listen) > 0 {
+ 		srv := &http.Server{
+-			Addr:    args.Listen,
+-			Handler: s.Router(),
++			Addr:              args.Listen,
++			Handler:           s.Router(),
++			ReadHeaderTimeout: 5 * time.Second,
+ 		}
+ 		s.httpServer = srv
+ 		go func() {
+@@ -623,6 +692,16 @@ func (s *StatsAPI) Router() *chi.Mux {
+ 	r.Post("/api/v1/logs/clear", s.handleClearLogs)
+ 	r.Post("/api/v1/cache/clear", s.handleClearCache)
+ 
++	// Relative endpoints when mounted under a prefix (e.g. /plugins/<tag>/stats)
++	r.Get("/stats", s.handleStats)
++	r.Get("/logs", s.handleLogs)
++	r.Get("/top", s.handleTop)
++	r.Get("/history", s.handleHistory)
++	r.Get("/dump", s.handleDump)
++	r.Post("/load_dump", s.handleLoadDump)
++	r.Post("/logs/clear", s.handleClearLogs)
++	r.Post("/cache/clear", s.handleClearCache)
++
+ 	return r
+ }
+ 
+@@ -637,6 +716,9 @@ func (s *StatsAPI) handleStats(w http.Re
+ 	var blockedPct, cachedPct, avgLat float64
+ 	if total > 0 {
+ 		blockedPct = float64(blocked) / float64(total) * 100.0
++		if blockedPct > 100.0 {
++			blockedPct = 100.0
++		}
+ 		avgLat = (float64(latUs) / float64(total)) / 1000.0
+ 	}
+ 	excluded := blocked + hosts + arbitrary
+@@ -751,7 +833,7 @@ func (s *StatsAPI) handleDump(w http.Res
+ }
+ 
+ func (s *StatsAPI) handleLoadDump(w http.ResponseWriter, req *http.Request) {
+-	if err := s.readDump(req.Body); err != nil {
++	if err := s.readDump(io.LimitReader(req.Body, 100<<20)); err != nil {
+ 		http.Error(w, err.Error(), http.StatusBadRequest)
+ 		return
+ 	}
+@@ -763,6 +845,7 @@ func (s *StatsAPI) handleClearLogs(w htt
+ 	s.ringBuffer.Clear()
+ 	s.topStats.Clear()
+ 	s.updatedCount.Add(1)
++	_ = s.dumpStats()
+ 
+ 	w.Header().Set("Content-Type", "application/json")
+ 	_ = json.NewEncoder(w).Encode(map[string]any{
+@@ -772,6 +855,9 @@ func (s *StatsAPI) handleClearLogs(w htt
+ }
+ 
+ func (s *StatsAPI) handleClearCache(w http.ResponseWriter, req *http.Request) {
++	if s.m != nil {
++		s.m.FlushAllCaches()
++	}
+ 	w.Header().Set("Content-Type", "application/json")
+ 	_ = json.NewEncoder(w).Encode(map[string]any{
+ 		"success": true,
+@@ -864,15 +950,35 @@ func (s *StatsAPI) dumpStats() error {
+ 	if len(s.args.DumpFile) == 0 {
+ 		return nil
+ 	}
+-	f, err := os.Create(s.args.DumpFile)
++	if dir := filepath.Dir(s.args.DumpFile); dir != "" && dir != "." {
++		_ = os.MkdirAll(dir, 0755)
++	}
++	tmpFile := fmt.Sprintf("%s.tmp.%d", s.args.DumpFile, time.Now().UnixNano())
++	f, err := os.Create(tmpFile)
+ 	if err != nil {
+ 		return err
+ 	}
+-	defer f.Close()
+ 
+ 	if err := s.writeDump(f); err != nil {
++		_ = f.Close()
++		_ = os.Remove(tmpFile)
+ 		return fmt.Errorf("failed to write stats dump, %w", err)
+ 	}
++	if err := f.Sync(); err != nil {
++		_ = f.Close()
++		_ = os.Remove(tmpFile)
++		return fmt.Errorf("failed to sync stats dump, %w", err)
++	}
++	if err := f.Close(); err != nil {
++		_ = os.Remove(tmpFile)
++		return fmt.Errorf("failed to close stats dump, %w", err)
++	}
++
++	if err := os.Rename(tmpFile, s.args.DumpFile); err != nil {
++		_ = os.Remove(tmpFile)
++		return fmt.Errorf("failed to commit stats dump: %w", err)
++	}
++
+ 	s.logger.Info("stats dumped successfully", zap.String("file", s.args.DumpFile))
+ 	return nil
+ }
+@@ -890,6 +996,7 @@ func (s *StatsAPI) startDumpLoop() {
+ 				if s.updatedCount.Swap(0) > 0 {
+ 					if err := s.dumpStats(); err != nil {
+ 						s.logger.Error("failed to dump stats", zap.Error(err))
++						s.updatedCount.Add(1)
+ 					}
+ 				}
+ 			case <-s.closeNotify:
+@@ -946,6 +1053,15 @@ func (s *StatsAPI) startQPSLoop() {
+ 	}()
+ }
+ 
++func isLoopbackDomain(domain string) bool {
++	d := strings.ToLower(strings.TrimSuffix(domain, "."))
++	return d == "localhost" ||
++		strings.HasSuffix(d, ".localhost") ||
++		d == "localhost.localdomain" ||
++		d == "ip6-localhost" ||
++		d == "ip6-loopback"
++}
++
+ func (s *StatsAPI) Exec(ctx context.Context, qCtx *query_context.Context, next sequence.ChainWalker) error {
+ 	start := time.Now()
+ 	err := next.ExecNext(ctx, qCtx)
+@@ -979,7 +1095,7 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 
+ 	r := qCtx.R()
+ 	var status string
+-	var answers []AnswerDTO
++	answers := make([]AnswerDTO, 0)
+ 	isBlocked := false
+ 
+ 	isTimeout := false
+@@ -1017,7 +1133,8 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 			status = fmt.Sprintf("RCODE%d", r.Rcode)
+ 		}
+ 
+-		if !hasUpstream && (r.Rcode == dns.RcodeNameError || r.Rcode == dns.RcodeRefused) && qQuestion.Qtype != dns.TypeHTTPS {
++		if !hasUpstream && (r.Rcode == dns.RcodeNameError || r.Rcode == dns.RcodeRefused) &&
++			qQuestion.Qtype != dns.TypeHTTPS && qQuestion.Qtype != dns.TypeSVCB {
+ 			isBlocked = true
+ 		}
+ 
+@@ -1031,12 +1148,12 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 			switch record := rr.(type) {
+ 			case *dns.A:
+ 				dataStr = record.A.String()
+-				if dataStr == "0.0.0.0" || dataStr == "127.0.0.1" {
++				if dataStr == "0.0.0.0" || (dataStr == "127.0.0.1" && !isLoopbackDomain(domain)) {
+ 					isBlocked = true
+ 				}
+ 			case *dns.AAAA:
+ 				dataStr = record.AAAA.String()
+-				if dataStr == "::" || dataStr == "::1" {
++				if dataStr == "::" || (dataStr == "::1" && !isLoopbackDomain(domain)) {
+ 					isBlocked = true
+ 				}
+ 			case *dns.CNAME:
+@@ -1047,6 +1164,10 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 				dataStr = record.Ptr
+ 			case *dns.MX:
+ 				dataStr = record.Mx
++			case *dns.NS:
++				dataStr = record.Ns
++			case *dns.SRV:
++				dataStr = fmt.Sprintf("%d %d %d %s", record.Priority, record.Weight, record.Port, record.Target)
+ 			default:
+ 				dataStr = rr.String()
+ 			}
+@@ -1123,12 +1244,12 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 			break
+ 		}
+ 
+-		if exec != "" && exec != "$stats_collector" {
++		if exec != "" && exec != "$stats_collector" && exec != "stats_api" && (s.tag == "" || exec != s.tag) {
+ 			rule = exec
+ 			break
+ 		}
+ 
+-		if hit.Sequence != "" && hit.Sequence != "has_resp_sequence" && hit.Sequence != "main_sequence" {
++		if hit.Sequence != "" && hit.Sequence != "has_resp_sequence" && hit.Sequence != "main_sequence" && (s.tag == "" || hit.Sequence != s.tag) {
+ 			rule = hit.Sequence
+ 			break
+ 		}
+@@ -1141,6 +1262,8 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 			rule = "hosts"
+ 		} else if isArbitrary {
+ 			rule = "arbitrary"
++		} else if isBlocked {
++			rule = "block"
+ 		} else {
+ 			rule = "-"
+ 		}
+@@ -1173,14 +1296,14 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ func (s *StatsAPI) Close() error {
+ 	s.closeOnce.Do(func() {
+ 		close(s.closeNotify)
+-		if err := s.dumpStats(); err != nil {
+-			s.logger.Error("failed to dump stats on close", zap.Error(err))
+-		}
+ 		if s.httpServer != nil {
+ 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+ 			defer cancel()
+ 			_ = s.httpServer.Shutdown(ctx)
+ 		}
++		if err := s.dumpStats(); err != nil {
++			s.logger.Error("failed to dump stats on close", zap.Error(err))
++		}
+ 	})
+ 	return nil
+ }
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -29,6 +29,7 @@ import (
+ 	"net/http/httptest"
+ 	"os"
+ 	"path/filepath"
++	"strings"
+ 	"testing"
+ 	"time"
+ 
+@@ -857,3 +858,208 @@ func TestStatsAPINoAnswerUpstreamAndBloc
+ 		t.Errorf("expected unblocked TIMEOUT log, got %+v", logs6)
+ 	}
+ }
++
++func TestStatsAPIAnswersNotNull(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 10}, zap.NewNop())
++	q := new(dns.Msg)
++	q.SetQuestion("nodata.example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	execEmpty := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		// Empty Answer slice
++		qCtx.SetResponse(resp)
++		return nil
++	})
++
++	walker := sequence.NewChainWalker([]*sequence.ChainNode{{E: execEmpty}}, nil)
++	if err := s.Exec(context.Background(), qCtx, walker); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++
++	_, logs := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs) != 1 {
++		t.Fatalf("expected 1 log entry, got %d", len(logs))
++	}
++	if logs[0].Answers == nil {
++		t.Errorf("expected non-nil answers slice, got nil")
++	}
++
++	rawJSON, err := json.Marshal(logs[0])
++	if err != nil {
++		t.Fatalf("failed to marshal log entry: %v", err)
++	}
++	if !strings.Contains(string(rawJSON), `"answers":[]`) {
++		t.Errorf("expected answers:[] in JSON, got: %s", string(rawJSON))
++	}
++}
++
++func TestStatsAPISVCBNotBlocked(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 10}, zap.NewNop())
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeSVCB)
++	qCtx := query_context.NewContext(q)
++
++	execNX := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Rcode = dns.RcodeNameError
++		qCtx.SetResponse(resp)
++		return nil
++	})
++
++	walker := sequence.NewChainWalker([]*sequence.ChainNode{{E: execNX}}, nil)
++	if err := s.Exec(context.Background(), qCtx, walker); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++
++	if s.blockedQueries.Load() != 0 {
++		t.Errorf("expected blockedQueries 0 for SVCB NXDOMAIN, got %d", s.blockedQueries.Load())
++	}
++}
++
++func TestStatsAPILoopbackResolution(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 10}, zap.NewNop())
++
++	// 1. Hosts returning 127.0.0.1 (e.g. localhost) -> NOT blocked, hostsQueries=1
++	q1 := new(dns.Msg)
++	q1.SetQuestion("localhost.", dns.TypeA)
++	qCtx1 := query_context.NewContext(q1)
++
++	execHosts127 := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "localhost.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{127, 0, 0, 1},
++		})
++		qCtx.SetResponse(resp)
++		qCtx.SetFromHosts()
++		return nil
++	})
++
++	walker1 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execHosts127}}, nil)
++	if err := s.Exec(context.Background(), qCtx1, walker1); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++
++	if s.blockedQueries.Load() != 0 {
++		t.Errorf("expected blockedQueries 0 for hosts 127.0.0.1, got %d", s.blockedQueries.Load())
++	}
++	if s.hostsQueries.Load() != 1 {
++		t.Errorf("expected hostsQueries 1, got %d", s.hostsQueries.Load())
++	}
++	_, logs1 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs1) != 1 || logs1[0].IsBlocked || logs1[0].Upstream != "hosts" {
++		t.Errorf("expected unblocked hosts log for 127.0.0.1, got %+v", logs1)
++	}
++
++	// 2. Hosts returning 127.0.0.1 for an ad/blocked domain (e.g. baidu.com) -> IS blocked
++	q2 := new(dns.Msg)
++	q2.SetQuestion("baidu.com.", dns.TypeA)
++	qCtx2 := query_context.NewContext(q2)
++
++	execHostsBaidu127 := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "baidu.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{127, 0, 0, 1},
++		})
++		qCtx.SetResponse(resp)
++		qCtx.SetFromHosts()
++		return nil
++	})
++
++	walker2 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execHostsBaidu127}}, nil)
++	if err := s.Exec(context.Background(), qCtx2, walker2); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++
++	if s.blockedQueries.Load() != 1 {
++		t.Errorf("expected blockedQueries 1 for hosts 127.0.0.1 baidu.com, got %d", s.blockedQueries.Load())
++	}
++	if s.hostsQueries.Load() != 1 {
++		t.Errorf("expected hostsQueries to remain 1, got %d", s.hostsQueries.Load())
++	}
++	_, logs2 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs2) != 1 || !logs2[0].IsBlocked {
++		t.Errorf("expected blocked log for hosts 127.0.0.1 baidu.com, got %+v", logs2)
++	}
++
++	// 3. Local black_hole returning 127.0.0.1 (no upstream, no hosts) -> IS blocked
++	q3 := new(dns.Msg)
++	q3.SetQuestion("ad.blackhole.com.", dns.TypeA)
++	qCtx3 := query_context.NewContext(q3)
++
++	execBlackhole127 := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "ad.blackhole.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{127, 0, 0, 1},
++		})
++		qCtx.SetResponse(resp)
++		return nil
++	})
++
++	walker3 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execBlackhole127}}, nil)
++	if err := s.Exec(context.Background(), qCtx3, walker3); err != nil {
++		t.Fatalf("Exec failed: %v", err)
++	}
++
++	if s.blockedQueries.Load() != 2 {
++		t.Errorf("expected blockedQueries 2 for black_hole 127.0.0.1, got %d", s.blockedQueries.Load())
++	}
++	_, logs3 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs3) != 1 || !logs3[0].IsBlocked || logs3[0].Rule != "block" {
++		t.Errorf("expected blocked log with rule 'block', got %+v", logs3)
++	}
++}
++
++func TestStatsAPIQueryLogsExtendedFilters(t *testing.T) {
++	rb := NewRingBuffer(10)
++	rb.Push(LogEntry{Domain: "t.com.", Status: "TIMEOUT", Upstream: "upstream1"})
++	rb.Push(LogEntry{Domain: "e.com.", Status: "ERROR", Upstream: "upstream1"})
++	rb.Push(LogEntry{Domain: "nx.com.", Status: "NXDOMAIN", Upstream: "upstream1"})
++	rb.Push(LogEntry{Domain: "h.com.", Status: "NOERROR", Upstream: "hosts", Rule: "hosts"})
++
++	totalTimeout, logsTimeout := rb.QueryLogs(10, 0, "", "timeout")
++	if totalTimeout != 1 || logsTimeout[0].Domain != "t.com." {
++		t.Errorf("filter timeout failed: total=%d, logs=%+v", totalTimeout, logsTimeout)
++	}
++
++	totalError, logsError := rb.QueryLogs(10, 0, "", "error")
++	if totalError != 1 || logsError[0].Domain != "e.com." {
++		t.Errorf("filter error failed: total=%d, logs=%+v", totalError, logsError)
++	}
++
++	totalNX, logsNX := rb.QueryLogs(10, 0, "", "nxdomain")
++	if totalNX != 1 || logsNX[0].Domain != "nx.com." {
++		t.Errorf("filter nxdomain failed: total=%d, logs=%+v", totalNX, logsNX)
++	}
++
++	totalHosts, logsHosts := rb.QueryLogs(10, 0, "", "hosts")
++	if totalHosts != 1 || logsHosts[0].Domain != "h.com." {
++		t.Errorf("filter hosts failed: total=%d, logs=%+v", totalHosts, logsHosts)
++	}
++}
++
++func TestHistoryStats168Hours(t *testing.T) {
++	h := NewHistoryStats()
++	now := time.Now()
++
++	// Record point 100 hours ago
++	h.Record(now.Add(-100*time.Hour), false, true)
++
++	points := h.GetHistory(168)
++	if len(points) != 168 {
++		t.Fatalf("expected 168 points, got %d", len(points))
++	}
++
++	point100 := points[len(points)-1-100]
++	if point100.Total != 1 || point100.Cached != 1 {
++		t.Errorf("expected 1 total query 100 hours ago, got %+v", point100)
++	}
++}

@@ -1,0 +1,207 @@
+From 21c024d30bba7603f5b002fc235b0cad11c72a4a Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 15 Oct 2026 19:12:07 +0800
+Subject: [PATCH 5/5] feat(stats_api): isolate timeout queries from average
+ latency calculation
+
+- Exclude timeout request latencies from totalLatencyUs to prevent skewing average latency
+- Add timeoutQueries and latencyQueries atomic counters
+- Expose timeout_queries and timeout_percentage in /api/v1/stats API
+- Persist timeout and latency query counters in stats dump with backward compatibility
+- Add unit test verifying latency calculation purity under timeout conditions
+---
+ plugin/executable/stats_api/stats_api.go      | 35 ++++++++-
+ plugin/executable/stats_api/stats_api_test.go | 72 +++++++++++++++++++
+ 2 files changed, 104 insertions(+), 3 deletions(-)
+
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -556,7 +556,9 @@ type StatsDumpData struct {
+ 	CachedQueries    uint64                      `json:"cached_queries"`
+ 	HostsQueries     uint64                      `json:"hosts_queries,omitempty"`
+ 	ArbitraryQueries uint64                      `json:"arbitrary_queries,omitempty"`
++	TimeoutQueries   uint64                      `json:"timeout_queries,omitempty"`
+ 	TotalLatencyUs   uint64                      `json:"total_latency_us"`
++	LatencyQueries   uint64                      `json:"latency_queries,omitempty"`
+ 	TopDomains       map[string]uint64           `json:"top_domains,omitempty"`
+ 	TopClients       map[string]uint64           `json:"top_clients,omitempty"`
+ 	TopBlocked       map[string]uint64           `json:"top_blocked,omitempty"`
+@@ -580,7 +582,9 @@ type StatsAPI struct {
+ 	cachedQueries    atomic.Uint64
+ 	hostsQueries     atomic.Uint64
+ 	arbitraryQueries atomic.Uint64
++	timeoutQueries   atomic.Uint64
+ 	totalLatencyUs   atomic.Uint64
++	latencyQueries   atomic.Uint64
+ 	currentQPS       atomic.Uint64
+ 
+ 	updatedCount atomic.Uint64
+@@ -711,15 +715,23 @@ func (s *StatsAPI) handleStats(w http.Re
+ 	cached := s.cachedQueries.Load()
+ 	hosts := s.hostsQueries.Load()
+ 	arbitrary := s.arbitraryQueries.Load()
++	timeout := s.timeoutQueries.Load()
+ 	latUs := s.totalLatencyUs.Load()
++	latQueries := s.latencyQueries.Load()
+ 
+-	var blockedPct, cachedPct, avgLat float64
++	var blockedPct, cachedPct, timeoutPct, avgLat float64
+ 	if total > 0 {
+ 		blockedPct = float64(blocked) / float64(total) * 100.0
+ 		if blockedPct > 100.0 {
+ 			blockedPct = 100.0
+ 		}
+-		avgLat = (float64(latUs) / float64(total)) / 1000.0
++		timeoutPct = float64(timeout) / float64(total) * 100.0
++		if timeoutPct > 100.0 {
++			timeoutPct = 100.0
++		}
++	}
++	if latQueries > 0 {
++		avgLat = (float64(latUs) / float64(latQueries)) / 1000.0
+ 	}
+ 	excluded := blocked + hosts + arbitrary
+ 	if total > excluded {
+@@ -731,6 +743,7 @@ func (s *StatsAPI) handleStats(w http.Re
+ 
+ 	blockedPct = math.Round(blockedPct*100) / 100
+ 	cachedPct = math.Round(cachedPct*100) / 100
++	timeoutPct = math.Round(timeoutPct*100) / 100
+ 	avgLat = math.Round(avgLat*100) / 100
+ 	qps := s.currentQPS.Load()
+ 
+@@ -740,8 +753,10 @@ func (s *StatsAPI) handleStats(w http.Re
+ 		"cached_queries":     cached,
+ 		"hosts_queries":      hosts,
+ 		"arbitrary_queries":  arbitrary,
++		"timeout_queries":    timeout,
+ 		"blocked_percentage": blockedPct,
+ 		"cached_percentage":  cachedPct,
++		"timeout_percentage": timeoutPct,
+ 		"avg_latency_ms":     avgLat,
+ 		"qps":                qps,
+ 	}
+@@ -880,7 +895,9 @@ func (s *StatsAPI) writeDump(w io.Writer
+ 		CachedQueries:    s.cachedQueries.Load(),
+ 		HostsQueries:     s.hostsQueries.Load(),
+ 		ArbitraryQueries: s.arbitraryQueries.Load(),
++		TimeoutQueries:   s.timeoutQueries.Load(),
+ 		TotalLatencyUs:   s.totalLatencyUs.Load(),
++		LatencyQueries:   s.latencyQueries.Load(),
+ 	}
+ 
+ 	data.TopDomains, data.TopClients, data.TopBlocked = s.topStats.Export()
+@@ -916,7 +933,13 @@ func (s *StatsAPI) readDump(r io.Reader)
+ 	s.cachedQueries.Store(data.CachedQueries)
+ 	s.hostsQueries.Store(data.HostsQueries)
+ 	s.arbitraryQueries.Store(data.ArbitraryQueries)
++	s.timeoutQueries.Store(data.TimeoutQueries)
+ 	s.totalLatencyUs.Store(data.TotalLatencyUs)
++	latQueries := data.LatencyQueries
++	if latQueries == 0 && data.TotalQueries > data.TimeoutQueries {
++		latQueries = data.TotalQueries - data.TimeoutQueries
++	}
++	s.latencyQueries.Store(latQueries)
+ 
+ 	s.topStats.Import(data.TopDomains, data.TopClients, data.TopBlocked)
+ 	s.historyStats.Import(data.History)
+@@ -1068,7 +1091,6 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 	elapsed := time.Since(start)
+ 
+ 	s.totalQueries.Add(1)
+-	s.totalLatencyUs.Add(uint64(elapsed.Microseconds()))
+ 	s.updatedCount.Add(1)
+ 
+ 	var clientIP string
+@@ -1183,6 +1205,13 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 		s.blockedQueries.Add(1)
+ 	}
+ 
++	if isTimeout {
++		s.timeoutQueries.Add(1)
++	} else {
++		s.totalLatencyUs.Add(uint64(elapsed.Microseconds()))
++		s.latencyQueries.Add(1)
++	}
++
+ 	isHosts := qCtx.FromHosts && !isBlocked && !isCached && qCtx.UpstreamSelected == nil
+ 	if isHosts {
+ 		s.hostsQueries.Add(1)
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -1063,3 +1063,75 @@ func TestHistoryStats168Hours(t *testing
+ 		t.Errorf("expected 1 total query 100 hours ago, got %+v", point100)
+ 	}
+ }
++
++func TestStatsAPITimeoutExclusionFromLatency(t *testing.T) {
++	s := NewStatsAPI(&Args{Capacity: 10}, zap.NewNop())
++
++	// 1. Successful fast query (e.g. 5ms)
++	q1 := new(dns.Msg)
++	q1.SetQuestion("fast.com.", dns.TypeA)
++	qCtx1 := query_context.NewContext(q1)
++
++	execFast := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		time.Sleep(5 * time.Millisecond)
++		resp := new(dns.Msg)
++		resp.SetReply(qCtx.Q())
++		resp.Answer = append(resp.Answer, &dns.A{
++			Hdr: dns.RR_Header{Name: "fast.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 300},
++			A:   []byte{1, 1, 1, 1},
++		})
++		qCtx.SetResponse(resp)
++		return nil
++	})
++
++	walker1 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execFast}}, nil)
++	if err := s.Exec(context.Background(), qCtx1, walker1); err != nil {
++		t.Fatalf("fast query failed: %v", err)
++	}
++
++	// 2. Timeout query (simulated timeout with deadline exceeded error)
++	q2 := new(dns.Msg)
++	q2.SetQuestion("timeout.com.", dns.TypeA)
++	qCtx2 := query_context.NewContext(q2)
++
++	execTimeout := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		time.Sleep(50 * time.Millisecond)
++		return context.DeadlineExceeded
++	})
++
++	walker2 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execTimeout}}, nil)
++	_ = s.Exec(context.Background(), qCtx2, walker2)
++
++	if s.totalQueries.Load() != 2 {
++		t.Errorf("expected 2 total queries, got %d", s.totalQueries.Load())
++	}
++	if s.timeoutQueries.Load() != 1 {
++		t.Errorf("expected 1 timeout query, got %d", s.timeoutQueries.Load())
++	}
++	if s.latencyQueries.Load() != 1 {
++		t.Errorf("expected 1 latency query (excluding timeout), got %d", s.latencyQueries.Load())
++	}
++
++	// Test HTTP /api/v1/stats output
++	req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
++	w := httptest.NewRecorder()
++	s.Router().ServeHTTP(w, req)
++
++	var stats map[string]any
++	if err := json.Unmarshal(w.Body.Bytes(), &stats); err != nil {
++		t.Fatalf("failed to parse stats response: %v", err)
++	}
++
++	if stats["timeout_queries"].(float64) != 1 {
++		t.Errorf("expected timeout_queries == 1, got %v", stats["timeout_queries"])
++	}
++	if stats["timeout_percentage"].(float64) != 50.0 {
++		t.Errorf("expected timeout_percentage == 50.0, got %v", stats["timeout_percentage"])
++	}
++
++	// avg_latency_ms should be around 5ms, definitely not pulled up to >20ms by the 50ms timeout!
++	avgLat := stats["avg_latency_ms"].(float64)
++	if avgLat >= 20.0 {
++		t.Errorf("avg_latency_ms %v ms was polluted by timeout query!", avgLat)
++	}
++}

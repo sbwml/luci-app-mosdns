@@ -1,0 +1,183 @@
+From 03e469715f297ea17be5090a6d64c4d2fbeb4e17 Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Sat, 3 Oct 2026 23:40:31 +0800
+Subject: [PATCH 2/5] fix(stats): exclude natural timeouts and upstream errors
+ from blocked statistics
+
+---
+ plugin/executable/forward/forward.go          | 45 ++++++++++++-------
+ plugin/executable/sequence/chain.go           |  9 ++--
+ plugin/executable/stats_api/stats_api.go      | 29 ++++++++++--
+ plugin/executable/stats_api/stats_api_test.go | 22 +++++++++
+ 4 files changed, 83 insertions(+), 22 deletions(-)
+
+--- a/plugin/executable/forward/forward.go
++++ b/plugin/executable/forward/forward.go
+@@ -267,9 +267,11 @@ func (f *Forward) exchange(ctx context.C
+ 	done := make(chan struct{})
+ 	defer close(done)
+ 
++	var lastAttempted *upstreamWrapper
+ 	r := rand.IntN(len(us))
+ 	for i := 0; i < concurrent; i++ {
+ 		u := us[(r+i)%len(us)]
++		lastAttempted = u
+ 		qc := copyPayload(queryPayload)
+ 		go func(uqid uint32, question dns.Question, chosenUpstream *upstreamWrapper) {
+ 			defer pool.ReleaseBuf(qc)
+@@ -318,31 +320,44 @@ func (f *Forward) exchange(ctx context.C
+ 			}
+ 
+ 			if chosenUpstream != nil {
+-				addr := chosenUpstream.cfg.Addr
+-				proto := "UDP"
+-				if strings.Contains(addr, "://") {
+-					parts := strings.SplitN(addr, "://", 2)
+-					proto = strings.ToUpper(parts[0])
+-					addr = parts[1]
+-				}
+-				if proto == "TLS" {
+-					proto = "DoT"
+-				} else if proto == "HTTPS" {
+-					proto = "DoH"
+-				} else if proto == "QUIC" || proto == "DOQ" {
+-					proto = "DoQ"
+-				}
+-				qCtx.SetUpstreamSelected(chosenUpstream.cfg.Addr, proto, chosenUpstream.cfg.Tag, f.pluginTag)
++				f.setUpstream(qCtx, chosenUpstream)
+ 			}
+ 
+ 			return r, nil
+ 		case <-ctx.Done():
++			if qCtx.UpstreamSelected == nil && lastAttempted != nil {
++				f.setUpstream(qCtx, lastAttempted)
++			}
+ 			return nil, context.Cause(ctx)
+ 		}
+ 	}
++	if qCtx.UpstreamSelected == nil && lastAttempted != nil {
++		f.setUpstream(qCtx, lastAttempted)
++	}
+ 	return nil, errors.New("all upstream servers failed")
+ }
+ 
++func (f *Forward) setUpstream(qCtx *query_context.Context, u *upstreamWrapper) {
++	if u == nil {
++		return
++	}
++	addr := u.cfg.Addr
++	proto := "UDP"
++	if strings.Contains(addr, "://") {
++		parts := strings.SplitN(addr, "://", 2)
++		proto = strings.ToUpper(parts[0])
++		addr = parts[1]
++	}
++	if proto == "TLS" {
++		proto = "DoT"
++	} else if proto == "HTTPS" {
++		proto = "DoH"
++	} else if proto == "QUIC" || proto == "DOQ" {
++		proto = "DoQ"
++	}
++	qCtx.SetUpstreamSelected(u.cfg.Addr, proto, u.cfg.Tag, f.pluginTag)
++}
++
+ func quickSetup(bq sequence.BQ, s string) (any, error) {
+ 	args := new(Args)
+ 	args.Concurrent = maxConcurrentQueries
+--- a/plugin/executable/sequence/chain.go
++++ b/plugin/executable/sequence/chain.go
+@@ -122,13 +122,14 @@ checkMatchesLoop:
+ 		switch {
+ 		case n.E != nil:
+ 			hasRespBefore := qCtx.R() != nil
+-			if err := n.E.Exec(ctx, qCtx); err != nil {
+-				return err
+-			}
++			err := n.E.Exec(ctx, qCtx)
+ 			hasRespAfter := qCtx.R() != nil
+-			if shouldLogRule(n, hasRespBefore, hasRespAfter) {
++			if shouldLogRule(n, hasRespBefore, hasRespAfter) || err != nil {
+ 				qCtx.AddRuleHit(w.sequenceTag, n.RuleMatches, n.RuleExec)
+ 			}
++			if err != nil {
++				return err
++			}
+ 			p++
+ 			continue
+ 		case n.RE != nil:
+--- a/plugin/executable/stats_api/stats_api.go
++++ b/plugin/executable/stats_api/stats_api.go
+@@ -982,10 +982,33 @@ func (s *StatsAPI) Exec(ctx context.Cont
+ 	var answers []AnswerDTO
+ 	isBlocked := false
+ 
++	isTimeout := false
++	if err != nil {
++		errStr := strings.ToLower(err.Error())
++		if errors.Is(err, context.DeadlineExceeded) ||
++			strings.Contains(errStr, "timeout") ||
++			strings.Contains(errStr, "deadline") ||
++			strings.Contains(errStr, "all upstream servers failed") ||
++			strings.Contains(errStr, "all primary and secondary executables failed") {
++			isTimeout = true
++		}
++	}
++	if elapsed >= 4*time.Second && r == nil {
++		isTimeout = true
++	}
++
+ 	if r == nil {
+-		status = "DROPPED"
+-		if !hasUpstream {
+-			isBlocked = true
++		if isTimeout {
++			status = "TIMEOUT"
++			isBlocked = false
++		} else if err != nil {
++			status = "ERROR"
++			isBlocked = false
++		} else {
++			status = "DROPPED"
++			if !hasUpstream {
++				isBlocked = true
++			}
+ 		}
+ 	} else {
+ 		if rcodeStr, ok := dns.RcodeToString[r.Rcode]; ok {
+--- a/plugin/executable/stats_api/stats_api_test.go
++++ b/plugin/executable/stats_api/stats_api_test.go
+@@ -23,6 +23,7 @@ import (
+ 	"bytes"
+ 	"context"
+ 	"encoding/json"
++	"errors"
+ 	"fmt"
+ 	"net/http"
+ 	"net/http/httptest"
+@@ -834,4 +835,25 @@ func TestStatsAPINoAnswerUpstreamAndBloc
+ 	if len(logs5) != 1 || !logs5[0].IsBlocked || logs5[0].Status != "DROPPED" {
+ 		t.Errorf("expected blocked DROPPED log, got %+v", logs5)
+ 	}
++
++	// Case 6: Upstream timeout -> NOT blocked, status is TIMEOUT
++	q6 := new(dns.Msg)
++	q6.SetQuestion("timedout.example.com.", dns.TypeAAAA)
++	qCtx6 := query_context.NewContext(q6)
++	qCtx6.SetUpstreamSelected("114.114.114.114:53", "UDP", "local", "forward_local")
++
++	execTimeout := sequence.ExecutableFunc(func(ctx context.Context, qCtx *query_context.Context) error {
++		return errors.New("all upstream servers failed")
++	})
++
++	walker6 := sequence.NewChainWalker([]*sequence.ChainNode{{E: execTimeout}}, nil)
++	_ = s.Exec(context.Background(), qCtx6, walker6)
++
++	if s.blockedQueries.Load() != 2 {
++		t.Errorf("expected blockedQueries to remain 2, got %d", s.blockedQueries.Load())
++	}
++	_, logs6 := s.ringBuffer.QueryLogs(1, 0, "", "all")
++	if len(logs6) != 1 || logs6[0].IsBlocked || logs6[0].Status != "TIMEOUT" {
++		t.Errorf("expected unblocked TIMEOUT log, got %+v", logs6)
++	}
+ }

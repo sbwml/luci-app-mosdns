@@ -1,0 +1,630 @@
+From 3ce13333944dc6b271b8db3c73f1627c276f839a Mon Sep 17 00:00:00 2001
+From: sbwml <admin@cooluc.com>
+Date: Thu, 15 Oct 2026 17:58:04 +0800
+Subject: [PATCH 3/5] fix: resolve concurrency races, configuration fallbacks,
+ and parser bugs
+
+- pkg/concurrent_map: fix flush() using RLock instead of Lock causing concurrent map writes
+- plugin/executable/black_hole: eliminate global mutex and shuffle local slices to prevent data race
+- plugin/executable/sequence/fallback: return early in alwaysStandby to avoid overwriting primary results
+- plugin/server: invoke args.init() across server plugins to ensure default listen ports and timeouts
+- plugin/data_provider/adblock_set: support multi-domain hosts lines and trim trailing '^' separators
+- mlog: restore JSON encoder support when production log mode is enabled
+- add comprehensive unit tests and race checks for fallback, black_hole, servers, and mlog
+---
+ mlog/logger.go                                |  18 ++-
+ mlog/rotator_test.go                          |  31 ++++
+ pkg/concurrent_map/map.go                     |   4 +-
+ pkg/concurrent_map/map_test.go                |  36 +++++
+ .../adblock_set/adblock_set_test.go           |   7 +
+ plugin/data_provider/adblock_set/parser.go    |  14 +-
+ plugin/executable/black_hole/black_hole.go    |  34 ++--
+ .../executable/black_hole/black_hole_test.go  |  38 +++++
+ .../executable/sequence/fallback/fallback.go  |   4 +-
+ .../sequence/fallback/fallback_test.go        | 146 ++++++++++++++++++
+ plugin/server/http_server/http_server.go      |   3 +-
+ plugin/server/http_server/http_server_test.go |  13 ++
+ plugin/server/quic_server/quic_server.go      |   1 +
+ plugin/server/quic_server/quic_server_test.go |  13 ++
+ plugin/server/tcp_server/tcp_server.go        |   1 +
+ plugin/server/tcp_server/tcp_server_test.go   |  14 ++
+ plugin/server/udp_server/udp_server.go        |   1 +
+ plugin/server/udp_server/udp_server_test.go   |  13 ++
+ 18 files changed, 362 insertions(+), 29 deletions(-)
+ create mode 100644 plugin/executable/black_hole/black_hole_test.go
+ create mode 100644 plugin/executable/sequence/fallback/fallback_test.go
+ create mode 100644 plugin/server/http_server/http_server_test.go
+ create mode 100644 plugin/server/quic_server/quic_server_test.go
+ create mode 100644 plugin/server/tcp_server/tcp_server_test.go
+ create mode 100644 plugin/server/udp_server/udp_server_test.go
+
+--- a/mlog/logger.go
++++ b/mlog/logger.go
+@@ -93,13 +93,23 @@ func NewLogger(lc LogConfig) (*zap.Logge
+ 		out = stderr
+ 	}
+ 
+-	encoderConfig := zap.NewDevelopmentEncoderConfig()
+-	encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+-		enc.AppendString(t.Format("2006-01-02 15:04:05"))
++	var encoder zapcore.Encoder
++	if lc.Production {
++		encoderConfig := zap.NewProductionEncoderConfig()
++		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
++			enc.AppendString(t.Format("2006-01-02 15:04:05"))
++		}
++		encoder = zapcore.NewJSONEncoder(encoderConfig)
++	} else {
++		encoderConfig := zap.NewDevelopmentEncoderConfig()
++		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
++			enc.AppendString(t.Format("2006-01-02 15:04:05"))
++		}
++		encoder = zapcore.NewConsoleEncoder(encoderConfig)
+ 	}
+ 
+ 	core := zapcore.NewCore(
+-		zapcore.NewConsoleEncoder(encoderConfig),
++		encoder,
+ 		out,
+ 		lvl,
+ 	)
+--- a/mlog/rotator_test.go
++++ b/mlog/rotator_test.go
+@@ -1,7 +1,12 @@
+ package mlog
+ 
+ import (
++	"encoding/json"
++	"os"
++	"path/filepath"
+ 	"testing"
++
++	"go.uber.org/zap"
+ )
+ 
+ func TestParseSize(t *testing.T) {
+@@ -33,3 +38,29 @@ func TestNewLoggerBackups(t *testing.T)
+ 		t.Fatalf("NewLogger failed: %v", err)
+ 	}
+ }
++
++func TestNewLoggerProduction(t *testing.T) {
++	tmpFile := filepath.Join(t.TempDir(), "test_prod.log")
++	lc := LogConfig{
++		File:       tmpFile,
++		Production: true,
++	}
++	logger, err := NewLogger(lc)
++	if err != nil {
++		t.Fatalf("NewLogger failed: %v", err)
++	}
++	logger.Info("hello production", zap.String("key", "val"))
++	_ = logger.Sync()
++
++	data, err := os.ReadFile(tmpFile)
++	if err != nil {
++		t.Fatalf("read log file failed: %v", err)
++	}
++	var m map[string]any
++	if err := json.Unmarshal(data, &m); err != nil {
++		t.Fatalf("expected valid json from production logger, got %s: %v", string(data), err)
++	}
++	if m["key"] != "val" || m["msg"] != "hello production" {
++		t.Fatalf("unexpected json log content: %v", m)
++	}
++}
+--- a/pkg/concurrent_map/map.go
++++ b/pkg/concurrent_map/map.go
+@@ -162,8 +162,8 @@ func (m *shard[K, V]) len() int {
+ }
+ 
+ func (m *shard[K, V]) flush() {
+-	m.l.RLock()
+-	defer m.l.RUnlock()
++	m.l.Lock()
++	defer m.l.Unlock()
+ 	m.m = make(map[K]V)
+ }
+ 
+--- a/pkg/concurrent_map/map_test.go
++++ b/pkg/concurrent_map/map_test.go
+@@ -139,6 +139,42 @@ func TestConcurrentMap_TestAndSet(t *tes
+ 	}
+ }
+ 
++func Test_Map_Flush_Concurrency(t *testing.T) {
++	m := NewMap[testMapHashable, int]()
++	var wg sync.WaitGroup
++	const goroutines = 20
++	const iterations = 500
++
++	wg.Add(goroutines * 2 + 1)
++	// readers
++	for i := 0; i < goroutines; i++ {
++		go func(base int) {
++			defer wg.Done()
++			for j := 0; j < iterations; j++ {
++				_, _ = m.Get(testMapHashable(base + (j % 50)))
++			}
++		}(i * 100)
++	}
++	// writers
++	for i := 0; i < goroutines; i++ {
++		go func(base int) {
++			defer wg.Done()
++			for j := 0; j < iterations; j++ {
++				m.Set(testMapHashable(base+(j%50)), j)
++			}
++		}(i * 100)
++	}
++	// flushers
++	go func() {
++		defer wg.Done()
++		for j := 0; j < iterations/5; j++ {
++			m.Flush()
++		}
++	}()
++
++	wg.Wait()
++}
++
+ func BenchmarkConcurrentMap_Get_And_Set(b *testing.B) {
+ 	keys := make([]testMapHashable, 2048)
+ 	m := NewMap[testMapHashable, int]()
+--- a/plugin/data_provider/adblock_set/adblock_set_test.go
++++ b/plugin/data_provider/adblock_set/adblock_set_test.go
+@@ -45,6 +45,8 @@ domain:ntp.org
+ full:metrics.icloud.com
+ 0.0.0.0 singlehotmilf.online
+ 127.0.0.1 deezer.deliveryengine.adswizz.com
++0.0.0.0 multihost1.com multihost2.com # comment here
++trailingsymbol.com^
+ `
+ 	blacklist := domain.NewMixMatcher[struct{}]()
+ 	whitelist := domain.NewMixMatcher[struct{}]()
+@@ -85,6 +87,11 @@ full:metrics.icloud.com
+ 		{"sub.singlehotmilf.online", false},        // hosts: exact match only
+ 		{"deezer.deliveryengine.adswizz.com", true}, // hosts: 127.0.0.1
+ 		{"sub.deezer.deliveryengine.adswizz.com", false}, // hosts: exact match only
++		{"multihost1.com", true},
++		{"multihost2.com", true},
++		{"comment", false},
++		{"trailingsymbol.com", true},
++		{"sub.trailingsymbol.com", true},
+ 	}
+ 
+ 	for _, tt := range tests {
+--- a/plugin/data_provider/adblock_set/parser.go
++++ b/plugin/data_provider/adblock_set/parser.go
+@@ -37,12 +37,16 @@ func ParseRules(r io.Reader, blacklist,
+ 			continue
+ 		}
+ 
+-		// Handle hosts file format: "0.0.0.0 domain" or "127.0.0.1 domain"
++		// Handle hosts file format: "0.0.0.0 domain1 domain2" or "127.0.0.1 domain"
+ 		if fields := strings.Fields(line); len(fields) >= 2 {
+ 			if ip := net.ParseIP(fields[0]); ip != nil {
+-				host := fields[1]
+-				if host != "" && host != "localhost" {
+-					_ = blacklist.Add("full:"+host, struct{}{})
++				for _, host := range fields[1:] {
++					if strings.HasPrefix(host, "#") {
++						break
++					}
++					if host != "" && host != "localhost" {
++						_ = blacklist.Add("full:"+host, struct{}{})
++					}
+ 				}
+ 				continue
+ 			}
+@@ -87,6 +91,8 @@ func ParseRules(r io.Reader, blacklist,
+ }
+ 
+ func parseAndAddRule(rule string, m *domain.MixMatcher[struct{}]) error {
++	rule = strings.TrimSuffix(rule, "^")
++
+ 	// 0. Native MosDNS rules: type:pattern
+ 	if strings.Contains(rule, ":") {
+ 		typ, _, _ := strings.Cut(rule, ":")
+--- a/plugin/executable/black_hole/black_hole.go
++++ b/plugin/executable/black_hole/black_hole.go
+@@ -25,10 +25,9 @@ import (
+ 	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
+ 	"github.com/IrineSistiana/mosdns/v5/plugin/executable/sequence"
+ 	"github.com/miekg/dns"
++	"math/rand"
+ 	"net/netip"
+ 	"strings"
+-	"math/rand"
+-	"sync"
+ )
+ 
+ const PluginType = "black_hole"
+@@ -42,7 +41,6 @@ var _ sequence.Executable = (*BlackHole)
+ type BlackHole struct {
+ 	ipv4 []netip.Addr
+ 	ipv6 []netip.Addr
+-	shuffleMutex sync.Mutex
+ }
+ 
+ // QuickSetup format: [ipv4|ipv6] ...
+@@ -68,21 +66,9 @@ func NewBlackHole(ips []string) (*BlackH
+ 	return b, nil
+ }
+ 
+-func (b *BlackHole) shuffleIPs() {
+-	b.shuffleMutex.Lock()
+-	defer b.shuffleMutex.Unlock()
+-	rand.Shuffle(len(b.ipv4), func(i, j int) {
+-		b.ipv4[i], b.ipv4[j] = b.ipv4[j], b.ipv4[i]
+-	})
+-	rand.Shuffle(len(b.ipv6), func(i, j int) {
+-		b.ipv6[i], b.ipv6[j] = b.ipv6[j], b.ipv6[i]
+-	})
+-}
+-
+ // Exec implements sequence.Executable. It set a response with given ips if
+ // query has corresponding qtypes.
+ func (b *BlackHole) Exec(_ context.Context, qCtx *query_context.Context) error {
+-	b.shuffleIPs()
+ 	if r := b.Response(qCtx.Q()); r != nil {
+ 		qCtx.SetResponse(r)
+ 	}
+@@ -103,7 +89,14 @@ func (b *BlackHole) Response(q *dns.Msg)
+ 	case qtype == dns.TypeA && len(b.ipv4) > 0:
+ 		r := new(dns.Msg)
+ 		r.SetReply(q)
+-		for _, addr := range b.ipv4 {
++		ips := b.ipv4
++		if len(ips) > 1 {
++			ips = append([]netip.Addr(nil), b.ipv4...)
++			rand.Shuffle(len(ips), func(i, j int) {
++				ips[i], ips[j] = ips[j], ips[i]
++			})
++		}
++		for _, addr := range ips {
+ 			rr := &dns.A{
+ 				Hdr: dns.RR_Header{
+ 					Name:   qName,
+@@ -120,7 +113,14 @@ func (b *BlackHole) Response(q *dns.Msg)
+ 	case qtype == dns.TypeAAAA && len(b.ipv6) > 0:
+ 		r := new(dns.Msg)
+ 		r.SetReply(q)
+-		for _, addr := range b.ipv6 {
++		ips := b.ipv6
++		if len(ips) > 1 {
++			ips = append([]netip.Addr(nil), b.ipv6...)
++			rand.Shuffle(len(ips), func(i, j int) {
++				ips[i], ips[j] = ips[j], ips[i]
++			})
++		}
++		for _, addr := range ips {
+ 			rr := &dns.AAAA{
+ 				Hdr: dns.RR_Header{
+ 					Name:   qName,
+--- /dev/null
++++ b/plugin/executable/black_hole/black_hole_test.go
+@@ -0,0 +1,38 @@
++package black_hole
++
++import (
++	"context"
++	"sync"
++	"testing"
++
++	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
++	"github.com/miekg/dns"
++	"github.com/stretchr/testify/assert"
++)
++
++func TestBlackHoleConcurrency(t *testing.T) {
++	bh, err := NewBlackHole([]string{"10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"})
++	assert.NoError(t, err)
++
++	const goroutines = 50
++	const queriesPerGoroutine = 100
++	var wg sync.WaitGroup
++	wg.Add(goroutines)
++
++	for i := 0; i < goroutines; i++ {
++		go func() {
++			defer wg.Done()
++			for j := 0; j < queriesPerGoroutine; j++ {
++				q := new(dns.Msg)
++				q.SetQuestion("test.example.com.", dns.TypeA)
++				qCtx := query_context.NewContext(q)
++				err := bh.Exec(context.Background(), qCtx)
++				assert.NoError(t, err)
++				r := qCtx.R()
++				assert.NotNil(t, r)
++				assert.Equal(t, 4, len(r.Answer))
++			}
++		}()
++	}
++	wg.Wait()
++}
+--- a/plugin/executable/sequence/fallback/fallback.go
++++ b/plugin/executable/sequence/fallback/fallback.go
+@@ -133,8 +133,8 @@ func (f *fallback) doFallback(ctx contex
+ 			close(primFailed)
+ 			respChan <- nil
+ 		} else {
+-			close(primDone)
+ 			respChan <- &fallbackResult{r: r, qCtx: qCtx}
++			close(primDone)
+ 		}
+ 	}()
+ 
+@@ -167,7 +167,9 @@ func (f *fallback) doFallback(ctx contex
+ 		if f.alwaysStandby && r != nil {
+ 			select {
+ 			case <-ctx.Done():
++				return
+ 			case <-primDone:
++				return
+ 			case <-primFailed: // only send secondary result when primary is failed.
+ 			case <-timer.C: // or timed out.
+ 			}
+--- /dev/null
++++ b/plugin/executable/sequence/fallback/fallback_test.go
+@@ -0,0 +1,146 @@
++package fallback
++
++import (
++	"context"
++	"errors"
++	"testing"
++	"time"
++
++	"github.com/IrineSistiana/mosdns/v5/pkg/query_context"
++	"github.com/miekg/dns"
++	"github.com/stretchr/testify/assert"
++	"go.uber.org/zap"
++)
++
++type mockExec struct {
++	delay time.Duration
++	resp  *dns.Msg
++	err   error
++}
++
++func (m *mockExec) Exec(ctx context.Context, qCtx *query_context.Context) error {
++	if m.delay > 0 {
++		select {
++		case <-ctx.Done():
++			return ctx.Err()
++		case <-time.After(m.delay):
++		}
++	}
++	if m.err != nil {
++		return m.err
++	}
++	if m.resp != nil {
++		qCtx.SetResponse(m.resp.Copy())
++	}
++	return nil
++}
++
++func TestFallbackPrimarySuccess(t *testing.T) {
++	respP := new(dns.Msg)
++	respP.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++	respP.Extra = append(respP.Extra, &dns.TXT{Hdr: dns.RR_Header{Name: "prim.", Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 60}, Txt: []string{"primary"}})
++
++	respS := new(dns.Msg)
++	respS.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++	respS.Extra = append(respS.Extra, &dns.TXT{Hdr: dns.RR_Header{Name: "sec.", Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 60}, Txt: []string{"secondary"}})
++
++	fb := &fallback{
++		logger:               zap.NewNop(),
++		primary:              &mockExec{resp: respP},
++		secondary:            &mockExec{resp: respS, delay: 50 * time.Millisecond},
++		fastFallbackDuration: 100 * time.Millisecond,
++	}
++
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	err := fb.Exec(context.Background(), qCtx)
++	assert.NoError(t, err)
++	assert.NotNil(t, qCtx.R())
++	assert.Equal(t, "prim.", qCtx.R().Extra[0].Header().Name)
++}
++
++func TestFallbackSecondaryOnPrimaryFail(t *testing.T) {
++	respS := new(dns.Msg)
++	respS.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++
++	fb := &fallback{
++		logger:               zap.NewNop(),
++		primary:              &mockExec{err: errors.New("upstream timeout")},
++		secondary:            &mockExec{resp: respS},
++		fastFallbackDuration: 100 * time.Millisecond,
++	}
++
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	err := fb.Exec(context.Background(), qCtx)
++	assert.NoError(t, err)
++	assert.NotNil(t, qCtx.R())
++}
++
++func TestFallbackSecondaryOnPrimaryTimeout(t *testing.T) {
++	respS := new(dns.Msg)
++	respS.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++
++	fb := &fallback{
++		logger:               zap.NewNop(),
++		primary:              &mockExec{delay: 200 * time.Millisecond, err: errors.New("timeout")},
++		secondary:            &mockExec{resp: respS},
++		fastFallbackDuration: 20 * time.Millisecond,
++	}
++
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	err := fb.Exec(context.Background(), qCtx)
++	assert.NoError(t, err)
++	assert.NotNil(t, qCtx.R())
++}
++
++func TestFallbackBothFail(t *testing.T) {
++	fb := &fallback{
++		logger:               zap.NewNop(),
++		primary:              &mockExec{err: errors.New("primary failed")},
++		secondary:            &mockExec{err: errors.New("secondary failed")},
++		fastFallbackDuration: 20 * time.Millisecond,
++	}
++
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	err := fb.Exec(context.Background(), qCtx)
++	assert.ErrorIs(t, err, ErrFailed)
++}
++
++func TestFallbackAlwaysStandbyPrimaryWins(t *testing.T) {
++	respP := new(dns.Msg)
++	respP.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++	respP.Extra = append(respP.Extra, &dns.TXT{Hdr: dns.RR_Header{Name: "prim.", Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 60}, Txt: []string{"primary"}})
++
++	respS := new(dns.Msg)
++	respS.SetRcode(new(dns.Msg), dns.RcodeSuccess)
++	respS.Extra = append(respS.Extra, &dns.TXT{Hdr: dns.RR_Header{Name: "sec.", Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 60}, Txt: []string{"secondary"}})
++
++	// Secondary finishes faster (5ms), but primary succeeds before threshold (50ms)
++	fb := &fallback{
++		logger:               zap.NewNop(),
++		primary:              &mockExec{delay: 15 * time.Millisecond, resp: respP},
++		secondary:            &mockExec{delay: 2 * time.Millisecond, resp: respS},
++		fastFallbackDuration: 50 * time.Millisecond,
++		alwaysStandby:        true,
++	}
++
++	q := new(dns.Msg)
++	q.SetQuestion("example.com.", dns.TypeA)
++	qCtx := query_context.NewContext(q)
++
++	err := fb.Exec(context.Background(), qCtx)
++	assert.NoError(t, err)
++	assert.NotNil(t, qCtx.R())
++	assert.Equal(t, "prim.", qCtx.R().Extra[0].Header().Name)
++}
+--- a/plugin/server/http_server/http_server.go
++++ b/plugin/server/http_server/http_server.go
+@@ -17,7 +17,7 @@
+  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  */
+ 
+-package tcp_server
++package http_server
+ 
+ import (
+ 	"context"
+@@ -72,6 +72,7 @@ func Init(bp *coremain.BP, args any) (an
+ }
+ 
+ func StartServer(bp *coremain.BP, args *Args) (*HttpServer, error) {
++	args.init()
+ 	mux := http.NewServeMux()
+ 	for _, entry := range args.Entries {
+ 		dh, err := server_utils.NewHandler(bp, entry.Exec)
+--- /dev/null
++++ b/plugin/server/http_server/http_server_test.go
+@@ -0,0 +1,13 @@
++package http_server
++
++import (
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++)
++
++func TestArgsInit(t *testing.T) {
++	a := new(Args)
++	a.init()
++	assert.Equal(t, 30, a.IdleTimeout)
++}
+--- a/plugin/server/quic_server/quic_server.go
++++ b/plugin/server/quic_server/quic_server.go
+@@ -67,6 +67,7 @@ func Init(bp *coremain.BP, args any) (an
+ }
+ 
+ func StartServer(bp *coremain.BP, args *Args) (*QuicServer, error) {
++	args.init()
+ 	logger := bp.L()
+ 
+ 	dh, err := server_utils.NewHandler(bp, args.Entry)
+--- /dev/null
++++ b/plugin/server/quic_server/quic_server_test.go
+@@ -0,0 +1,13 @@
++package quic_server
++
++import (
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++)
++
++func TestArgsInit(t *testing.T) {
++	a := new(Args)
++	a.init()
++	assert.Equal(t, 30, a.IdleTimeout)
++}
+--- a/plugin/server/tcp_server/tcp_server.go
++++ b/plugin/server/tcp_server/tcp_server.go
+@@ -68,6 +68,7 @@ func Init(bp *coremain.BP, args any) (an
+ }
+ 
+ func StartServer(bp *coremain.BP, args *Args) (*TcpServer, error) {
++	args.init()
+ 	dh, err := server_utils.NewHandler(bp, args.Entry)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to init dns handler, %w", err)
+--- /dev/null
++++ b/plugin/server/tcp_server/tcp_server_test.go
+@@ -0,0 +1,14 @@
++package tcp_server
++
++import (
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++)
++
++func TestArgsInit(t *testing.T) {
++	a := new(Args)
++	a.init()
++	assert.Equal(t, "127.0.0.1:53", a.Listen)
++	assert.Equal(t, 10, a.IdleTimeout)
++}
+--- a/plugin/server/udp_server/udp_server.go
++++ b/plugin/server/udp_server/udp_server.go
+@@ -61,6 +61,7 @@ func Init(bp *coremain.BP, args any) (an
+ }
+ 
+ func StartServer(bp *coremain.BP, args *Args) (*UdpServer, error) {
++	args.init()
+ 	dh, err := server_utils.NewHandler(bp, args.Entry)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to init dns handler, %w", err)
+--- /dev/null
++++ b/plugin/server/udp_server/udp_server_test.go
+@@ -0,0 +1,13 @@
++package udp_server
++
++import (
++	"testing"
++
++	"github.com/stretchr/testify/assert"
++)
++
++func TestArgsInit(t *testing.T) {
++	a := new(Args)
++	a.init()
++	assert.Equal(t, "127.0.0.1:53", a.Listen)
++}
