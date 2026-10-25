@@ -247,11 +247,32 @@ const methods = {
 		call: function() {
 			try {
 				let path = get_logfile_path_internal();
-				if (path && stat(path)) {
-					return { log: readfile(path) };
-				} else {
+				let s = path ? stat(path) : null;
+				if (!s) {
 					return { error: 'Log file not accessible or does not exist.' };
 				}
+
+				let f = open(path, 'r');
+				if (!f) {
+					return { error: 'Failed to open log file.' };
+				}
+
+				let max_bytes = 262144;
+				if (s.size > max_bytes) {
+					f.seek(-max_bytes, 2);
+				}
+
+				let log = f.read(max_bytes) ?? '';
+				f.close();
+
+				if (s.size > max_bytes) {
+					let idx = index(log, '\n');
+					if (idx != -1) {
+						log = substr(log, idx + 1);
+					}
+				}
+
+				return { log: log };
 			} catch (e) {
 				return { error: String(e) };
 			}
